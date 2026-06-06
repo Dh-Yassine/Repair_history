@@ -35,3 +35,16 @@ on conflict (id) do update set
 create policy "Public vehicle photos"
 on storage.objects for select
 using (bucket_id = 'vehicle-photos');
+
+-- Service role uploads bypass RLS; these policies help if you ever use the anon key from the client.
+create policy "Allow vehicle photo uploads"
+on storage.objects for insert
+with check (bucket_id = 'vehicle-photos');
+
+create policy "Allow document uploads"
+on storage.objects for insert
+with check (bucket_id = 'documents');
+
+create policy "Allow shop proof uploads"
+on storage.objects for insert
+with check (bucket_id = 'shop-proofs');

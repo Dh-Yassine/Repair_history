@@ -23,8 +23,13 @@ async function getOwnedVehicle(vehicleId, ownerId) {
 
 async function withPhotoUrl(vehicle) {
   if (!vehicle?.photoPath) return { ...vehicle, photoUrl: null };
-  const photoUrl = await resolveFileUrl(BUCKETS.vehicles, vehicle.photoPath, { publicBucket: true });
-  return { ...vehicle, photoUrl };
+  try {
+    const photoUrl = await resolveFileUrl(BUCKETS.vehicles, vehicle.photoPath, { publicBucket: true });
+    return { ...vehicle, photoUrl };
+  } catch (err) {
+    console.error('resolveFileUrl failed:', err.message);
+    return { ...vehicle, photoUrl: null };
+  }
 }
 
 router.get('/', async (req, res) => {
@@ -53,13 +58,21 @@ router.post('/', (req, res, next) => {
       });
     }
 
-    const { vin, make, model, year, mileage, visibility } = req.body;
+    const { vin, serialNumber, make, model, year, mileage, visibility } = req.body;
     if (!make?.trim() || !model?.trim() || year === undefined) {
       return res.status(400).json({ error: 'make, model, and year are required' });
     }
 
+    const parsedYear = parseInt(year, 10);
+    if (Number.isNaN(parsedYear)) {
+      return res.status(400).json({ error: 'year must be a number' });
+    }
+
     let photoPath = null;
     if (req.file) {
+      if (!req.file.buffer?.length) {
+        return res.status(400).json({ error: 'Photo upload was empty — try again or skip the photo' });
+      }
       const key = vehiclePhotoKey(req.file.originalname);
       photoPath = await saveUpload(BUCKETS.vehicles, key, req.file.buffer, req.file.mimetype);
     }
@@ -67,19 +80,20 @@ router.post('/', (req, res, next) => {
     const vehicle = await prisma.vehicle.create({
       data: {
         ownerId: req.user.id,
-        vin: vin?.trim() || null,
+        vin: vin?.trim().toUpperCase() || null,
+        serialNumber: serialNumber?.trim().toUpperCase() || null,
         make: make.trim(),
         model: model.trim(),
-        year: parseInt(year, 10),
-        mileage: mileage !== undefined ? parseFloat(mileage) : 0,
+        year: parsedYear,
+        mileage: mileage !== undefined && mileage !== '' ? parseFloat(mileage) : 0,
         photoPath,
         visibility: visibility || 'PRIVATE',
       },
     });
     res.status(201).json({ vehicle: await withPhotoUrl(vehicle) });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to create vehicle' });
+    console.error('create vehicle failed:', err);
+    res.status(500).json({ error: err.message || 'Failed to create vehicle' });
   }
 });
 
@@ -100,16 +114,20 @@ router.patch('/:id', (req, res, next) => {
 
   let photoPath = existing.photoPath;
   if (req.file) {
+    if (!req.file.buffer?.length) {
+      return res.status(400).json({ error: 'Photo upload was empty — try again or skip the photo' });
+    }
     if (existing.photoPath) await deleteUpload(BUCKETS.vehicles, existing.photoPath);
     const key = vehiclePhotoKey(req.file.originalname);
     photoPath = await saveUpload(BUCKETS.vehicles, key, req.file.buffer, req.file.mimetype);
   }
 
-  const { vin, make, model, year, mileage, visibility } = req.body;
+  const { vin, serialNumber, make, model, year, mileage, visibility } = req.body;
   const vehicle = await prisma.vehicle.update({
     where: { id: req.params.id },
     data: {
-      ...(vin !== undefined && { vin: vin?.trim() || null }),
+      ...(vin !== undefined && { vin: vin?.trim().toUpperCase() || null }),
+      ...(serialNumber !== undefined && { serialNumber: serialNumber?.trim().toUpperCase() || null }),
       ...(make !== undefined && { make: make.trim() }),
       ...(model !== undefined && { model: model.trim() }),
       ...(year !== undefined && { year: parseInt(year, 10) }),

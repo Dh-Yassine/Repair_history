@@ -50,17 +50,38 @@ router.post('/', async (req, res) => {
     if (!vehicle) return res.status(404).json({ error: 'Vehicle not found' });
 
     const { eventType, date, mileage, garageName, notes, cost } = req.body;
-    if (!eventType?.trim() || !date || mileage === undefined) {
-      return res.status(400).json({ error: 'eventType, date, and mileage are required' });
+    if (!eventType?.trim() || !date) {
+      return res.status(400).json({ error: 'eventType and date are required' });
+    }
+    if (mileage === undefined || mileage === null || mileage === '') {
+      return res.status(400).json({ error: 'mileage is required' });
+    }
+
+    const parsedMileage = parseFloat(mileage);
+    if (Number.isNaN(parsedMileage) || parsedMileage < 0) {
+      return res.status(400).json({ error: 'mileage must be a valid number' });
+    }
+
+    const parsedDate = new Date(date);
+    if (Number.isNaN(parsedDate.getTime())) {
+      return res.status(400).json({ error: 'date must be valid' });
+    }
+
+    let parsedCost = null;
+    if (cost !== undefined && cost !== null && cost !== '') {
+      parsedCost = parseFloat(cost);
+      if (Number.isNaN(parsedCost)) {
+        return res.status(400).json({ error: 'cost must be a valid number' });
+      }
     }
 
     const event = await prisma.maintenanceEvent.create({
       data: {
         vehicleId: vehicle.id,
         eventType: eventType.trim(),
-        date: new Date(date),
-        mileage: parseFloat(mileage),
-        cost: cost !== undefined && cost !== '' ? parseFloat(cost) : null,
+        date: parsedDate,
+        mileage: parsedMileage,
+        cost: parsedCost,
         garageName: garageName?.trim() || null,
         notes: notes?.trim() || null,
         verified: false,
@@ -77,17 +98,17 @@ router.post('/', async (req, res) => {
     const { generateRemindersFromEvents } = await import('../lib/reminders.js');
     generateRemindersFromEvents(vehicle.id).catch(console.error);
 
-    if (parseFloat(mileage) > vehicle.mileage) {
+    if (parsedMileage > vehicle.mileage) {
       await prisma.vehicle.update({
         where: { id: vehicle.id },
-        data: { mileage: parseFloat(mileage) },
+        data: { mileage: parsedMileage },
       });
     }
 
     res.status(201).json({ event });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to create event' });
+    console.error('create event failed:', err);
+    res.status(500).json({ error: err.message || 'Failed to create event' });
   }
 });
 

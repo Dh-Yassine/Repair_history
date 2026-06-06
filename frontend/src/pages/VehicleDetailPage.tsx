@@ -136,22 +136,34 @@ export default function VehicleDetailPage() {
     setError('');
     setSubmitting(true);
     try {
+      const parsedMileage = Number(mileage);
+      if (!Number.isFinite(parsedMileage) || parsedMileage < 0) {
+        throw new Error('Enter a valid mileage in km');
+      }
+
       const { event } = await api.createEvent(vehicleId, {
         eventType,
         date,
-        mileage,
-        cost: cost || undefined,
+        mileage: parsedMileage,
+        cost: cost ? Number(cost) : undefined,
         garageName: garageName || undefined,
         notes: notes || undefined,
       });
+
       if (uploadFile) {
-        const res = await api.uploadDocument(vehicleId, event.id, uploadFile);
-        if (res.ocrResult) {
-          toast.info(`Receipt OCR: $${res.ocrResult.parsedAmount ?? '—'} · ${res.ocrResult.parsedVendor ?? 'parsed'}`);
-        } else {
-          toast.info('Receipt uploaded — OCR runs in the background.');
+        try {
+          const res = await api.uploadDocument(vehicleId, event.id, uploadFile);
+          if (res.ocrResult) {
+            toast.info(`Receipt OCR: $${res.ocrResult.parsedAmount ?? '—'} · ${res.ocrResult.parsedVendor ?? 'parsed'}`);
+          } else {
+            toast.info('Receipt uploaded — OCR runs in the background when available.');
+          }
+        } catch (uploadErr) {
+          const uploadMsg = uploadErr instanceof Error ? uploadErr.message : 'Receipt upload failed';
+          toast.error(`Event saved, but receipt upload failed: ${uploadMsg}`);
         }
       }
+
       setDrawerOpen(false);
       resetForm();
       await load();

@@ -53,6 +53,7 @@ export interface Vehicle {
   id: string;
   ownerId: string;
   vin: string | null;
+  serialNumber?: string | null;
   make: string;
   model: string;
   year: number;
@@ -209,6 +210,7 @@ export interface PublicVehicle {
   year: number;
   mileage: number;
   vin: string | null;
+  serialNumber?: string | null;
   visibility: VisibilityType;
   shareLevel: ShareLevel;
   verifiedCount: number;

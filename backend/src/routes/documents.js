@@ -19,7 +19,7 @@ const router = Router({ mergeParams: true });
 router.use(requireAuth);
 
 async function runOcrInBackground(document, buffer, mimeType, event) {
-  if (process.env.OCR_DISABLED === 'true') return;
+  if (process.env.OCR_DISABLED === 'true' || process.env.NETLIFY || process.env.VERCEL) return;
   try {
     const ocrData = await runOcrOnBuffer(buffer, mimeType);
     await prisma.oCRResult.create({
@@ -57,6 +57,10 @@ router.post('/', (req, res, next) => {
 
     const event = await getOwnedEvent(req.params.vehicleId, req.params.eventId, req.user.id);
     if (!event) return res.status(404).json({ error: 'Event not found' });
+
+    if (!req.file.buffer?.length) {
+      return res.status(400).json({ error: 'Upload file is empty' });
+    }
 
     const key = documentKey(req.file.originalname);
     await saveUpload(BUCKETS.documents, key, req.file.buffer, req.file.mimetype);

@@ -209,9 +209,9 @@ export default function DashboardPage() {
                     <h2 className="display" style={{ fontSize: 42, margin: '8px 0' }}>
                       {active.year} {active.make} {active.model}
                     </h2>
-                    {active.vin && (
+                    {(active.vin || active.serialNumber) && (
                       <p className="mono subtle" style={{ marginBottom: 12 }}>
-                        VIN · {active.vin}
+                        {active.vin ? `VIN · ${active.vin}` : `N° série · ${active.serialNumber}`}
                       </p>
                     )}
                   </div>

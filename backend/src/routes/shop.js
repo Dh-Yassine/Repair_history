@@ -39,7 +39,7 @@ router.get('/events', async (req, res) => {
     orderBy: { date: 'desc' },
     include: {
       vehicle: {
-        select: { id: true, make: true, model: true, year: true, vin: true, mileage: true },
+        select: { id: true, make: true, model: true, year: true, vin: true, serialNumber: true, mileage: true },
       },
       documents: { select: { id: true, fileName: true, fileType: true } },
     },
@@ -50,7 +50,7 @@ router.get('/events', async (req, res) => {
 });
 
 router.post('/vehicles/lookup', async (req, res) => {
-  const { ownerEmail, vin, make, model, year } = req.body;
+  const { ownerEmail, vin, serialNumber, make, model, year } = req.body;
   if (!ownerEmail?.trim()) {
     return res.status(400).json({ error: 'ownerEmail is required' });
   }
@@ -62,10 +62,12 @@ router.post('/vehicles/lookup', async (req, res) => {
   if (!owner) return res.status(404).json({ error: 'Owner not found' });
 
   const normalizedVin = vin?.trim().toUpperCase();
-  const hasVehicleCriteria = Boolean(normalizedVin || make?.trim() || model?.trim() || year);
+  const normalizedSerial = serialNumber?.trim().toUpperCase();
+  const hasVehicleCriteria = Boolean(normalizedVin || normalizedSerial || make?.trim() || model?.trim() || year);
   const vehicles = owner.vehicles.filter((vehicle) => {
     if (!hasVehicleCriteria) return true;
     if (normalizedVin && vehicle.vin?.toUpperCase() === normalizedVin) return true;
+    if (normalizedSerial && vehicle.serialNumber?.toUpperCase() === normalizedSerial) return true;
     if (make?.trim() && vehicle.make.toLowerCase() !== make.trim().toLowerCase()) return false;
     if (model?.trim() && vehicle.model.toLowerCase() !== model.trim().toLowerCase()) return false;
     if (year && vehicle.year !== Number(year)) return false;
@@ -100,6 +102,7 @@ router.post('/events', upload.single('proof'), async (req, res) => {
       ownerEmail,
       vehicleId,
       vin,
+      serialNumber,
       make,
       model,
       year,
@@ -127,9 +130,11 @@ router.post('/events', upload.single('proof'), async (req, res) => {
     }
 
     const normalizedVin = vin?.trim().toUpperCase();
+    const normalizedSerial = serialNumber?.trim().toUpperCase();
     const vehicle =
       owner.vehicles.find((v) => vehicleId && v.id === vehicleId) ||
       owner.vehicles.find((v) => normalizedVin && v.vin?.toUpperCase() === normalizedVin) ||
+      owner.vehicles.find((v) => normalizedSerial && v.serialNumber?.toUpperCase() === normalizedSerial) ||
       owner.vehicles.find((v) => {
         if (make?.trim() && v.make.toLowerCase() !== make.trim().toLowerCase()) return false;
         if (model?.trim() && v.model.toLowerCase() !== model.trim().toLowerCase()) return false;

@@ -1,11 +1,11 @@
 import { FormEvent, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Camera, ScanLine, Check, X, Keyboard } from 'lucide-react';
+import { Camera, ScanLine, Check, X, Keyboard, Hash } from 'lucide-react';
 import { api } from '../api';
 import { POPULAR_CAR_MODELS, POPULAR_MAKES } from '../lib/carData';
 import { useToast } from './ui/Toast';
 
-type Mode = 'vin' | 'manual';
+type Mode = 'vin' | 'serial' | 'manual';
 
 export default function AddVehicleModal({
   open,
@@ -22,6 +22,7 @@ export default function AddVehicleModal({
   const [step, setStep] = useState(1);
   const [mode, setMode] = useState<Mode>('vin');
   const [vin, setVin] = useState('');
+  const [serialNumber, setSerialNumber] = useState('');
   const [make, setMake] = useState('');
   const [model, setModel] = useState('');
   const [year, setYear] = useState(String(new Date().getFullYear()));
@@ -35,6 +36,7 @@ export default function AddVehicleModal({
     setStep(1);
     setMode('vin');
     setVin('');
+    setSerialNumber('');
     setMake('');
     setModel('');
     setYear(String(new Date().getFullYear()));
@@ -70,8 +72,17 @@ export default function AddVehicleModal({
     }
   }
 
-  function continueManual() {
-    if (!make.trim() || !model.trim()) {
+  function continueWithIdentifier() {
+    if (mode === 'serial') {
+      if (!serialNumber.trim()) {
+        setError('Enter the numéro de série from your carte grise');
+        return;
+      }
+      if (!make.trim() || !model.trim()) {
+        setError('Enter make and model — the serial number cannot be decoded automatically');
+        return;
+      }
+    } else if (!make.trim() || !model.trim()) {
       setError('Enter both make and model to continue');
       return;
     }
@@ -85,6 +96,7 @@ export default function AddVehicleModal({
     try {
       const form = new FormData();
       if (vin) form.append('vin', vin);
+      if (serialNumber) form.append('serialNumber', serialNumber);
       form.append('make', make);
       form.append('model', model);
       form.append('year', year);
@@ -100,6 +112,9 @@ export default function AddVehicleModal({
       toast.error(msg);
     }
   }
+
+  const identifierLabel =
+    mode === 'vin' ? 'Scan a VIN or enter details manually' : mode === 'serial' ? 'French numéro de série + vehicle details' : 'Enter vehicle details manually';
 
   if (!open) return null;
 
@@ -123,7 +138,7 @@ export default function AddVehicleModal({
                 Add vehicle
               </h2>
               <p className="muted" style={{ fontSize: 13, marginTop: 4 }}>
-                {step === 1 && 'Scan a VIN or enter details manually'}
+                {step === 1 && identifierLabel}
                 {step === 2 && 'Add a photo and a few details'}
                 {step === 3 && 'All set'}
               </p>
@@ -146,24 +161,33 @@ export default function AddVehicleModal({
             <AnimatePresence mode="wait">
               {step === 1 && (
                 <motion.div key="s1" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                  <div className="segmented" style={{ marginBottom: 16, display: 'flex' }}>
+                  <div className="segmented" style={{ marginBottom: 16, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                     <button
                       type="button"
                       className={mode === 'vin' ? 'active' : ''}
-                      style={{ flex: 1 }}
-                      onClick={() => setMode('vin')}
+                      style={{ flex: '1 1 auto' }}
+                      onClick={() => { setMode('vin'); setError(''); }}
                     >
                       <ScanLine size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />
-                      Scan VIN
+                      VIN
+                    </button>
+                    <button
+                      type="button"
+                      className={mode === 'serial' ? 'active' : ''}
+                      style={{ flex: '1 1 auto' }}
+                      onClick={() => { setMode('serial'); setError(''); }}
+                    >
+                      <Hash size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />
+                      N° série
                     </button>
                     <button
                       type="button"
                       className={mode === 'manual' ? 'active' : ''}
-                      style={{ flex: 1 }}
-                      onClick={() => setMode('manual')}
+                      style={{ flex: '1 1 auto' }}
+                      onClick={() => { setMode('manual'); setError(''); }}
                     >
                       <Keyboard size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />
-                      Enter manually
+                      Manual
                     </button>
                   </div>
 
@@ -186,7 +210,7 @@ export default function AddVehicleModal({
                           />
                         </div>
                         <p className="mono subtle" style={{ fontSize: 11, marginTop: 4 }}>
-                          {vin.length} / 17
+                          {vin.length} / 17 · International 17-character identifier
                         </p>
                       </div>
                       {error && <p className="error-msg">{error}</p>}
@@ -201,12 +225,27 @@ export default function AddVehicleModal({
                     </>
                   ) : (
                     <>
+                      {mode === 'serial' && (
+                        <div className="field">
+                          <label className="label">Numéro de série (carte grise)</label>
+                          <input
+                            className="input input-mono"
+                            value={serialNumber}
+                            onChange={(e) => setSerialNumber(e.target.value.toUpperCase())}
+                            placeholder="e.g. VF1… or chassis number"
+                            style={{ textTransform: 'uppercase' }}
+                          />
+                          <p className="mono subtle" style={{ fontSize: 11, marginTop: 4 }}>
+                            French registration serial — use this when you don&apos;t have a 17-char VIN
+                          </p>
+                        </div>
+                      )}
                       <div className="field">
                         <label className="label">Make</label>
                         <input
                           className="input"
                           list="popular-car-makes"
-                          placeholder="Toyota, Ford, BMW…"
+                          placeholder="Renault, Peugeot, Toyota…"
                           value={make}
                           onChange={(e) => {
                             setMake(e.target.value);
@@ -225,7 +264,7 @@ export default function AddVehicleModal({
                           <input
                             className="input"
                             list="popular-car-models"
-                            placeholder="Camry, F-150, 3 Series…"
+                            placeholder="Clio, 208, Camry…"
                             value={model}
                             onChange={(e) => setModel(e.target.value)}
                           />
@@ -242,7 +281,7 @@ export default function AddVehicleModal({
                       </div>
                       {error && <p className="error-msg">{error}</p>}
                       <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-                        <button type="button" className="btn btn-solid" onClick={continueManual}>
+                        <button type="button" className="btn btn-solid" onClick={continueWithIdentifier}>
                           Continue
                         </button>
                         <button type="button" className="btn btn-ghost" onClick={handleClose}>
@@ -260,10 +299,16 @@ export default function AddVehicleModal({
                     {year} {make} {model}
                   </p>
                   {vin && (
-                    <p className="mono muted" style={{ marginBottom: 18, fontSize: 12 }}>
+                    <p className="mono muted" style={{ marginBottom: 4, fontSize: 12 }}>
                       VIN · {vin}
                     </p>
                   )}
+                  {serialNumber && (
+                    <p className="mono muted" style={{ marginBottom: 18, fontSize: 12 }}>
+                      N° série · {serialNumber}
+                    </p>
+                  )}
+                  {!vin && !serialNumber && <div style={{ marginBottom: 18 }} />}
                   <div className="field">
                     <label className="label">Nickname (optional)</label>
                     <input className="input" value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder="Daily Driver" />

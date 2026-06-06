@@ -111,9 +111,13 @@ export default function PublicHistoryPage() {
                 <p className="mono subtle" style={{ marginTop: 8, fontSize: 12 }}>
                   VIN · {vehicle.vin}
                 </p>
+              ) : vehicle.serialNumber ? (
+                <p className="mono subtle" style={{ marginTop: 8, fontSize: 12 }}>
+                  N° série · {vehicle.serialNumber}
+                </p>
               ) : (
                 <p className="mono subtle" style={{ marginTop: 8, fontSize: 12 }}>
-                  VIN hidden in this view
+                  Identifier hidden in this view
                 </p>
               )}
               <p className="muted" style={{ marginTop: 10 }}>

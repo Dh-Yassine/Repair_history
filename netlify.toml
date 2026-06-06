@@ -6,6 +6,7 @@
 [build.environment]
   NETLIFY = "true"
   NODE_VERSION = "20"
+  OCR_DISABLED = "true"
 
 [functions]
   node_bundler = "esbuild"

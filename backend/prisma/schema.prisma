@@ -59,8 +59,9 @@ model Vehicle {
   id         String             @id @default(uuid())
   ownerId    String
   owner      User               @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  vin        String?
-  make       String
+  vin           String?
+  serialNumber  String?
+  make          String
   model      String
   year       Int
   mileage    Float              @default(0)

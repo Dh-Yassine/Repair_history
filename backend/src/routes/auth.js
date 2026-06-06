@@ -157,6 +157,7 @@ router.post('/sync-profile', requireSupabaseUser, async (req, res) => {
   try {
     const { fullName, role, phone, shopName, address } = req.body;
     const authUser = req.authUser;
+    const meta = authUser.user_metadata ?? {};
 
     const existing = await prisma.user.findUnique({ where: { id: authUser.id } });
     if (existing) {
@@ -171,20 +172,22 @@ router.post('/sync-profile', requireSupabaseUser, async (req, res) => {
       return res.status(409).json({ error: 'Email already registered with a different account' });
     }
 
-    const userRole = role === 'SHOP' ? 'SHOP' : role === 'BUYER' ? 'BUYER' : 'OWNER';
-    if (userRole === 'SHOP' && !shopName?.trim()) {
+    const resolvedRole = role || meta.role;
+    const userRole = resolvedRole === 'SHOP' ? 'SHOP' : resolvedRole === 'BUYER' ? 'BUYER' : 'OWNER';
+    const resolvedShopName = shopName?.trim() || meta.shop_name || meta.shopName || null;
+    if (userRole === 'SHOP' && !resolvedShopName) {
       return res.status(400).json({ error: 'shopName is required for shop accounts' });
     }
 
     const user = await prisma.user.create({
       data: {
         id: authUser.id,
-        fullName: (fullName || authUser.user_metadata?.full_name || email.split('@')[0]).trim(),
+        fullName: (fullName || meta.full_name || meta.fullName || email.split('@')[0]).trim(),
         email,
-        phone: phone?.trim() || null,
+        phone: phone?.trim() || meta.phone?.trim() || null,
         role: userRole,
-        shopName: userRole === 'SHOP' ? shopName.trim() : null,
-        address: userRole === 'SHOP' ? address?.trim() || null : null,
+        shopName: userRole === 'SHOP' ? resolvedShopName : null,
+        address: userRole === 'SHOP' ? address?.trim() || meta.address?.trim() || null : null,
         shopVerified: userRole === 'SHOP',
       },
     });

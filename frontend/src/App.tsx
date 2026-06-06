@@ -16,6 +16,7 @@ import PlaceholderPage from './pages/PlaceholderPage';
 import MarketplacePage from './pages/MarketplacePage';
 import FeaturedShopsPage from './pages/FeaturedShopsPage';
 import AdminPage from './pages/AdminPage';
+import AuthCallbackPage from './pages/AuthCallbackPage';
 
 function homeForRole(role?: string) {
   if (role === 'ADMIN') return '/admin';
@@ -67,6 +68,7 @@ function AppRoutes() {
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
         <Route path="/history/:token" element={<PublicHistoryPage />} />
+        <Route path="/auth/callback" element={<AuthCallbackPage />} />
         <Route path="/login" element={user ? <Navigate to={home} replace /> : <LoginPage />} />
         <Route path="/register" element={user ? <Navigate to={home} replace /> : <RegisterPage />} />
         <Route

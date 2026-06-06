@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 import { api, getToken, setToken } from '../api';
-import { isSupabaseAuthEnabled, supabase } from '../lib/supabase';
+import { isSupabaseAuthEnabled, supabase, authCallbackUrl } from '../lib/supabase';
 import type { User } from '../types';
 
 interface AuthContextValue {
@@ -122,15 +122,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = useCallback(
     async (data: { fullName: string; email: string; password: string; phone?: string }) => {
       if (useSupabase && supabase) {
+        const redirectTo = authCallbackUrl();
         const { data: authData, error } = await supabase.auth.signUp({
           email: data.email,
           password: data.password,
-          options: { data: { full_name: data.fullName } },
+          options: {
+            data: { full_name: data.fullName, role: 'OWNER', phone: data.phone || null },
+            emailRedirectTo: redirectTo,
+          },
         });
         if (error) throw new Error(error.message);
         const token = authData.session?.access_token;
         if (!token) {
-          throw new Error('Check your email to confirm your account, then sign in.');
+          throw new Error('CHECK_EMAIL: We sent a confirmation link to your inbox. Open it to finish signing up.');
         }
         setToken(token);
         const u = await syncProfileAfterAuth(
@@ -150,14 +154,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const registerBuyer = useCallback(
     async (data: { fullName: string; email: string; password: string; phone?: string }) => {
       if (useSupabase && supabase) {
+        const redirectTo = authCallbackUrl();
         const { data: authData, error } = await supabase.auth.signUp({
           email: data.email,
           password: data.password,
-          options: { data: { full_name: data.fullName } },
+          options: {
+            data: { full_name: data.fullName, role: 'BUYER', phone: data.phone || null },
+            emailRedirectTo: redirectTo,
+          },
         });
         if (error) throw new Error(error.message);
         const token = authData.session?.access_token;
-        if (!token) throw new Error('Check your email to confirm your account, then sign in.');
+        if (!token) {
+          throw new Error('CHECK_EMAIL: We sent a confirmation link to your inbox. Open it to finish signing up.');
+        }
         setToken(token);
         const u = await syncProfileAfterAuth(
           { fullName: data.fullName, role: 'BUYER', phone: data.phone },
@@ -184,14 +194,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       address?: string;
     }) => {
       if (useSupabase && supabase) {
+        const redirectTo = authCallbackUrl();
         const { data: authData, error } = await supabase.auth.signUp({
           email: data.email,
           password: data.password,
-          options: { data: { full_name: data.fullName } },
+          options: {
+            data: {
+              full_name: data.fullName,
+              role: 'SHOP',
+              phone: data.phone || null,
+              shop_name: data.shopName,
+              address: data.address || null,
+            },
+            emailRedirectTo: redirectTo,
+          },
         });
         if (error) throw new Error(error.message);
         const token = authData.session?.access_token;
-        if (!token) throw new Error('Check your email to confirm your account, then sign in.');
+        if (!token) {
+          throw new Error('CHECK_EMAIL: We sent a confirmation link to your inbox. Open it to finish signing up.');
+        }
         setToken(token);
         const u = await syncProfileAfterAuth(
           {

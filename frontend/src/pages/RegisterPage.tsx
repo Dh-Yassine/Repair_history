@@ -43,11 +43,13 @@ export default function RegisterPage() {
   const [shopName, setShopName] = useState('');
   const [address, setAddress] = useState('');
   const [error, setError] = useState('');
+  const [emailSent, setEmailSent] = useState(false);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError('');
+    setEmailSent(false);
     setLoading(true);
     try {
       if (accountType === 'owner') {
@@ -61,7 +63,12 @@ export default function RegisterPage() {
         navigate('/shop');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Registration failed');
+      const msg = err instanceof Error ? err.message : 'Registration failed';
+      if (msg.startsWith('CHECK_EMAIL:')) {
+        setEmailSent(true);
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -154,6 +161,11 @@ export default function RegisterPage() {
                 At least 6 characters.
               </p>
             </div>
+            {emailSent && (
+              <p className="success-msg" style={{ color: 'var(--color-green)', marginBottom: '1rem' }}>
+                Check your email for a confirmation link. After confirming, you&apos;ll land back in the app and can sign in.
+              </p>
+            )}
             {error && <p className="error-msg">{error}</p>}
             <button type="submit" className="btn btn-solid" style={{ width: '100%' }} disabled={loading}>
               {loading ? 'Creating…' : `Create ${accountType === 'shop' ? 'shop' : accountType === 'buyer' ? 'buyer' : 'owner'} account`}

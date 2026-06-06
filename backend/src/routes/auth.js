@@ -182,20 +182,23 @@ router.post('/sync-profile', requireSupabaseUser, async (req, res) => {
     const user = await prisma.user.create({
       data: {
         id: authUser.id,
-        fullName: (fullName || meta.full_name || meta.fullName || email.split('@')[0]).trim(),
+        fullName: String(fullName || meta.full_name || meta.fullName || email.split('@')[0] || 'User').trim(),
         email,
-        phone: phone?.trim() || meta.phone?.trim() || null,
+        phone: phone ? String(phone).trim() || null : meta.phone ? String(meta.phone).trim() || null : null,
         role: userRole,
         shopName: userRole === 'SHOP' ? resolvedShopName : null,
-        address: userRole === 'SHOP' ? address?.trim() || meta.address?.trim() || null : null,
+        address: userRole === 'SHOP' ? (address ? String(address).trim() : meta.address ? String(meta.address).trim() : null) : null,
         shopVerified: userRole === 'SHOP',
       },
     });
 
     res.status(201).json({ user: publicUser(user) });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Profile sync failed' });
+    console.error('sync-profile failed:', err);
+    if (err.code === 'P2002') {
+      return res.status(409).json({ error: 'Email already registered with a different account' });
+    }
+    res.status(500).json({ error: err.message || 'Profile sync failed' });
   }
 });
 

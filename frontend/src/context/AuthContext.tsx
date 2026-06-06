@@ -42,6 +42,8 @@ async function syncProfileAfterAuth(
   },
   token: string
 ) {
+  // Always store the fresh token before any API call so request() uses it
+  setToken(token);
   const { user } = await api.syncProfile(body, token);
   return user;
 }

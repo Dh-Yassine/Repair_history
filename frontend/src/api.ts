@@ -10,12 +10,16 @@ export function setToken(token: string | null) {
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const token = getToken();
+  const storedToken = getToken();
+  const customHeaders = (options.headers ?? {}) as Record<string, string>;
+
   const headers: Record<string, string> = {
     ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
-    ...(options.headers as Record<string, string>),
   };
-  if (token) headers.Authorization = `Bearer ${token}`;
+
+  // Stored token first, then custom headers override (so callers can pass a fresh token)
+  if (storedToken) headers.Authorization = `Bearer ${storedToken}`;
+  Object.assign(headers, customHeaders);
 
   const res = await fetch(path, { ...options, headers });
   if (res.status === 204) return undefined as T;

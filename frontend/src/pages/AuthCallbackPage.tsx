@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { api, setToken } from '../api';
 import { supabase } from '../lib/supabase';
 import type { UserRole } from '../types';
@@ -35,6 +35,21 @@ async function ensureAppProfile(session: NonNullable<Awaited<ReturnType<NonNulla
   }
 }
 
+async function resolveSession() {
+  if (!supabase) return null;
+
+  const code = new URLSearchParams(window.location.search).get('code');
+  if (code) {
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error) throw new Error(error.message);
+    if (data.session) return data.session;
+  }
+
+  const { data, error } = await supabase.auth.getSession();
+  if (error) throw new Error(error.message);
+  return data.session;
+}
+
 export default function AuthCallbackPage() {
   const navigate = useNavigate();
   const [message, setMessage] = useState('Confirming your email…');
@@ -48,21 +63,23 @@ export default function AuthCallbackPage() {
     let cancelled = false;
 
     (async () => {
-      const { data, error } = await supabase.auth.getSession();
-      if (cancelled) return;
-
-      if (error || !data.session) {
-        setMessage('Could not verify your email. Try signing in from the login page.');
-        return;
-      }
-
       try {
-        await ensureAppProfile(data.session);
+        const session = await resolveSession();
+        if (cancelled) return;
+
+        if (!session) {
+          setMessage('Email link expired or already used. Sign in with your password instead.');
+          return;
+        }
+
+        await ensureAppProfile(session);
         const { user } = await api.me();
         window.history.replaceState({}, document.title, '/auth/callback');
         navigate(homeForRole(user.role), { replace: true });
       } catch (err) {
-        setMessage(err instanceof Error ? err.message : 'Account setup failed. Try signing in.');
+        if (!cancelled) {
+          setMessage(err instanceof Error ? err.message : 'Account setup failed. Try signing in.');
+        }
       }
     })();
 
@@ -84,6 +101,11 @@ export default function AuthCallbackPage() {
     >
       <div className="card" style={{ maxWidth: 420, textAlign: 'center', padding: '2rem' }}>
         <p className="mono muted">{message}</p>
+        {message.includes('Sign in') && (
+          <p style={{ marginTop: '1rem' }}>
+            <Link to="/login">Go to login</Link>
+          </p>
+        )}
       </div>
     </div>
   );

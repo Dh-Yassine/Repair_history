@@ -54,6 +54,16 @@ app.get('/api/health', (_req, res) => {
   });
 });
 
+app.get('/api/health/db', async (_req, res) => {
+  try {
+    const { prisma } = await import('./lib/prisma.js');
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ status: 'ok', db: 'connected' });
+  } catch (err) {
+    res.status(500).json({ status: 'error', db: 'failed', error: err.message });
+  }
+});
+
 app.use('/api/public', publicRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/vin', vinRoutes);

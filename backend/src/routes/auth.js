@@ -198,7 +198,11 @@ router.post('/sync-profile', requireSupabaseUser, async (req, res) => {
     if (err.code === 'P2002') {
       return res.status(409).json({ error: 'Email already registered with a different account' });
     }
-    res.status(500).json({ error: err.message || 'Profile sync failed' });
+    res.status(500).json({
+      error: err.message || 'Profile sync failed',
+      code: err.code || null,
+      meta: err.meta || null,
+    });
   }
 });
 

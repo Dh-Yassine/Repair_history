@@ -51,12 +51,16 @@ export async function requireSupabaseUser(req, res, next) {
     return res.status(503).json({ error: 'Supabase Auth is not configured' });
   }
 
-  const token = header.slice(7);
-  const authUser = await verifySupabaseToken(token);
-  if (!authUser) return res.status(401).json({ error: 'Invalid or expired token' });
-
-  req.authUser = authUser;
-  next();
+  try {
+    const token = header.slice(7);
+    const authUser = await verifySupabaseToken(token);
+    if (!authUser) return res.status(401).json({ error: 'Invalid or expired token' });
+    req.authUser = authUser;
+    next();
+  } catch (err) {
+    console.error('[requireSupabaseUser] unexpected error:', err);
+    res.status(500).json({ error: 'Auth verification failed: ' + (err?.message || String(err)) });
+  }
 }
 
 export function requireRole(...roles) {

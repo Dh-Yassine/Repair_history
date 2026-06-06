@@ -9,7 +9,7 @@
 
 [functions]
   node_bundler = "esbuild"
-  external_node_modules = ["@prisma/client", ".prisma", "express", "cors", "bcryptjs", "jsonwebtoken", "multer", "nodemailer", "@supabase/supabase-js", "serverless-http"]
+  external_node_modules = ["@prisma/client", ".prisma", "express", "cors", "bcryptjs", "jsonwebtoken", "multer", "nodemailer", "@supabase/supabase-js", "serverless-http", "ws"]
   included_files = [
     "node_modules/.prisma/**",
     "node_modules/@prisma/client/**",

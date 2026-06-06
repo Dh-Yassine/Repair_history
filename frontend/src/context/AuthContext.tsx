@@ -110,7 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       // Register/login flows call sync themselves — avoid racing /me before profile exists
-      if (syncingRef.current || event === 'SIGNED_IN') {
+      if (syncingRef.current || event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
         setLoading(false);
         return;
       }

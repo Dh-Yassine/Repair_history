@@ -1,13 +1,13 @@
 import { PrismaClient } from '@prisma/client';
 
+// Reuse the same instance across hot-reloads (local dev) and serverless invocations
 const globalForPrisma = globalThis;
 
 export const prisma =
-  globalForPrisma.prisma ??
+  globalForPrisma.__prisma ??
   new PrismaClient({
     log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
+    errorFormat: 'minimal',
   });
 
-if (process.env.NETLIFY || process.env.VERCEL) {
-  globalForPrisma.prisma = prisma;
-}
+globalForPrisma.__prisma = prisma;

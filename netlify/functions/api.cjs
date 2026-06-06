@@ -13,7 +13,7 @@ function normalizeEvent(event) {
     }
   }
 
-  if (reqPath?.includes('/.netlify/functions/')) {
+  if (reqPath && reqPath.includes('/.netlify/functions/')) {
     reqPath = reqPath.replace('/.netlify/functions/api', '') || '/';
   }
 
@@ -22,10 +22,16 @@ function normalizeEvent(event) {
 
 async function getHandler() {
   if (!handlerFn) {
-    const { default: app } = await import('../../backend/src/app.js');
-    handlerFn = serverless(app, {
-      binary: ['image/*', 'application/pdf', 'multipart/form-data'],
-    });
+    try {
+      const { default: app } = await import('../../backend/src/app.js');
+      handlerFn = serverless(app, {
+        binary: ['image/*', 'application/pdf', 'multipart/form-data'],
+      });
+    } catch (err) {
+      // Surface startup errors clearly
+      console.error('Failed to load Express app:', err);
+      throw err;
+    }
   }
   return handlerFn;
 }
@@ -36,11 +42,14 @@ exports.handler = async (event, context) => {
     const fn = await getHandler();
     return await fn(normalizeEvent(event), context);
   } catch (err) {
-    console.error('Netlify API function failed:', err);
+    console.error('[api.cjs] handler crash:', err);
     return {
       statusCode: 502,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: err?.message || 'API function failed to start' }),
+      body: JSON.stringify({
+        error: err?.message || 'API function failed to start',
+        hint: 'Check Netlify function logs for the full stack trace',
+      }),
     };
   }
 };

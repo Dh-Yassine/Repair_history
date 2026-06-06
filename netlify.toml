@@ -1,5 +1,5 @@
 [build]
-  command = "npm install && npm install --prefix frontend && npm run build:web"
+  command = "npm install && npm install --prefix frontend && npx prisma generate --schema=backend/prisma/schema.prisma && npm run build:web"
   publish = "frontend/dist"
   functions = "netlify/functions"
 
@@ -9,12 +9,14 @@
 
 [functions]
   node_bundler = "esbuild"
-  external_node_modules = ["@prisma/client", ".prisma"]
+  external_node_modules = ["@prisma/client", ".prisma", "express", "cors", "bcryptjs", "jsonwebtoken", "multer", "nodemailer", "@supabase/supabase-js", "serverless-http"]
   included_files = [
     "node_modules/.prisma/**",
     "node_modules/@prisma/client/**",
     "backend/prisma/schema.prisma",
-    "backend/src/**"
+    "backend/src/**",
+    "backend/node_modules/.prisma/**",
+    "backend/node_modules/@prisma/client/**"
   ]
 
 [functions.api]

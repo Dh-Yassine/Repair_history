@@ -1,17 +1,35 @@
 [build]
-  command = "npm install --prefix backend && npm install --prefix frontend && npm run db:generate --prefix backend && npm run build --prefix frontend"
+  command = "npm install && npm install --prefix backend && npm install --prefix frontend && npm run db:generate --prefix backend && npm run build --prefix frontend"
   publish = "frontend/dist"
   functions = "netlify/functions"
 
 [build.environment]
   NETLIFY = "true"
+  NODE_VERSION = "20"
 
 [functions]
   node_bundler = "esbuild"
-  external_node_modules = ["@prisma/client", ".prisma", "tesseract.js", "pdf-parse"]
-
-[functions.api]
-  included_files = ["backend/node_modules/.prisma/**", "backend/prisma/schema.prisma"]
+  external_node_modules = [
+    "@prisma/client",
+    ".prisma",
+    "express",
+    "cors",
+    "dotenv",
+    "multer",
+    "bcryptjs",
+    "jsonwebtoken",
+    "@supabase/supabase-js",
+    "nodemailer",
+    "serverless-http",
+    "pdf-parse",
+    "tesseract.js"
+  ]
+  included_files = [
+    "backend/node_modules/.prisma/**",
+    "backend/node_modules/@prisma/client/**",
+    "backend/prisma/schema.prisma",
+    "backend/src/**"
+  ]
 
 [[redirects]]
   from = "/api/*"

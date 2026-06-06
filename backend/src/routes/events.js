@@ -1,10 +1,24 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
+import { formParser } from '../lib/upload.js';
 
 const router = Router({ mergeParams: true });
 router.use(requireAuth);
 router.use(requireRole('OWNER'));
+
+function readFields(req) {
+  // Supports FormData (Netlify) and JSON (local dev)
+  const body = req.body && typeof req.body === 'object' ? req.body : {};
+  return {
+    eventType: body.eventType,
+    date: body.date,
+    mileage: body.mileage,
+    garageName: body.garageName,
+    notes: body.notes,
+    cost: body.cost,
+  };
+}
 
 async function getOwnedVehicle(vehicleId, ownerId) {
   return prisma.vehicle.findFirst({ where: { id: vehicleId, ownerId } });
@@ -44,14 +58,23 @@ router.get('/', async (req, res) => {
   res.json({ events });
 });
 
-router.post('/', async (req, res) => {
+router.post('/', (req, res, next) => {
+  const ct = req.headers['content-type'] || '';
+  if (ct.includes('multipart/form-data')) {
+    return formParser(req, res, (err) => {
+      if (err) return res.status(400).json({ error: err.message || 'Invalid form data' });
+      next();
+    });
+  }
+  next();
+}, async (req, res) => {
   try {
     const vehicle = await getOwnedVehicle(req.params.vehicleId, req.user.id);
     if (!vehicle) return res.status(404).json({ error: 'Vehicle not found' });
 
-    const { eventType, date, mileage, garageName, notes, cost } = req.body;
+    const { eventType, date, mileage, garageName, notes, cost } = readFields(req);
     if (!eventType?.trim() || !date) {
-      return res.status(400).json({ error: 'eventType and date are required' });
+      return res.status(400).json({ error: 'Service type and date are required' });
     }
     if (mileage === undefined || mileage === null || mileage === '') {
       return res.status(400).json({ error: 'mileage is required' });

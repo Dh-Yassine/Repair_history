@@ -109,11 +109,18 @@ export const api = {
     );
   },
 
-  createEvent: (vehicleId: string, body: Record<string, unknown>) =>
-    request<{ event: import('./types').MaintenanceEvent }>(`/api/vehicles/${vehicleId}/events`, {
+  createEvent: (vehicleId: string, body: Record<string, unknown>) => {
+    const form = new FormData();
+    for (const [key, value] of Object.entries(body)) {
+      if (value !== undefined && value !== null && value !== '') {
+        form.append(key, String(value));
+      }
+    }
+    return request<{ event: import('./types').MaintenanceEvent }>(`/api/vehicles/${vehicleId}/events`, {
       method: 'POST',
-      body: JSON.stringify(body),
-    }),
+      body: form,
+    });
+  },
 
   deleteEvent: (vehicleId: string, eventId: string) =>
     request<void>(`/api/vehicles/${vehicleId}/events/${eventId}`, { method: 'DELETE' }),

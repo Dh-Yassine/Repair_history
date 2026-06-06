@@ -7,3 +7,6 @@ export function memoryUpload(options = {}) {
     fileFilter: options.fileFilter,
   });
 }
+
+/** Parse multipart/form-data fields with no file uploads (Netlify-safe for POST bodies) */
+export const formParser = multer().none();

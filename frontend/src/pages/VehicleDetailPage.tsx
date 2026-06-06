@@ -152,12 +152,8 @@ export default function VehicleDetailPage() {
 
       if (uploadFile) {
         try {
-          const res = await api.uploadDocument(vehicleId, event.id, uploadFile);
-          if (res.ocrResult) {
-            toast.info(`Receipt OCR: $${res.ocrResult.parsedAmount ?? '—'} · ${res.ocrResult.parsedVendor ?? 'parsed'}`);
-          } else {
-            toast.info('Receipt uploaded — OCR runs in the background when available.');
-          }
+          await api.uploadDocument(vehicleId, event.id, uploadFile);
+          toast.info('Receipt attached to this event.');
         } catch (uploadErr) {
           const uploadMsg = uploadErr instanceof Error ? uploadErr.message : 'Receipt upload failed';
           toast.error(`Event saved, but receipt upload failed: ${uploadMsg}`);

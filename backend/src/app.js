@@ -36,6 +36,7 @@ app.use(
   })
 );
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 if (!isServerless) {
   app.use('/badge', express.static(path.join(rootDir, 'public')));
@@ -76,11 +77,11 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/reminders', reminderRoutes);
 app.use('/api/cron', cronRoutes);
 app.use('/api/shop', shopRoutes);
-app.use('/api/vehicles', vehicleRoutes);
+app.use('/api/vehicles/:vehicleId/events/:eventId/documents', documentRoutes);
+app.use('/api/vehicles/:vehicleId/events', eventRoutes);
 app.use('/api/vehicles/:vehicleId/share', shareRoutes);
 app.use('/api/vehicles/:vehicleId/suggestions', suggestionRoutes);
-app.use('/api/vehicles/:vehicleId/events', eventRoutes);
-app.use('/api/vehicles/:vehicleId/events/:eventId/documents', documentRoutes);
+app.use('/api/vehicles', vehicleRoutes);
 
 app.use((err, _req, res, _next) => {
   console.error(err);

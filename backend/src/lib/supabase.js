@@ -1,15 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { createRequire } from 'module';
-
-// Node.js < 22 has no native WebSocket — load the ws package so the Supabase
-// Realtime client doesn't throw when the admin client is constructed.
-const _require = createRequire(import.meta.url);
-let _ws = null;
-try {
-  _ws = _require('ws');
-} catch {
-  // ws not available; only an issue on Node.js < 22 without native WebSocket
-}
+import ws from 'ws';
 
 export function isSupabaseConfigured() {
   return Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
@@ -17,13 +7,16 @@ export function isSupabaseConfigured() {
 
 let adminClient = null;
 
+// Node.js < 22 has no native WebSocket global. Pass the `ws` package as the
+// Realtime transport so the admin client doesn't throw on construction.
+const realtimeTransport = typeof WebSocket === 'undefined' ? ws : WebSocket;
+
 export function getSupabaseAdmin() {
   if (!isSupabaseConfigured()) return null;
   if (!adminClient) {
-    const realtimeOpts = _ws && typeof WebSocket === 'undefined' ? { transport: _ws } : {};
     adminClient = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
       auth: { persistSession: false, autoRefreshToken: false },
-      realtime: realtimeOpts,
+      realtime: { transport: realtimeTransport },
     });
   }
   return adminClient;

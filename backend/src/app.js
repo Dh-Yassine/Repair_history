@@ -2,7 +2,6 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import authRoutes from './routes/auth.js';
 import vehicleRoutes from './routes/vehicles.js';
 import eventRoutes from './routes/events.js';
@@ -21,11 +20,13 @@ import insuranceRoutes from './routes/insurance.js';
 import adminRoutes from './routes/admin.js';
 import cronRoutes from './routes/cron.js';
 import { isSupabaseConfigured } from './lib/supabase.js';
+import { backendRoot } from './lib/paths.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const rootDir = backendRoot(import.meta.url);
 
 const app = express();
-const uploadDir = process.env.UPLOAD_DIR || path.join(__dirname, '../uploads');
+const isServerless = Boolean(process.env.VERCEL || process.env.NETLIFY);
+const uploadDir = process.env.UPLOAD_DIR || path.join(rootDir, 'uploads');
 
 const corsOrigin = process.env.APP_BASE_URL || process.env.CORS_ORIGIN || '*';
 app.use(
@@ -35,11 +36,13 @@ app.use(
   })
 );
 app.use(express.json());
-app.use('/badge', express.static(path.join(__dirname, '../public')));
 
-if (!isSupabaseConfigured()) {
-  app.use('/uploads/vehicles', express.static(path.join(uploadDir, 'vehicles')));
-  app.use('/uploads', express.static(uploadDir));
+if (!isServerless) {
+  app.use('/badge', express.static(path.join(rootDir, 'public')));
+  if (!isSupabaseConfigured()) {
+    app.use('/uploads/vehicles', express.static(path.join(uploadDir, 'vehicles')));
+    app.use('/uploads', express.static(uploadDir));
+  }
 }
 
 app.get('/api/health', (_req, res) => {

@@ -1,9 +1,9 @@
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { getSupabaseAdmin, isSupabaseConfigured } from './supabase.js';
+import { backendRoot } from './paths.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const rootDir = backendRoot(import.meta.url);
 
 export const BUCKETS = {
   vehicles: process.env.SUPABASE_BUCKET_VEHICLES || 'vehicle-photos',
@@ -12,7 +12,7 @@ export const BUCKETS = {
 };
 
 function localRoot() {
-  return process.env.UPLOAD_DIR || path.join(__dirname, '../../uploads');
+  return process.env.UPLOAD_DIR || path.join(rootDir, 'uploads');
 }
 
 function localPath(bucket, key) {

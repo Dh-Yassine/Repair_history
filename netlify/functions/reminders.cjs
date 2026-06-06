@@ -1,6 +1,4 @@
-import { processDueReminders } from '../../backend/src/lib/reminders.js';
-
-export async function handler(event) {
+exports.handler = async (event) => {
   const secret = process.env.CRON_SECRET;
   const auth = event.headers?.authorization || event.headers?.Authorization;
 
@@ -9,14 +7,15 @@ export async function handler(event) {
   }
 
   try {
+    const { processDueReminders } = await import('../../backend/src/lib/reminders.js');
     const sent = await processDueReminders();
     return { statusCode: 200, body: JSON.stringify({ ok: true, sent }) };
   } catch (err) {
     console.error(err);
     return { statusCode: 500, body: JSON.stringify({ error: err.message || 'Cron failed' }) };
   }
-}
+};
 
-export const config = {
+exports.config = {
   schedule: '@hourly',
 };

@@ -19,7 +19,6 @@
 
 [functions.api]
   timeout = 26
-  node_bundler = "none"
 
 [[redirects]]
   from = "/api/*"

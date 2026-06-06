@@ -1,4 +1,4 @@
-import serverless from 'serverless-http';
+const serverless = require('serverless-http');
 
 let handlerFn = null;
 
@@ -30,7 +30,7 @@ async function getHandler() {
   return handlerFn;
 }
 
-export async function handler(event, context) {
+exports.handler = async (event, context) => {
   context.callbackWaitsForEmptyEventLoop = false;
   try {
     const fn = await getHandler();
@@ -43,4 +43,4 @@ export async function handler(event, context) {
       body: JSON.stringify({ error: err?.message || 'API function failed to start' }),
     };
   }
-}
+};

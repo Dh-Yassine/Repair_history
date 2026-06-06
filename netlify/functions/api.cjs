@@ -1,3 +1,8 @@
+// Prisma requires DIRECT_URL — fall back to DATABASE_URL if not set in Netlify env vars
+if (!process.env.DIRECT_URL && process.env.DATABASE_URL) {
+  process.env.DIRECT_URL = process.env.DATABASE_URL;
+}
+
 const serverless = require('serverless-http');
 
 let handlerFn = null;
@@ -8,9 +13,7 @@ function normalizeEvent(event) {
   if (!reqPath && event.rawUrl) {
     try {
       reqPath = new URL(event.rawUrl, 'https://repair-history.netlify.app').pathname;
-    } catch {
-      /* ignore */
-    }
+    } catch { /* ignore */ }
   }
 
   if (reqPath && reqPath.includes('/.netlify/functions/')) {
@@ -28,8 +31,7 @@ async function getHandler() {
         binary: ['image/*', 'application/pdf', 'multipart/form-data'],
       });
     } catch (err) {
-      // Surface startup errors clearly
-      console.error('Failed to load Express app:', err);
+      console.error('[api.cjs] Failed to load Express app:', err);
       throw err;
     }
   }

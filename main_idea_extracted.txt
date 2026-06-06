@@ -1,0 +1,177 @@
+--- PAGE 1 ---
+Main idea 
+AutoHistory is a cloud-based and mobile platform that lets owners create a fully auditable record of 
+every maintenance event their vehicles experience—oil changes, tire rotations, repairs, and more—
+by uploading receipts, photos and notes linked to mileage. The system automatically pulls vehicle 
+data via VIN (or allows manual entry) and provides authorized repair shops with instant access to the 
+history so they can add a “verified & performed by professional” tag on new service entries. This 
+creates an immutable, shop-validated maintenance trail that buyers can view through an embeddable 
+badge on listings, giving them confidence in the vehicle’s condition while helping sellers demonstrate 
+continuous care and potentially command higher sale prices. 
+Features 
+Summary 
+Category Feature Purpose 
+Core Vehicle 
+Management 
+• Sign-up / Profile (email, phone, social 
+login)  
+• Add/Remove/transfer Vehicles via VIN 
+lookup or manual entry 
+(make/model/year)  
+• Multiple vehicles per account (up to 3 
+for free, paid for more) 
+Create a unified dashboard 
+for all owned cars 
+Maintenance 
+Event Capture 
+• Pre-defined event types (Oil change, Tire 
+rotation, Brake service, etc.) with optional 
+custom type  
+• Manual entry of mileage, date, garage 
+name, and notes 
+• Upload receipts / photos (PDF, JPEG, 
+PNG) 
+• Automatic OCR to extract key data from 
+images 
+Build a detailed timeline for 
+each vehicle 
+Shop 
+Integration 
+• Webportal for authorized repair shops  
+• Shop dashboard: view assigned vehicles, 
+add “verified by professional” tags, upload 
+proof (photo/receipt) 
+• Push notifications to owner when shop 
+adds a verified event 
+Enable real-time, 
+authenticated updates from 
+service centers 
+Timeline & 
+Reporting 
+• Interactive calendar & list views of all 
+events per vehicle 
+Give users an at-a-glance 
+overview and easy sharing 
+
+--- PAGE 2 ---
+Category Feature Purpose 
+• Filter by date range, mileage, event type 
+Partner Badge 
+SDK 
+• Responsive badge widget (static & 
+animated) that can be embedded in 
+third-party listings 
+• On-click modal shows the vehicle’s 
+maintenance history with shop-verified 
+tags 
+• Configurable visibility settings (public, 
+private, partner-only) 
+Provide a trust signal to 
+buyers on marketplaces 
+Privacy & 
+Security 
+• Granular sharing controls per vehicle 
+(share all events, share only mileage+date, 
+no sharing) 
+• End-to-end encryption for uploaded files 
+• GDPR/CCPA compliance framework 
+Protect user data while 
+enabling transparency 
+Notifications & 
+Reminders 
+• Service due alerts based on mileage or 
+time intervals (e.g., next oil change at 
+10,000 miles) 
+• Shop-initiated reminders for upcoming 
+appointments  
+• Email/SMS push notifications 
+• AI-driven suggestions appear during the 
+event capture flow (e.g., “Your last brake 
+pads were replaced 6 months ago—
+consider new ones from XYZ”).  
+• Leverages mileage, service history, and 
+regional inventory data to surface timely 
+offers. 
+Keep owners proactive about 
+maintenance 
+Increases upsell 
+opportunities for partners; 
+improves user experience by 
+offering relevant solutions at 
+the right moment. 
+Analytics & 
+Insights 
+• Dashboard for owners: average service 
+cost, frequency, upcoming needs 
+• Marketplace partners: badge 
+performance metrics (clicks, conversion 
+lift) 
+• OEM data feeds (anonymized) 
+Offer actionable insights and 
+monetization opportunities 
+
+--- PAGE 3 ---
+Category Feature Purpose 
+Data can be shared with Insurer for a 
+customized insurance fee 
+Shop Spotlight 
+• Sponsored “Featured Repair Shop” slots 
+that appear in the owner’s main 
+dashboard and on the event creation 
+screen.  
+• Dynamic rotation based on user 
+location, vehicle type, and service history.  
+• Optional “Call-to-Action” button (e.g., 
+“Book Now”, “Get Quote”). 
+Drives foot traffic & 
+appointments for partner 
+garages; generates revenue 
+via sponsorship fees. 
+Parts 
+Marketplace 
+• In-app widget that shows relevant spare 
+parts (OEM or aftermarket) tied to the 
+vehicle’s make/model/year and upcoming 
+service events.  
+• Partner sellers can bid on placement; 
+price is per click/lead.  
+• Includes quick “Buy Now” link to partner 
+e-commerce site. 
+Provides a seamless 
+purchasing path for owners, 
+while giving parts suppliers 
+visibility and sales leads. 
+Help & Support 
+• In-app FAQ, live chat, ticketing system 
+• Community forum for owners to share 
+tips 
+Reduce friction and build 
+community 
+ 
+Monetization 
+- Input pour les assurances !  
+- Input pour les OEM and suppliers for reliability data 
+- Input for automotive industry analytics : cars, manufacturers, age, turn over, maintenance etc 
+… 
+-  
+Competition : 
+Closest ecosystems: 
+• CARFAX  
+• AutoCheck  
+• CarVertical 
+Diags : 
+
+--- PAGE 4 ---
+ 
+
+
+--- PAGE 5 ---
+ 
+
+
+--- PAGE 6 ---
+Implementation requirements  
+ 
+ 
+ 
+

@@ -1,0 +1,244 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum UserRole {
+  OWNER
+  SHOP
+  ADMIN
+  BUYER
+}
+
+enum VisibilityType {
+  PUBLIC
+  PRIVATE
+  PARTNER_ONLY
+}
+
+enum ShareLevel {
+  FULL
+  SUMMARY
+  NONE
+}
+
+enum EventSource {
+  OWNER
+  SHOP
+}
+
+model User {
+  id                String             @id @default(uuid())
+  fullName          String
+  email             String             @unique
+  phone             String?
+  passwordHash      String?
+  role              UserRole           @default(OWNER)
+  maxVehicles       Int                @default(3)
+  subscriptionType  String             @default("free")
+  shopName          String?
+  address           String?
+  shopVerified      Boolean            @default(false)
+  banned            Boolean            @default(false)
+  createdAt         DateTime           @default(now())
+  vehicles          Vehicle[]
+  notifications     Notification[]
+  verifications     Verification[]
+  shopReminders     ServiceReminder[]  @relation("ShopReminders")
+  shopCreatedEvents MaintenanceEvent[] @relation("ShopCreatedEvents")
+  featuredAds       FeaturedShopAd[]
+}
+
+model Vehicle {
+  id         String             @id @default(uuid())
+  ownerId    String
+  owner      User               @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  vin        String?
+  make       String
+  model      String
+  year       Int
+  mileage    Float              @default(0)
+  photoPath  String?
+  visibility VisibilityType     @default(PRIVATE)
+  shareToken String?            @unique
+  shareLevel ShareLevel         @default(NONE)
+  createdAt  DateTime           @default(now())
+  events     MaintenanceEvent[]
+  badge      Badge?
+  reminders  ServiceReminder[]
+
+  @@index([ownerId])
+  @@index([shareToken])
+}
+
+model Badge {
+  id         String   @id @default(uuid())
+  vehicleId  String   @unique
+  vehicle    Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  embedCode  String
+  isAnimated Boolean  @default(true)
+  createdAt  DateTime @default(now())
+}
+
+model MaintenanceEvent {
+  id              String        @id @default(uuid())
+  vehicleId       String
+  vehicle         Vehicle       @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  createdByShopId String?
+  createdByShop   User?         @relation("ShopCreatedEvents", fields: [createdByShopId], references: [id], onDelete: SetNull)
+  source          EventSource   @default(OWNER)
+  eventType       String
+  date            DateTime
+  mileage         Float
+  cost            Float?
+  garageName      String?
+  notes           String?
+  verified        Boolean       @default(false)
+  flagged         Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  documents       Document[]
+  verification    Verification?
+
+  @@index([vehicleId])
+  @@index([date])
+  @@index([verified])
+  @@index([flagged])
+  @@index([source])
+  @@index([createdByShopId])
+}
+
+model Document {
+  id         String           @id @default(uuid())
+  eventId    String
+  event      MaintenanceEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  fileName   String
+  fileType   String
+  filePath   String
+  uploadDate DateTime         @default(now())
+  ocrResult  OCRResult?
+
+  @@index([eventId])
+}
+
+model OCRResult {
+  id              String   @id @default(uuid())
+  documentId      String   @unique
+  document        Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  extractedText   String
+  confidenceScore Float
+  parsedDate      String?
+  parsedAmount    Float?
+  parsedVendor    String?
+  createdAt       DateTime @default(now())
+}
+
+model ServiceReminder {
+  id              String    @id @default(uuid())
+  vehicleId       String
+  vehicle         Vehicle   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  serviceType     String
+  dueMileage      Float?
+  dueDate         DateTime?
+  message         String?
+  createdByShopId String?
+  shop            User?     @relation("ShopReminders", fields: [createdByShopId], references: [id], onDelete: SetNull)
+  completed       Boolean   @default(false)
+  notified        Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+
+  @@index([vehicleId])
+  @@index([dueDate])
+  @@index([completed])
+}
+
+model Verification {
+  id         String           @id @default(uuid())
+  eventId    String           @unique
+  event      MaintenanceEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  shopId     String
+  shop       User             @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  verifiedAt DateTime         @default(now())
+  status     String           @default("APPROVED")
+  proofPath  String?
+  notes      String?
+
+  @@index([shopId])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message   String
+  type      String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([read])
+}
+
+model FeaturedShopAd {
+  id        String   @id @default(uuid())
+  shopId    String
+  shop      User     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  ctaButton String   @default("Book Now")
+  startDate DateTime
+  endDate   DateTime
+  active    Boolean  @default(true)
+  priority  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([shopId])
+  @@index([active])
+}
+
+model SparePart {
+  id        String   @id @default(uuid())
+  make      String?
+  model     String?
+  yearMin   Int?
+  yearMax   Int?
+  partName  String
+  price     Float
+  supplier  String
+  buyUrl    String
+  category  String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@index([make, model])
+  @@index([category])
+}
+
+model BadgeEvent {
+  id         String   @id @default(uuid())
+  shareToken String
+  eventType  String
+  referrer   String?
+  createdAt  DateTime @default(now())
+
+  @@index([shareToken])
+  @@index([eventType])
+  @@index([createdAt])
+}
+
+model ModerationReport {
+  id         String    @id @default(uuid())
+  targetType String
+  targetId   String
+  reason     String
+  status     String    @default("PENDING")
+  reporterId String?
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+
+  @@index([status])
+  @@index([targetType, targetId])
+}

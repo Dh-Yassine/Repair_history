@@ -1,0 +1,37 @@
+[build]
+  command = "npm install --prefix backend && npm install --prefix frontend && npm run db:generate --prefix backend && npm run build --prefix frontend"
+  publish = "frontend/dist"
+  functions = "netlify/functions"
+
+[build.environment]
+  NETLIFY = "true"
+
+[functions]
+  node_bundler = "esbuild"
+  external_node_modules = ["@prisma/client", ".prisma", "tesseract.js", "pdf-parse"]
+
+[functions.api]
+  included_files = ["backend/node_modules/.prisma/**", "backend/prisma/schema.prisma"]
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/uploads/*"
+  to = "/.netlify/functions/api"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/badge/*"
+  to = "/.netlify/functions/api"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

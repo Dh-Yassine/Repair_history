@@ -1,0 +1,26 @@
+export const POPULAR_CAR_MODELS: Record<string, string[]> = {
+  Toyota: ['Corolla', 'Camry', 'RAV4', 'Prius', 'Yaris', 'Highlander', 'Hilux', 'Land Cruiser'],
+  Honda: ['Civic', 'Accord', 'CR-V', 'HR-V', 'Fit', 'Pilot'],
+  Ford: ['Fiesta', 'Focus', 'Fusion', 'Escape', 'Explorer', 'Mustang', 'F-150'],
+  Chevrolet: ['Spark', 'Cruze', 'Malibu', 'Equinox', 'Tahoe', 'Silverado'],
+  Nissan: ['Micra', 'Sentra', 'Altima', 'Maxima', 'Qashqai', 'Rogue', 'Patrol'],
+  Hyundai: ['i10', 'i20', 'Elantra', 'Sonata', 'Tucson', 'Santa Fe', 'Kona'],
+  Kia: ['Picanto', 'Rio', 'Cerato', 'Sportage', 'Sorento', 'Seltos'],
+  Volkswagen: ['Golf', 'Polo', 'Passat', 'Jetta', 'Tiguan', 'Touareg'],
+  BMW: ['1 Series', '3 Series', '5 Series', 'X1', 'X3', 'X5'],
+  Mercedes: ['A-Class', 'C-Class', 'E-Class', 'GLA', 'GLC', 'GLE'],
+  Audi: ['A3', 'A4', 'A6', 'Q3', 'Q5', 'Q7'],
+  Renault: ['Clio', 'Megane', 'Captur', 'Kadjar', 'Koleos', 'Duster'],
+  Peugeot: ['208', '308', '2008', '3008', '5008', 'Partner'],
+  Citroen: ['C3', 'C4', 'C5 Aircross', 'Berlingo'],
+  Dacia: ['Sandero', 'Logan', 'Duster', 'Jogger'],
+  Fiat: ['500', 'Panda', 'Tipo', 'Doblo'],
+  Mazda: ['Mazda2', 'Mazda3', 'Mazda6', 'CX-3', 'CX-5'],
+  Mitsubishi: ['Mirage', 'Lancer', 'ASX', 'Outlander', 'Pajero'],
+  Skoda: ['Fabia', 'Octavia', 'Superb', 'Kamiq', 'Kodiaq'],
+  Seat: ['Ibiza', 'Leon', 'Ateca', 'Arona'],
+  Volvo: ['S60', 'S90', 'XC40', 'XC60', 'XC90'],
+  Tesla: ['Model 3', 'Model Y', 'Model S', 'Model X'],
+};
+
+export const POPULAR_MAKES = Object.keys(POPULAR_CAR_MODELS);

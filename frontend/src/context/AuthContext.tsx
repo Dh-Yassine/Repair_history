@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 import { api, getToken, setToken } from '../api';
-import { isSupabaseAuthEnabled, supabase, authCallbackUrl } from '../lib/supabase';
+import { isSupabaseAuthEnabled, supabase, authCallbackUrl, formatAuthError } from '../lib/supabase';
 import type { User } from '../types';
 
 interface AuthContextValue {
@@ -104,7 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (email: string, password: string) => {
       if (useSupabase && supabase) {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw new Error(error.message);
+        if (error) throw new Error(formatAuthError(error));
         if (!data.session?.access_token) throw new Error('Sign-in failed');
         setToken(data.session.access_token);
         const { user: u } = await api.me();
@@ -131,7 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             emailRedirectTo: redirectTo,
           },
         });
-        if (error) throw new Error(error.message);
+        if (error) throw new Error(formatAuthError(error));
         const token = authData.session?.access_token;
         if (!token) {
           throw new Error('CHECK_EMAIL: We sent a confirmation link to your inbox. Open it to finish signing up.');
@@ -163,7 +163,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             emailRedirectTo: redirectTo,
           },
         });
-        if (error) throw new Error(error.message);
+        if (error) throw new Error(formatAuthError(error));
         const token = authData.session?.access_token;
         if (!token) {
           throw new Error('CHECK_EMAIL: We sent a confirmation link to your inbox. Open it to finish signing up.');
@@ -209,7 +209,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             emailRedirectTo: redirectTo,
           },
         });
-        if (error) throw new Error(error.message);
+        if (error) throw new Error(formatAuthError(error));
         const token = authData.session?.access_token;
         if (!token) {
           throw new Error('CHECK_EMAIL: We sent a confirmation link to your inbox. Open it to finish signing up.');

@@ -173,7 +173,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <div className="grid-stats" style={{ marginTop: 16, gridTemplateColumns: 'repeat(3, 1fr)' }}>
+      <div className="grid-stats dashboard-stats-grid" style={{ marginTop: 16 }}>
         {[
           { label: 'Shop verified', value: verifiedCount },
           { label: 'Self-reported', value: selfCount },
@@ -206,7 +206,7 @@ export default function DashboardPage() {
                 <div className="vehicle-title-row">
                   <div>
                     <p className="section-eyebrow">Active vehicle</p>
-                    <h2 className="display" style={{ fontSize: 42, margin: '8px 0' }}>
+                    <h2 className="display dashboard-vehicle-title" style={{ margin: '8px 0' }}>
                       {active.year} {active.make} {active.model}
                     </h2>
                     {(active.vin || active.serialNumber) && (

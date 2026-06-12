@@ -7,7 +7,6 @@ import {
   BarChart3,
   Settings,
   LogOut,
-  Bell,
   Shield,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -133,46 +132,42 @@ export default function AppShell({
 
       <div className="main-area">
         <header className="topbar">
-          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-            <h2 className="display" style={{ fontSize: 22, lineHeight: 1 }}>
-              {topbar.title}
-            </h2>
-            {topbar.subtitle && (
-              <span className="mono muted" style={{ fontSize: 11, marginTop: 4, letterSpacing: '0.04em' }}>
-                {topbar.subtitle}
-              </span>
-            )}
+          <div className="topbar-copy">
+            <h2 className="display topbar-title">{topbar.title}</h2>
+            {topbar.subtitle && <span className="mono muted topbar-subtitle">{topbar.subtitle}</span>}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div className="topbar-actions">
             {user?.role === 'OWNER' && <NotificationsPanel />}
-            {user?.role !== 'OWNER' && (
-              <button type="button" className="btn btn-ghost btn-sm" aria-label="Notifications">
-                <Bell size={18} />
-              </button>
-            )}
+            <div className="topbar-avatar mobile-only" aria-hidden>
+              {initials}
+            </div>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm topbar-icon-btn mobile-only"
+              onClick={logout}
+              aria-label="Sign out"
+            >
+              <LogOut size={18} />
+            </button>
           </div>
         </header>
         <main className="page-content">{children}</main>
       </div>
 
-      <nav className="mobile-tabs">
+      <nav className="mobile-tabs" aria-label="Main navigation">
         {nav.slice(0, 5).map((item) => (
           <NavLink
             key={item.label}
             to={item.to}
             end={item.to === '/'}
-            style={({ isActive }) => ({
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: 4,
-              fontSize: 10,
-              color: isActive ? 'var(--color-accent)' : 'var(--color-text-muted)',
-              padding: '4px 8px',
-            })}
+            className={({ isActive }) => `mobile-tab-link ${isActive ? 'active' : ''}`}
           >
-            <item.icon size={20} />
-            {item.label.split(' ')[0]}
+            {({ isActive }) => (
+              <>
+                <item.icon size={22} strokeWidth={isActive ? 2.25 : 1.75} />
+                <span>{item.label.split(' ')[0]}</span>
+              </>
+            )}
           </NavLink>
         ))}
       </nav>

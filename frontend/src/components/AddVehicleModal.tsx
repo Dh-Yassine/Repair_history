@@ -4,6 +4,7 @@ import { Camera, ScanLine, Check, X, Keyboard, Hash } from 'lucide-react';
 import { api } from '../api';
 import { POPULAR_CAR_MODELS, POPULAR_MAKES } from '../lib/carData';
 import { useToast } from './ui/Toast';
+import { useOverlayPanel } from '../hooks/useOverlayPanel';
 
 type Mode = 'vin' | 'serial' | 'manual';
 
@@ -50,6 +51,8 @@ export default function AddVehicleModal({
     reset();
     onClose();
   }
+
+  useOverlayPanel(open, handleClose);
 
   async function decodeVin() {
     if (vin.length < 11) {
@@ -122,6 +125,9 @@ export default function AddVehicleModal({
     <div className="overlay" onClick={handleClose}>
       <motion.div
         className="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Add vehicle"
         initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}
         onClick={(e) => e.stopPropagation()}

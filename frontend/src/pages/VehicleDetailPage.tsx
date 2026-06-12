@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useState, useCallback } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -23,6 +23,8 @@ import { api } from '../api';
 import PageTransition, { stagger, staggerItem } from '../components/layout/PageTransition';
 import EventTimelineItem from '../components/events/EventTimelineItem';
 import { useToast } from '../components/ui/Toast';
+import { useOverlayPanel, scrollFieldIntoView } from '../hooks/useOverlayPanel';
+import { useIsMobileSheet } from '../hooks/useMediaQuery';
 import type { MaintenanceEvent, MaintenanceSuggestion } from '../types';
 
 const EVENT_TYPES = [
@@ -63,6 +65,13 @@ export default function VehicleDetailPage() {
   const [uploadPreview, setUploadPreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const isMobileSheet = useIsMobileSheet();
+
+  const closeDrawer = useCallback(() => {
+    if (!submitting) setDrawerOpen(false);
+  }, [submitting]);
+
+  useOverlayPanel(drawerOpen, closeDrawer, !submitting);
 
   function resetForm() {
     setEventType(EVENT_TYPES[0].id);
@@ -84,15 +93,6 @@ export default function VehicleDetailPage() {
       setUploadPreview(null);
     }
   }
-
-  useEffect(() => {
-    if (!drawerOpen) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [drawerOpen]);
 
   useEffect(() => {
     return () => {
@@ -273,13 +273,15 @@ export default function VehicleDetailPage() {
             ))}
           </div>
         </div>
-        <div className="control-group">
+        <div className="control-group pills-scroll">
           <span className="mono muted" style={{ fontSize: 11 }}>TYPE</span>
+          <div className="pills-row">
           {FILTERS.map((f) => (
             <button key={f} type="button" className={`pill ${filterType === f ? 'active' : ''}`} onClick={() => setFilterType(f)}>
               {f}
             </button>
           ))}
+          </div>
         </div>
       </div>
 
@@ -325,18 +327,17 @@ export default function VehicleDetailPage() {
         {drawerOpen && (
           <>
             <motion.div
-              className="overlay"
+              className="overlay overlay-drawer"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => !submitting && setDrawerOpen(false)}
-              style={{ alignItems: 'stretch', justifyContent: 'flex-end' }}
             />
             <motion.div
-              className="drawer"
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
+              className={`drawer ${isMobileSheet ? 'drawer-sheet' : ''}`}
+              initial={isMobileSheet ? { y: '100%' } : { x: '100%' }}
+              animate={isMobileSheet ? { y: 0 } : { x: 0 }}
+              exit={isMobileSheet ? { y: '100%' } : { x: '100%' }}
               transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
               role="dialog"
               aria-modal="true"
@@ -415,6 +416,7 @@ export default function VehicleDetailPage() {
                           type="date"
                           value={date}
                           onChange={(e) => setDate(e.target.value)}
+                          onFocus={(e) => scrollFieldIntoView(e.target)}
                           required
                         />
                       </div>
@@ -429,6 +431,7 @@ export default function VehicleDetailPage() {
                             placeholder="0"
                             value={mileage}
                             onChange={(e) => setMileage(e.target.value)}
+                            onFocus={(e) => scrollFieldIntoView(e.target)}
                             required
                           />
                           <span className="input-prefix-suffix">km</span>
@@ -449,6 +452,7 @@ export default function VehicleDetailPage() {
                             placeholder="0.00"
                             value={cost}
                             onChange={(e) => setCost(e.target.value)}
+                            onFocus={(e) => scrollFieldIntoView(e.target)}
                           />
                         </div>
                       </div>
@@ -459,6 +463,7 @@ export default function VehicleDetailPage() {
                           className="input"
                           value={garageName}
                           onChange={(e) => setGarageName(e.target.value)}
+                          onFocus={(e) => scrollFieldIntoView(e.target)}
                           placeholder="e.g. Joe's Auto"
                         />
                       </div>
@@ -471,6 +476,7 @@ export default function VehicleDetailPage() {
                         rows={3}
                         value={notes}
                         onChange={(e) => setNotes(e.target.value)}
+                        onFocus={(e) => scrollFieldIntoView(e.target)}
                         placeholder="Parts replaced, observations, next steps…"
                       />
                     </div>

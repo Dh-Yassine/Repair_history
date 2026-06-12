@@ -76,9 +76,9 @@ function ToastItemView({ toast, onClose }: { toast: ToastItem; onClose: () => vo
       <span style={{ flex: 1 }}>{toast.message}</span>
       <button
         type="button"
+        className="toast-dismiss"
         onClick={onClose}
         aria-label="Dismiss"
-        style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', padding: 0 }}
       >
         <X size={14} />
       </button>

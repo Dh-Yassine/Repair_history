@@ -1,12 +1,18 @@
-import { useEffect, useState } from 'react';
-import { Bell } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Bell, X } from 'lucide-react';
 import { api } from '../api';
+import { useOverlayPanel } from '../hooks/useOverlayPanel';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 import type { Notification } from '../types';
 
 export default function NotificationsPanel() {
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const isMobile = useMediaQuery('(max-width: 900px)');
+
+  useOverlayPanel(open, () => setOpen(false));
 
   async function load() {
     try {
@@ -24,75 +30,84 @@ export default function NotificationsPanel() {
     return () => clearInterval(id);
   }, []);
 
+  useEffect(() => {
+    if (!open) return;
+    function onPointerDown(e: MouseEvent | TouchEvent) {
+      const target = e.target as Node;
+      if (panelRef.current?.contains(target)) return;
+      if ((target as HTMLElement).closest?.('.notifications-trigger')) return;
+      setOpen(false);
+    }
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('touchstart', onPointerDown);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('touchstart', onPointerDown);
+    };
+  }, [open]);
+
   async function markRead(id: string) {
     await api.markNotificationRead(id);
     await load();
   }
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div className="notifications-wrap" ref={panelRef}>
       <button
         type="button"
-        className="btn btn-ghost btn-sm"
-        onClick={() => setOpen(!open)}
+        className="btn btn-ghost btn-sm notifications-trigger topbar-icon-btn"
+        onClick={() => setOpen((v) => !v)}
         aria-label="Notifications"
-        style={{ position: 'relative' }}
+        aria-expanded={open}
       >
         <Bell size={18} />
-        {unreadCount > 0 && (
-          <span
-            style={{
-              position: 'absolute',
-              top: 4,
-              right: 4,
-              width: 8,
-              height: 8,
-              borderRadius: '50%',
-              background: 'var(--color-danger)',
-            }}
-          />
-        )}
+        {unreadCount > 0 && <span className="notifications-badge" aria-hidden />}
       </button>
+
       {open && (
-        <div
-          className="card"
-          style={{
-            position: 'absolute',
-            right: 0,
-            top: '100%',
-            marginTop: 8,
-            width: 320,
-            maxHeight: 360,
-            overflow: 'auto',
-            zIndex: 100,
-            padding: 12,
-          }}
-        >
-          <strong style={{ fontSize: 13 }}>Notifications</strong>
-          {notifications.length === 0 ? (
-            <p className="muted" style={{ fontSize: 13, marginTop: 12 }}>
-              No notifications
-            </p>
-          ) : (
-            notifications.map((n) => (
-              <div
-                key={n.id}
-                style={{
-                  padding: '10px 0',
-                  borderBottom: '1px solid var(--color-border)',
-                  opacity: n.read ? 0.6 : 1,
-                  cursor: n.read ? 'default' : 'pointer',
-                }}
-                onClick={() => !n.read && markRead(n.id)}
-              >
-                <p style={{ margin: 0, fontSize: 13 }}>{n.message}</p>
-                <p className="mono subtle" style={{ fontSize: 11, marginTop: 4 }}>
-                  {new Date(n.createdAt).toLocaleString()}
-                </p>
-              </div>
-            ))
+        <>
+          {isMobile && (
+            <button
+              type="button"
+              className="notifications-backdrop"
+              aria-label="Close notifications"
+              onClick={() => setOpen(false)}
+            />
           )}
-        </div>
+          <div className={`notifications-panel ${isMobile ? 'notifications-sheet' : ''}`}>
+            <div className="notifications-panel-head">
+              <strong>Notifications</strong>
+              <button
+                type="button"
+                className="drawer-close"
+                onClick={() => setOpen(false)}
+                aria-label="Close"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="notifications-panel-body">
+              {notifications.length === 0 ? (
+                <p className="muted" style={{ fontSize: 13, margin: 0 }}>
+                  No notifications yet
+                </p>
+              ) : (
+                notifications.map((n) => (
+                  <button
+                    key={n.id}
+                    type="button"
+                    className={`notifications-item ${n.read ? 'read' : ''}`}
+                    onClick={() => !n.read && markRead(n.id)}
+                    disabled={n.read}
+                  >
+                    <p>{n.message}</p>
+                    <span className="mono subtle">{new Date(n.createdAt).toLocaleString()}</span>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

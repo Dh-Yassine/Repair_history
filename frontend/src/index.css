@@ -2970,7 +2970,7 @@ button,
 /* ── Landing page ──────────────────────────────────────────────────── */
 .landing {
   min-height: 100dvh;
-  background: var(--color-bg);
+  background: #080a0d;
   color: var(--color-text);
   display: flex;
   flex-direction: column;
@@ -2980,15 +2980,15 @@ button,
   position: sticky;
   top: 0;
   z-index: 100;
-  backdrop-filter: blur(12px);
-  background: rgba(10, 11, 13, 0.85);
-  border-bottom: 1px solid var(--color-border);
+  backdrop-filter: blur(14px) saturate(1.2);
+  background: rgba(8, 10, 13, 0.88);
+  border-bottom: 1px solid rgba(232, 255, 71, 0.08);
 }
 
 .landing-nav-inner {
-  max-width: 1100px;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 14px 24px;
+  padding: 14px 32px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -3000,35 +3000,159 @@ button,
   gap: 10px;
 }
 
-.landing-hero {
+/* ── Dot grid background ── */
+.landing-dotgrid {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(232, 255, 71, 0.12) 1px, transparent 1px);
+  background-size: 32px 32px;
+  pointer-events: none;
+  mask-image: radial-gradient(ellipse at 50% 40%, black 20%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse at 50% 40%, black 20%, transparent 75%);
+}
+
+/* ── Glow blobs ── */
+.landing-glow {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(80px);
+}
+.landing-glow-1 {
+  width: 600px;
+  height: 300px;
+  top: 20%;
+  left: 25%;
+  background: radial-gradient(ellipse, rgba(232, 255, 71, 0.06) 0%, transparent 70%);
+  animation: glow-breathe 8s ease-in-out infinite alternate;
+}
+.landing-glow-2 {
+  width: 400px;
+  height: 200px;
+  top: 10%;
+  right: 10%;
+  background: radial-gradient(ellipse, rgba(126, 184, 255, 0.05) 0%, transparent 70%);
+  animation: glow-breathe 11s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes glow-breathe {
+  0% { transform: scale(1) translateY(0); opacity: 0.7; }
+  100% { transform: scale(1.15) translateY(-20px); opacity: 1; }
+}
+
+/* ── Full-screen hero ── */
+.landing-hero-full {
   position: relative;
   overflow: hidden;
-  padding: 80px 24px 64px;
+  min-height: 90dvh;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 48px;
+  justify-content: center;
+  border-bottom: 1px solid rgba(232, 255, 71, 0.07);
 }
 
-@media (min-width: 900px) {
-  .landing-hero {
-    flex-direction: row;
-    align-items: flex-start;
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 100px 48px 80px;
-    gap: 64px;
-  }
+/* ── Car stage ── */
+.landing-car-stage {
+  width: 100%;
+  max-width: 960px;
+  padding: 0 16px;
+  position: relative;
+  z-index: 1;
 }
 
-.landing-mesh {
-  position: absolute;
-  inset: -30%;
-  background:
-    radial-gradient(ellipse at 20% 30%, rgba(232, 255, 71, 0.09) 0%, transparent 50%),
-    radial-gradient(ellipse at 75% 60%, rgba(232, 255, 71, 0.05) 0%, transparent 45%);
-  animation: mesh-drift 20s ease-in-out infinite alternate;
-  pointer-events: none;
+.car-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* ── Car animations ── */
+@keyframes scan-sweep {
+  0%   { transform: translateX(-40px); opacity: 0; }
+  5%   { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translateX(920px); opacity: 0; }
+}
+
+.scan-line {
+  animation: scan-sweep 3.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  animation-delay: 0.8s;
+}
+
+@keyframes underglow-pulse {
+  0%, 100% { opacity: 0.6; rx: 230; }
+  50%       { opacity: 1;   rx: 260; }
+}
+
+.car-underglow {
+  animation: underglow-pulse 2.8s ease-in-out infinite;
+}
+
+@keyframes headlight-flicker {
+  0%, 95%, 100% { opacity: 1; }
+  96%           { opacity: 0.6; }
+  97%           { opacity: 1; }
+}
+
+.headlight-pulse {
+  animation: headlight-flicker 6s ease-in-out infinite;
+}
+
+@keyframes taillight-glow-anim {
+  0%, 100% { opacity: 0.8; }
+  50%       { opacity: 0.5; }
+}
+
+.taillight-pulse {
+  animation: taillight-glow-anim 2.2s ease-in-out infinite;
+}
+
+@keyframes speed-whoosh {
+  0%   { stroke-dashoffset: 400; opacity: 0; }
+  15%  { opacity: 0.6; }
+  80%  { opacity: 0.4; }
+  100% { stroke-dashoffset: -200; opacity: 0; }
+}
+
+.speed-line {
+  stroke-dasharray: 120 200;
+  animation: speed-whoosh 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+/* ── Hero text ── */
+.landing-hero-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 18px;
+  padding: 0 24px 56px;
+  max-width: 720px;
+}
+
+.landing-eyebrow-hero {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+}
+
+.landing-h1-hero {
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 8vw, 6.5rem);
+  line-height: 0.94;
+  letter-spacing: -0.01em;
+  color: var(--color-text);
+  text-shadow: 0 0 80px rgba(232, 255, 71, 0.12);
+}
+
+.landing-lead-hero {
+  font-size: clamp(1rem, 2vw, 1.15rem);
+  color: var(--color-text-muted);
+  line-height: 1.65;
+  max-width: 540px;
+  margin: 0;
 }
 
 .landing-hero-inner {
@@ -3047,7 +3171,7 @@ button,
   gap: 6px;
   font-family: var(--font-mono);
   font-size: 11px;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   color: var(--color-accent);
   text-transform: uppercase;
 }
@@ -3076,7 +3200,8 @@ button,
 
 .landing-cta-primary {
   font-size: 15px;
-  padding: 12px 22px;
+  padding: 13px 24px;
+  letter-spacing: 0.01em;
 }
 
 .landing-hero-badges {
@@ -3085,7 +3210,7 @@ button,
   gap: 8px;
 }
 
-/* Floating card preview */
+/* Floating card preview (kept for reference, now hidden in hero) */
 .landing-preview {
   flex-shrink: 0;
   width: 100%;

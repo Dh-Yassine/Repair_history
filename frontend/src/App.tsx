@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './components/ui/Toast';
 import AppShell from './components/layout/AppShell';
 import DashboardPage from './pages/DashboardPage';
+import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ShopDashboardPage from './pages/ShopDashboardPage';
@@ -74,11 +75,15 @@ function AppRoutes() {
         <Route
           path="/"
           element={
-            <PrivateRoute roles={['OWNER']}>
-              <ShellLayout theme="owner">
-                <DashboardPage />
-              </ShellLayout>
-            </PrivateRoute>
+            user ? (
+              <PrivateRoute roles={['OWNER']}>
+                <ShellLayout theme="owner">
+                  <DashboardPage />
+                </ShellLayout>
+              </PrivateRoute>
+            ) : (
+              <LandingPage />
+            )
           }
         />
         <Route

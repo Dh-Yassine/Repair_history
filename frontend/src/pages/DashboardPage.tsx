@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Plus, Share2, Clock, ShieldCheck, FileText, CarFront, ShoppingBag, Bell, ArrowRight } from 'lucide-react';
+import { Plus, Share2, Clock, ShieldCheck, FileText, CarFront, ShoppingBag, Bell, ArrowRight, Pencil } from 'lucide-react';
 import { api } from '../api';
 import AddVehicleModal from '../components/AddVehicleModal';
+import EditVehicleModal from '../components/EditVehicleModal';
 import RemindersPanel from '../components/RemindersPanel';
 import VehiclePhoto from '../components/VehiclePhoto';
 import AnimatedNumber from '../components/ui/AnimatedNumber';
@@ -21,6 +22,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [eventsLoading, setEventsLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  const [editVehicle, setEditVehicle] = useState<Vehicle | null>(null);
 
   const active = useMemo(() => vehicles.find((v) => v.id === activeId) ?? vehicles[0], [vehicles, activeId]);
 
@@ -215,9 +217,20 @@ export default function DashboardPage() {
                       </p>
                     )}
                   </div>
-                  <span className="tag tag-green">
-                    <CarFront size={12} /> {active._count?.events ?? 0} records
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span className="tag tag-green">
+                      <CarFront size={12} /> {active._count?.events ?? 0} records
+                    </span>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => setEditVehicle(active)}
+                      aria-label="Edit vehicle"
+                      title="Edit vehicle"
+                    >
+                      <Pencil size={14} />
+                    </button>
+                  </div>
                 </div>
                 <VehiclePhoto vehicle={active} className="vehicle-photo-hero" />
                 <p className="mono" style={{ color: 'var(--color-accent)', fontSize: 24, marginBottom: 12 }}>
@@ -316,6 +329,17 @@ export default function DashboardPage() {
       )}
 
       <AddVehicleModal open={modalOpen} onClose={() => setModalOpen(false)} onSuccess={load} canAdd={limits?.canAdd ?? true} />
+      <EditVehicleModal
+        vehicle={editVehicle}
+        onClose={() => setEditVehicle(null)}
+        onSaved={(updated) => {
+          setVehicles((prev) => prev.map((v) => v.id === updated.id ? { ...v, ...updated } : v));
+        }}
+        onDeleted={(id) => {
+          setVehicles((prev) => prev.filter((v) => v.id !== id));
+          if (activeId === id) setActiveId('');
+        }}
+      />
     </PageTransition>
   );
 }

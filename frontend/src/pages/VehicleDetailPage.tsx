@@ -18,6 +18,7 @@ import {
   Sparkles,
   Image as ImageIcon,
   Loader2,
+  Pencil,
 } from 'lucide-react';
 import { api } from '../api';
 import PageTransition, { stagger, staggerItem } from '../components/layout/PageTransition';
@@ -55,6 +56,8 @@ export default function VehicleDetailPage() {
   const [trustFilter, setTrustFilter] = useState<'all' | 'verified' | 'self'>('all');
   const [suggestions, setSuggestions] = useState<MaintenanceSuggestion[]>([]);
 
+  const [drawerMode, setDrawerMode] = useState<'create' | 'edit'>('create');
+  const [editEventTarget, setEditEventTarget] = useState<MaintenanceEvent | null>(null);
   const [eventType, setEventType] = useState(EVENT_TYPES[0].id);
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [mileage, setMileage] = useState('');
@@ -72,6 +75,36 @@ export default function VehicleDetailPage() {
   }, [submitting]);
 
   useOverlayPanel(drawerOpen, closeDrawer, !submitting);
+
+  function openAddDrawer() {
+    setDrawerMode('create');
+    setEditEventTarget(null);
+    setEventType(EVENT_TYPES[0].id);
+    setDate(new Date().toISOString().slice(0, 10));
+    setMileage('');
+    setCost('');
+    setGarageName('');
+    setNotes('');
+    setUploadFile(null);
+    setUploadPreview(null);
+    setError('');
+    setDrawerOpen(true);
+  }
+
+  function openEditDrawer(ev: MaintenanceEvent) {
+    setDrawerMode('edit');
+    setEditEventTarget(ev);
+    setEventType(ev.eventType);
+    setDate(new Date(ev.date).toISOString().slice(0, 10));
+    setMileage(String(ev.mileage));
+    setCost(ev.cost != null ? String(ev.cost) : '');
+    setGarageName(ev.garageName ?? '');
+    setNotes(ev.notes ?? '');
+    setUploadFile(null);
+    setUploadPreview(null);
+    setError('');
+    setDrawerOpen(true);
+  }
 
   function resetForm() {
     setEventType(EVENT_TYPES[0].id);
@@ -164,7 +197,38 @@ export default function VehicleDetailPage() {
       resetForm();
       await load();
       api.generateReminders(vehicleId).catch(() => {});
-      toast.success('Self-reported event added to your timeline.');
+      toast.success('Event added to your timeline.');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed';
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleUpdate(e: FormEvent) {
+    e.preventDefault();
+    if (!vehicleId || !editEventTarget) return;
+    setError('');
+    setSubmitting(true);
+    try {
+      const parsedMileage = Number(mileage);
+      if (!Number.isFinite(parsedMileage) || parsedMileage < 0) {
+        throw new Error('Enter a valid mileage in km');
+      }
+      await api.updateEvent(vehicleId, editEventTarget.id, {
+        eventType,
+        date,
+        mileage: parsedMileage,
+        cost: cost ? Number(cost) : undefined,
+        garageName: garageName || undefined,
+        notes: notes || undefined,
+      });
+      setDrawerOpen(false);
+      resetForm();
+      await load();
+      toast.success('Event updated.');
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed';
       setError(msg);
@@ -197,7 +261,7 @@ export default function VehicleDetailPage() {
           <Link to={`/vehicles/${vehicleId}/share`} className="btn btn-primary">
             Share history
           </Link>
-          <button type="button" className="btn btn-solid" onClick={() => setDrawerOpen(true)}>
+          <button type="button" className="btn btn-solid" onClick={openAddDrawer}>
             <Plus size={16} /> Add self-report
           </button>
         </div>
@@ -295,7 +359,7 @@ export default function VehicleDetailPage() {
             <Link to="/shops" className="btn btn-primary">
               Find a verified shop
             </Link>
-            <button type="button" className="btn btn-ghost" onClick={() => setDrawerOpen(true)}>
+            <button type="button" className="btn btn-ghost" onClick={openAddDrawer}>
               Add a self-report
             </button>
           </div>
@@ -307,10 +371,11 @@ export default function VehicleDetailPage() {
               <EventTimelineItem
                 event={ev}
                 vehicleId={vehicleId}
+                onEdit={ev.source !== 'SHOP' && !ev.verified ? openEditDrawer : undefined}
                 onDelete={
                   ev.source !== 'SHOP' && !ev.verified
                     ? async () => {
-                        if (confirm('Delete self-reported event?')) {
+                        if (confirm('Delete this self-reported event?')) {
                           await api.deleteEvent(vehicleId!, ev.id);
                           load();
                         }
@@ -344,25 +409,27 @@ export default function VehicleDetailPage() {
               aria-label="Add self-reported event"
             >
               <form
-                onSubmit={handleCreate}
+                onSubmit={drawerMode === 'edit' ? handleUpdate : handleCreate}
                 style={{ display: 'flex', flexDirection: 'column', minHeight: 0, height: '100%' }}
               >
                 <header className="drawer-header">
                   <div>
                     <span className="drawer-eyebrow">
-                      <FileText size={11} /> Self-reported
+                      <FileText size={11} /> {drawerMode === 'edit' ? 'Edit record' : 'Self-reported'}
                     </span>
                     <h2 className="display" style={{ marginTop: 10 }}>
-                      Add a maintenance event
+                      {drawerMode === 'edit' ? 'Edit maintenance event' : 'Add a maintenance event'}
                     </h2>
                     <p>
-                      Your own entry — attach a receipt or photo so buyers and shops can trust it later.
+                      {drawerMode === 'edit'
+                        ? 'Update the details of this self-reported record.'
+                        : 'Your own entry — attach a receipt or photo so buyers and shops can trust it later.'}
                     </p>
                   </div>
                   <button
                     type="button"
                     className="drawer-close"
-                    onClick={() => setDrawerOpen(false)}
+                    onClick={closeDrawer}
                     aria-label="Close"
                     disabled={submitting}
                   >
@@ -371,7 +438,7 @@ export default function VehicleDetailPage() {
                 </header>
 
                 <div className="drawer-body">
-                  {suggestions[0] && (
+                  {drawerMode === 'create' && suggestions[0] && (
                     <div className="drawer-suggestion">
                       <Sparkles size={16} />
                       <div>
@@ -482,7 +549,7 @@ export default function VehicleDetailPage() {
                     </div>
                   </section>
 
-                  <section className="drawer-section">
+                  {drawerMode === 'create' && <section className="drawer-section">
                     <div className="drawer-section-head">
                       <h3>Proof of service</h3>
                       <span className="hint">Optional but recommended</span>
@@ -543,7 +610,7 @@ export default function VehicleDetailPage() {
                         onChange={(e) => onPickFile(e.target.files?.[0] ?? null)}
                       />
                     </label>
-                  </section>
+                  </section>}
 
                   {error && <p className="error-msg" style={{ marginTop: 8 }}>{error}</p>}
                 </div>
@@ -552,7 +619,7 @@ export default function VehicleDetailPage() {
                   <button
                     type="button"
                     className="btn btn-ghost"
-                    onClick={() => setDrawerOpen(false)}
+                    onClick={closeDrawer}
                     disabled={submitting}
                   >
                     Cancel
@@ -561,6 +628,10 @@ export default function VehicleDetailPage() {
                     {submitting ? (
                       <>
                         <Loader2 size={16} className="spinning" /> Saving…
+                      </>
+                    ) : drawerMode === 'edit' ? (
+                      <>
+                        <Pencil size={16} /> Save changes
                       </>
                     ) : (
                       <>

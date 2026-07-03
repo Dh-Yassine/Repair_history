@@ -97,6 +97,12 @@ export const api = {
       body: body instanceof FormData ? body : JSON.stringify(body),
     }),
 
+  updateVehicle: (id: string, body: FormData) =>
+    request<{ vehicle: import('./types').Vehicle }>(`/api/vehicles/${id}`, {
+      method: 'PATCH',
+      body,
+    }),
+
   vehiclePhotoUrl: (id: string) => `/api/vehicles/${id}/photo`,
 
   deleteVehicle: (id: string) =>
@@ -120,6 +126,19 @@ export const api = {
       method: 'POST',
       body: form,
     });
+  },
+
+  updateEvent: (vehicleId: string, eventId: string, body: Record<string, unknown>) => {
+    const form = new FormData();
+    for (const [key, value] of Object.entries(body)) {
+      if (value !== undefined && value !== null && value !== '') {
+        form.append(key, String(value));
+      }
+    }
+    return request<{ event: import('./types').MaintenanceEvent }>(
+      `/api/vehicles/${vehicleId}/events/${eventId}`,
+      { method: 'PATCH', body: form }
+    );
   },
 
   deleteEvent: (vehicleId: string, eventId: string) =>

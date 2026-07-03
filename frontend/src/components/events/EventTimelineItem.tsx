@@ -1,4 +1,4 @@
-import { FileText, Trash2 } from 'lucide-react';
+import { FileText, Trash2, Pencil } from 'lucide-react';
 import { api } from '../../api';
 import type { MaintenanceEvent } from '../../types';
 import VerificationBadge from './VerificationBadge';
@@ -20,16 +20,20 @@ export default function EventTimelineItem({
   publicView = false,
   detailLevel = 'FULL',
   onDelete,
+  onEdit,
 }: {
   event: MaintenanceEvent;
   vehicleId?: string;
   publicView?: boolean;
   detailLevel?: 'SUMMARY' | 'FULL';
   onDelete?: () => void;
+  onEdit?: (event: MaintenanceEvent) => void;
 }) {
   const showDetails = !publicView || detailLevel === 'FULL';
   const certifier = showDetails ? shopName(event) : null;
-  const canDelete = Boolean(onDelete && event.source !== 'SHOP' && !event.verified);
+  const isOwnerEditable = Boolean(!publicView && event.source !== 'SHOP' && !event.verified);
+  const canDelete = Boolean(onDelete && isOwnerEditable);
+  const canEdit = Boolean(onEdit && isOwnerEditable);
 
   return (
     <div className={`timeline-item ${event.verified ? 'timeline-verified' : 'timeline-self'}`}>
@@ -42,7 +46,20 @@ export default function EventTimelineItem({
             </span>
             <h3 className="event-card-title">{event.eventType}</h3>
           </div>
-          <VerificationBadge event={event} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <VerificationBadge event={event} />
+            {canEdit && (
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm event-action-btn"
+                onClick={() => onEdit!(event)}
+                aria-label="Edit event"
+                title="Edit"
+              >
+                <Pencil size={13} />
+              </button>
+            )}
+          </div>
         </div>
 
         {certifier && (
@@ -57,7 +74,7 @@ export default function EventTimelineItem({
 
         {showDetails && event.cost != null && (
           <p className="mono" style={{ color: 'var(--color-accent)', fontSize: 16 }}>
-            ${event.cost.toFixed(2)}
+            {event.cost.toFixed(2)} €
           </p>
         )}
         {showDetails && event.notes && <p style={{ fontSize: 14 }}>{event.notes}</p>}
@@ -75,7 +92,7 @@ export default function EventTimelineItem({
             <a href={api.documentUrl(vehicleId, event.id, doc.id)} target="_blank" rel="noreferrer">
               {doc.fileName}
             </a>
-            {doc.ocrResult && <span className="mono muted"> OCR ${doc.ocrResult.parsedAmount ?? '?'}</span>}
+            {doc.ocrResult && <span className="mono muted"> OCR {doc.ocrResult.parsedAmount ?? '?'} €</span>}
           </p>
         ))}
 
@@ -90,7 +107,7 @@ export default function EventTimelineItem({
 
         {canDelete && (
           <button type="button" className="btn btn-danger btn-sm event-delete" onClick={onDelete}>
-            <Trash2 size={14} /> Delete self-report
+            <Trash2 size={14} /> Delete
           </button>
         )}
       </article>

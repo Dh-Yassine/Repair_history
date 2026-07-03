@@ -151,7 +151,16 @@ router.get('/:eventId', async (req, res) => {
   res.json({ event });
 });
 
-router.patch('/:eventId', async (req, res) => {
+router.patch('/:eventId', (req, res, next) => {
+  const ct = req.headers['content-type'] || '';
+  if (ct.includes('multipart/form-data')) {
+    return formParser(req, res, (err) => {
+      if (err) return res.status(400).json({ error: err.message || 'Invalid form data' });
+      next();
+    });
+  }
+  next();
+}, async (req, res) => {
   const vehicle = await getOwnedVehicle(req.params.vehicleId, req.user.id);
   if (!vehicle) return res.status(404).json({ error: 'Vehicle not found' });
 
@@ -163,7 +172,7 @@ router.patch('/:eventId', async (req, res) => {
     return res.status(403).json({ error: 'Verified shop records cannot be edited by the owner' });
   }
 
-  const { eventType, date, mileage, garageName, notes, cost } = req.body;
+  const { eventType, date, mileage, garageName, notes, cost } = readFields(req);
   const event = await prisma.maintenanceEvent.update({
     where: { id: req.params.eventId },
     data: {

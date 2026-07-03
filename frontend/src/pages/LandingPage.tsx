@@ -14,6 +14,9 @@ import {
   Zap,
   Clock,
 } from 'lucide-react';
+import heroCar from '../assets/hero-car-optionA.png';
+
+// To swap to option B, change the import above to hero-car-optionb.png
 
 const EASE = [0.16, 1, 0.3, 1] as [number, number, number, number];
 
@@ -23,249 +26,22 @@ const fadeUp = {
 };
 const stagger = { show: { transition: { staggerChildren: 0.1 } } };
 
-/* ─── SVG car silhouette ───────────────────────────────────────────────── */
-function CarSilhouette() {
-  return (
-    <svg
-      viewBox="0 0 900 280"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className="car-svg"
-      aria-hidden
-    >
-      {/* ── defs ── */}
-      <defs>
-        {/* underglow gradient */}
-        <radialGradient id="underglow" cx="50%" cy="0%" r="60%">
-          <stop offset="0%" stopColor="#e8ff47" stopOpacity="0.55" />
-          <stop offset="100%" stopColor="#e8ff47" stopOpacity="0" />
-        </radialGradient>
-        {/* headlight glow */}
-        <radialGradient id="headlight-glow" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.9" />
-          <stop offset="60%" stopColor="#e8ff47" stopOpacity="0.35" />
-          <stop offset="100%" stopColor="#e8ff47" stopOpacity="0" />
-        </radialGradient>
-        {/* taillight glow */}
-        <radialGradient id="taillight-glow" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#ff5050" stopOpacity="0.9" />
-          <stop offset="60%" stopColor="#ff2020" stopOpacity="0.35" />
-          <stop offset="100%" stopColor="#ff2020" stopOpacity="0" />
-        </radialGradient>
-        {/* scan gradient */}
-        <linearGradient id="scan-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#e8ff47" stopOpacity="0" />
-          <stop offset="50%" stopColor="#e8ff47" stopOpacity="0.7" />
-          <stop offset="100%" stopColor="#e8ff47" stopOpacity="0" />
-        </linearGradient>
-        {/* car body fill */}
-        <linearGradient id="body-fill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#1c2030" />
-          <stop offset="100%" stopColor="#0d1118" />
-        </linearGradient>
-        {/* wheel fill */}
-        <radialGradient id="wheel-grad" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#252b3a" />
-          <stop offset="70%" stopColor="#141820" />
-          <stop offset="100%" stopColor="#0d1118" />
-        </radialGradient>
-        {/* rim spokes gradient */}
-        <linearGradient id="rim-grad" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#4a5260" />
-          <stop offset="100%" stopColor="#252b38" />
-        </linearGradient>
-        {/* speed line fade */}
-        <linearGradient id="speed-fade" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#e8ff47" stopOpacity="0" />
-          <stop offset="100%" stopColor="#e8ff47" stopOpacity="0.3" />
-        </linearGradient>
-        {/* clip for scan line */}
-        <clipPath id="car-clip">
-          <path d="M 60 215 C 55 207,50 192,58 178 C 65 166,80 157,96 152 L 105 148 C 115 144,126 141,138 139 L 306 128 C 324 122,342 113,360 101 L 424 68 C 436 58,456 52,478 50 L 568 50 C 590 50,615 60,630 76 L 686 130 C 697 143,705 158,707 172 C 709 183,707 200,700 212 C 694 222,678 228,662 230 L 620 215 A 52 52 0 0 0 516 215 L 238 215 A 52 52 0 0 0 134 215 Z" />
-        </clipPath>
-        {/* filter for glow */}
-        <filter id="glow-filter" x="-20%" y="-20%" width="140%" height="140%">
-          <feGaussianBlur stdDeviation="3" result="blur" />
-          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-        </filter>
-        <filter id="soft-glow" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur stdDeviation="6" result="blur" />
-          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-        </filter>
-      </defs>
-
-      {/* ── speed lines (behind car, fade in from left) ── */}
-      {[
-        { y: 168, w: 260, delay: '0s' },
-        { y: 178, w: 310, delay: '0.15s' },
-        { y: 188, w: 290, delay: '0.3s' },
-        { y: 198, w: 340, delay: '0.05s' },
-        { y: 208, w: 270, delay: '0.22s' },
-        { y: 148, w: 220, delay: '0.4s' },
-        { y: 158, w: 240, delay: '0.18s' },
-      ].map((l, i) => (
-        <line
-          key={i}
-          x1={60 - l.w}
-          y1={l.y}
-          x2={60}
-          y2={l.y}
-          stroke="url(#speed-fade)"
-          strokeWidth={i % 3 === 0 ? 1.5 : 1}
-          className="speed-line"
-          style={{ animationDelay: l.delay }}
-        />
-      ))}
-
-      {/* ── road line ── */}
-      <line x1="0" y1="267" x2="900" y2="267" stroke="#252932" strokeWidth="1.5" />
-
-      {/* ── underglow ── */}
-      <ellipse cx="378" cy="267" rx="240" ry="12" fill="url(#underglow)" className="car-underglow" />
-
-      {/* ── main body ── */}
-      <path
-        d="
-          M 60 215
-          C 55 207, 50 192, 58 178
-          C 65 166, 80 157, 96 152
-          L 105 148
-          C 115 144, 126 141, 138 139
-          L 306 128
-          C 324 122, 342 113, 360 101
-          L 424 68
-          C 436 58, 456 52, 478 50
-          L 568 50
-          C 590 50, 615 60, 630 76
-          L 686 130
-          C 697 143, 705 158, 707 172
-          C 709 183, 707 200, 700 212
-          C 694 222, 678 228, 662 230
-          L 620 215
-          A 52 52 0 0 0 516 215
-          L 238 215
-          A 52 52 0 0 0 134 215
-          Z
-        "
-        fill="url(#body-fill)"
-        stroke="#e8ff47"
-        strokeWidth="1.2"
-        strokeOpacity="0.45"
-        filter="url(#glow-filter)"
-      />
-
-      {/* ── cabin / glass area ── */}
-      <path
-        d="
-          M 368 105
-          L 427 70
-          C 438 61, 457 55, 478 53
-          L 567 53
-          C 588 53, 610 62, 624 77
-          L 674 128
-          L 616 128
-          C 600 120, 582 115, 562 115
-          L 498 115
-          L 392 115
-          L 368 105
-          Z
-        "
-        fill="#0c1320"
-        fillOpacity="0.85"
-        stroke="#e8ff47"
-        strokeWidth="0.8"
-        strokeOpacity="0.3"
-      />
-
-      {/* ── window split (B-pillar) ── */}
-      <line x1="494" y1="53" x2="498" y2="115" stroke="#e8ff47" strokeWidth="1" strokeOpacity="0.25" />
-
-      {/* ── rear wheels ── */}
-      <circle cx="568" cy="215" r="52" fill="url(#wheel-grad)" stroke="#e8ff47" strokeWidth="1" strokeOpacity="0.35" />
-      {/* rim spokes */}
-      {[0, 60, 120, 180, 240, 300].map((angle) => (
-        <line
-          key={angle}
-          x1={568 + 14 * Math.cos((angle * Math.PI) / 180)}
-          y1={215 + 14 * Math.sin((angle * Math.PI) / 180)}
-          x2={568 + 42 * Math.cos((angle * Math.PI) / 180)}
-          y2={215 + 42 * Math.sin((angle * Math.PI) / 180)}
-          stroke="#4a5468"
-          strokeWidth="4"
-          strokeLinecap="round"
-        />
-      ))}
-      <circle cx="568" cy="215" r="14" fill="#1a1f2c" stroke="#5a6278" strokeWidth="1.5" />
-      <circle cx="568" cy="215" r="6" fill="#e8ff47" fillOpacity="0.6" />
-
-      {/* ── front wheel ── */}
-      <circle cx="186" cy="215" r="52" fill="url(#wheel-grad)" stroke="#e8ff47" strokeWidth="1" strokeOpacity="0.35" />
-      {[0, 60, 120, 180, 240, 300].map((angle) => (
-        <line
-          key={angle}
-          x1={186 + 14 * Math.cos((angle * Math.PI) / 180)}
-          y1={215 + 14 * Math.sin((angle * Math.PI) / 180)}
-          x2={186 + 42 * Math.cos((angle * Math.PI) / 180)}
-          y2={215 + 42 * Math.sin((angle * Math.PI) / 180)}
-          stroke="#4a5468"
-          strokeWidth="4"
-          strokeLinecap="round"
-        />
-      ))}
-      <circle cx="186" cy="215" r="14" fill="#1a1f2c" stroke="#5a6278" strokeWidth="1.5" />
-      <circle cx="186" cy="215" r="6" fill="#e8ff47" fillOpacity="0.6" />
-
-      {/* ── headlight beam ── */}
-      <ellipse cx="85" cy="162" rx="32" ry="18" fill="url(#headlight-glow)" className="headlight-pulse" />
-      {/* headlight housing */}
-      <path d="M 62 168 C 68 156, 84 148, 98 150 L 102 155 C 88 154, 74 160, 68 170 Z"
-        fill="#c8d8ff" fillOpacity="0.55" stroke="#ffffff" strokeWidth="0.5" strokeOpacity="0.5" />
-
-      {/* ── taillight ── */}
-      <ellipse cx="706" cy="178" rx="24" ry="14" fill="url(#taillight-glow)" className="taillight-pulse" />
-      <path d="M 698 168 C 706 162, 714 165, 716 172 L 714 183 C 712 188, 705 190, 698 186 Z"
-        fill="#ff4040" fillOpacity="0.7" stroke="#ff6060" strokeWidth="0.5" strokeOpacity="0.6" />
-
-      {/* ── front logo (small grille ornament) ── */}
-      <circle cx="78" cy="197" r="5" fill="none" stroke="#e8ff47" strokeWidth="1" strokeOpacity="0.6" />
-
-      {/* ── side mirror ── */}
-      <path d="M 365 104 L 355 98 L 350 108 L 360 112 Z"
-        fill="#1c2230" stroke="#e8ff47" strokeWidth="0.8" strokeOpacity="0.3" />
-
-      {/* ── door line ── */}
-      <path d="M 156 215 C 156 175, 165 145, 180 138 L 500 128 C 520 128, 548 133, 565 145 L 575 165 L 575 215"
-        fill="none" stroke="#e8ff47" strokeWidth="0.6" strokeOpacity="0.18" strokeDasharray="4 3" />
-
-      {/* ── scan line overlay (animated) ── */}
-      <rect
-        x="-20"
-        y="45"
-        width="40"
-        height="230"
-        fill="url(#scan-grad)"
-        className="scan-line"
-        clipPath="url(#car-clip)"
-      />
-
-      {/* ── HUD overlay marks ── */}
-      {/* front corner bracket */}
-      <path d="M 30 30 L 30 50 M 30 30 L 50 30" stroke="#e8ff47" strokeWidth="1" strokeOpacity="0.4" />
-      {/* rear corner bracket */}
-      <path d="M 870 30 L 870 50 M 870 30 L 850 30" stroke="#e8ff47" strokeWidth="1" strokeOpacity="0.4" />
-      <path d="M 30 245 L 30 225 M 30 245 L 50 245" stroke="#e8ff47" strokeWidth="1" strokeOpacity="0.4" />
-      <path d="M 870 245 L 870 225 M 870 245 L 850 245" stroke="#e8ff47" strokeWidth="1" strokeOpacity="0.4" />
-      {/* HUD label */}
-      <text x="36" y="26" fill="#e8ff47" fillOpacity="0.5" fontSize="9" fontFamily="monospace" letterSpacing="2">AUTOHISTORY</text>
-      <text x="36" y="258" fill="#e8ff47" fillOpacity="0.3" fontSize="8" fontFamily="monospace" letterSpacing="1">SCAN ACTIVE</text>
-      <text x="760" y="258" fill="#e8ff47" fillOpacity="0.3" fontSize="8" fontFamily="monospace" letterSpacing="1">VER. 2.0</text>
-    </svg>
-  );
-}
 
 /* ─── Dot-grid background ──────────────────────────────────────────────── */
 function DotGrid() {
   return <div className="landing-dotgrid" aria-hidden />;
+}
+
+/* ─── HUD corner brackets ── */
+function HudCorners() {
+  return (
+    <div className="hud-corners" aria-hidden>
+      <span className="hud-corner hud-tl" />
+      <span className="hud-corner hud-tr" />
+      <span className="hud-corner hud-bl" />
+      <span className="hud-corner hud-br" />
+    </div>
+  );
 }
 
 export default function LandingPage() {
@@ -289,23 +65,23 @@ export default function LandingPage() {
 
       {/* ── Hero ── */}
       <section className="landing-hero-full">
+        {/* real car photo as full-bleed background */}
+        <div className="hero-bg-img" aria-hidden>
+          <img src={heroCar} alt="" draggable={false} />
+          {/* layered gradient overlays so text is always readable */}
+          <div className="hero-bg-vignette" />
+          <div className="hero-bg-bottom-fade" />
+        </div>
+
         <DotGrid />
 
-        {/* background glow blobs */}
+        {/* HUD corner brackets on top of image */}
+        <HudCorners />
+
+        {/* subtle accent glow blob */}
         <div className="landing-glow landing-glow-1" aria-hidden />
-        <div className="landing-glow landing-glow-2" aria-hidden />
 
-        {/* car visual — full width, above the text */}
-        <motion.div
-          className="landing-car-stage"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
-        >
-          <CarSilhouette />
-        </motion.div>
-
-        {/* text + CTA below car */}
+        {/* text + CTA */}
         <motion.div
           className="landing-hero-content"
           initial="hidden"

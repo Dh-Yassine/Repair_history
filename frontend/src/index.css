@@ -3377,8 +3377,22 @@ button,
   line-height: 1;
 }
 
+.lang-toggle-flag-img {
+  width: 18px;
+  height: 18px;
+  display: block;
+  border-radius: 2px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
 .lang-toggle-compact .lang-toggle-btn {
   padding: 5px 7px;
+}
+
+.lang-toggle-compact .lang-toggle-flag-img {
+  width: 20px;
+  height: 20px;
 }
 
 .landing-nav-links {

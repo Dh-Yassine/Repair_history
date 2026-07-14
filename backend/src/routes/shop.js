@@ -118,23 +118,39 @@ router.get('/events', async (req, res) => {
 });
 
 /**
- * Owner/vehicle lookup with a single query: exact email, or partial VIN /
- * serial number match. Legacy per-field body still accepted.
+ * Owner/vehicle lookup with a single query: email, VIN, or serial.
+ * Legacy per-field body still accepted.
  */
 router.post('/vehicles/lookup', async (req, res) => {
-  const { q, ownerEmail, vin, serialNumber, make, model, year } = req.body;
-  const query = q?.trim();
+  try {
+    const body = req.body && typeof req.body === 'object' ? req.body : {};
+    const { vin, serialNumber, make, model, year } = body;
+    const query = String(body.q || body.ownerEmail || body.email || '')
+      .trim()
+      .replace(/\u00a0/g, ' ');
 
-  let owner = null;
-  let vehicles = [];
+    if (!query) {
+      return res.status(400).json({ error: 'Enter an email, VIN, or serial number to search' });
+    }
 
-  if (query) {
+    let owner = null;
+    let vehicles = [];
+
     if (query.includes('@')) {
+      const email = query.toLowerCase();
       owner = await prisma.user.findUnique({
-        where: { email: query.toLowerCase() },
-        select: { id: true, fullName: true, email: true, role: true, vehicles: { where: { status: 'ACTIVE' } } },
+        where: { email },
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+          role: true,
+          deletedAt: true,
+          vehicles: { where: { status: 'ACTIVE' } },
+        },
       });
-      if (!owner || owner.role !== 'OWNER') {
+      // Personal accounts may be OWNER or legacy BUYER — anything with vehicles except shop/admin
+      if (!owner || owner.deletedAt || owner.role === 'SHOP' || owner.role === 'ADMIN') {
         return res.status(404).json({ error: 'No owner account found for that email.' });
       }
       vehicles = owner.vehicles;
@@ -144,51 +160,53 @@ router.post('/vehicles/lookup', async (req, res) => {
         where: {
           status: 'ACTIVE',
           OR: [
-            { vin: { contains: normalized } },
-            { serialNumber: { contains: normalized } },
+            { vin: { contains: normalized, mode: 'insensitive' } },
+            { serialNumber: { contains: normalized, mode: 'insensitive' } },
           ],
         },
-        include: { owner: { select: { id: true, fullName: true, email: true, role: true } } },
+        include: {
+          owner: { select: { id: true, fullName: true, email: true, role: true, deletedAt: true } },
+        },
         take: 10,
       });
-      const valid = matches.filter((v) => v.owner.role === 'OWNER');
+      const valid = matches.filter(
+        (v) => v.owner && !v.owner.deletedAt && v.owner.role !== 'SHOP' && v.owner.role !== 'ADMIN'
+      );
       if (valid.length === 0) {
         return res.status(404).json({ error: 'No vehicle found matching that VIN or serial number.' });
       }
       owner = valid[0].owner;
       vehicles = valid.filter((v) => v.owner.id === owner.id).map(({ owner: _o, ...v }) => v);
-    }
-  } else {
-    if (!ownerEmail?.trim()) {
-      return res.status(400).json({ error: 'Enter an email, VIN, or serial number to search' });
-    }
-    const found = await prisma.user.findUnique({
-      where: { email: ownerEmail.trim().toLowerCase() },
-      select: { id: true, fullName: true, email: true, role: true, vehicles: { where: { status: 'ACTIVE' } } },
-    });
-    if (!found || found.role !== 'OWNER') return res.status(404).json({ error: 'Owner not found' });
-    owner = found;
 
-    const normalizedVin = vin?.trim().toUpperCase();
-    const normalizedSerial = serialNumber?.trim().toUpperCase();
-    const hasVehicleCriteria = Boolean(normalizedVin || normalizedSerial || make?.trim() || model?.trim() || year);
-    vehicles = found.vehicles.filter((vehicle) => {
-      if (!hasVehicleCriteria) return true;
-      if (normalizedVin && vehicle.vin?.toUpperCase() === normalizedVin) return true;
-      if (normalizedSerial && vehicle.serialNumber?.toUpperCase() === normalizedSerial) return true;
-      if (make?.trim() && vehicle.make.toLowerCase() !== make.trim().toLowerCase()) return false;
-      if (model?.trim() && vehicle.model.toLowerCase() !== model.trim().toLowerCase()) return false;
-      if (year && vehicle.year !== Number(year)) return false;
-      return true;
+      // Optional extra filters when legacy fields are sent with a VIN/serial query
+      const normalizedVin = vin?.trim().toUpperCase();
+      const normalizedSerial = serialNumber?.trim().toUpperCase();
+      if (normalizedVin || normalizedSerial || make?.trim() || model?.trim() || year) {
+        vehicles = vehicles.filter((vehicle) => {
+          if (normalizedVin && vehicle.vin?.toUpperCase() !== normalizedVin) return false;
+          if (normalizedSerial && vehicle.serialNumber?.toUpperCase() !== normalizedSerial) return false;
+          if (make?.trim() && vehicle.make.toLowerCase() !== make.trim().toLowerCase()) return false;
+          if (model?.trim() && vehicle.model.toLowerCase() !== model.trim().toLowerCase()) return false;
+          if (year && vehicle.year !== Number(year)) return false;
+          return true;
+        });
+      }
+    }
+
+    try {
+      await recordConnection(req.user.id, owner.id, 'LOOKUP');
+    } catch (connErr) {
+      console.error('shop connection record failed:', connErr.message);
+    }
+
+    res.json({
+      owner: { id: owner.id, fullName: owner.fullName, email: owner.email },
+      vehicles,
     });
+  } catch (err) {
+    console.error('shop lookup failed:', err);
+    res.status(500).json({ error: 'Vehicle lookup failed' });
   }
-
-  await recordConnection(req.user.id, owner.id, 'LOOKUP');
-
-  res.json({
-    owner: { id: owner.id, fullName: owner.fullName, email: owner.email },
-    vehicles,
-  });
 });
 
 router.get('/verifications', async (req, res) => {

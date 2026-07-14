@@ -62,8 +62,15 @@ export default function CreateVerifiedEventForm({ onCreated }: { onCreated: () =
     e.preventDefault();
     setError('');
     setLookupMsg('');
+    const q = query.trim().replace(/\u00a0/g, ' ');
+    if (!q) {
+      setError(t('shop.lookupFailed'));
+      return;
+    }
     try {
-      const result = await api.shopLookupVehicle({ q: query.trim() });
+      const result = await api.shopLookupVehicle(
+        q.includes('@') ? { q, ownerEmail: q.toLowerCase() } : { q }
+      );
       setVehicles(result.vehicles);
       setOwnerName(result.owner.fullName || '');
       setOwnerEmail(result.owner.email);

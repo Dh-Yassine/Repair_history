@@ -90,11 +90,13 @@ router.get('/history/:token/badge', async (req, res) => {
 /** Record a site page view (public, fire-and-forget from the SPA). */
 router.post('/visits', async (req, res) => {
   try {
-    const path = typeof req.body?.path === 'string' ? req.body.path.trim().slice(0, 500) : '';
+    let path = typeof req.body?.path === 'string' ? req.body.path.trim().slice(0, 500) : '';
     const sessionId =
       typeof req.body?.sessionId === 'string' ? req.body.sessionId.trim().slice(0, 80) : '';
+    if (path && !path.startsWith('/')) path = `/${path}`;
     if (!path || !sessionId || !path.startsWith('/')) {
-      return res.status(400).json({ error: 'path and sessionId are required' });
+      // Soft-fail: never break navigation tracking clients
+      return res.status(204).end();
     }
 
     const referrer =
@@ -116,7 +118,8 @@ router.post('/visits', async (req, res) => {
     res.status(204).end();
   } catch (err) {
     console.error('visit track failed:', err.message);
-    res.status(500).json({ error: 'Failed to record visit' });
+    // Table missing / DB hiccup — don't surface as client errors
+    res.status(204).end();
   }
 });
 

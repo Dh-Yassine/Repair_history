@@ -12,7 +12,7 @@ import type {
   SiteVisitStats,
 } from '../types';
 
-const PARTNER_KEY = import.meta.env.VITE_PARTNER_API_KEY || 'dev-partner-key-change-me';
+const PARTNER_KEY = import.meta.env.VITE_PARTNER_API_KEY || '';
 
 type Tab = 'overview' | 'traffic' | 'users' | 'shops' | 'moderation' | 'partners';
 type VisitRange = '24h' | '7d' | '30d' | '90d';
@@ -42,6 +42,10 @@ export default function AdminPage() {
   async function loadOverview() {
     const s = await api.adminStats();
     setStats(s);
+    if (!PARTNER_KEY) {
+      setBadgeStats(null);
+      return;
+    }
     try {
       setBadgeStats(await api.badgeAnalytics(PARTNER_KEY));
     } catch {
@@ -79,14 +83,20 @@ export default function AdminPage() {
       if (tTab === 'shops') await loadPendingShops();
       if (tTab === 'moderation') await loadModeration();
       if (tTab === 'partners') {
-        try {
-          setBadgeStats(await api.badgeAnalytics(PARTNER_KEY));
-        } catch {
+        if (PARTNER_KEY) {
+          try {
+            setBadgeStats(await api.badgeAnalytics(PARTNER_KEY));
+          } catch {
+            setBadgeStats(null);
+          }
+          const ins = await api.insuranceSummary(PARTNER_KEY).catch(() => null);
+          if (ins) {
+            setActionMsg(
+              t('admin.insuranceFeed', { size: ins.fleetSize, rate: ins.platformVerificationRate })
+            );
+          }
+        } else {
           setBadgeStats(null);
-        }
-        const ins = await api.insuranceSummary(PARTNER_KEY).catch(() => null);
-        if (ins) {
-          setActionMsg(t('admin.insuranceFeed', { size: ins.fleetSize, rate: ins.platformVerificationRate }));
         }
       }
     } finally {

@@ -49,14 +49,24 @@ export default function PublicHistoryPage() {
         <div className="card" style={{ maxWidth: 520, margin: '0 auto', textAlign: 'center' }}>
           <EyeOff size={32} style={{ color: 'var(--color-warning)', marginBottom: 12 }} />
           <h2 className="display" style={{ fontSize: 24 }}>
-            {errorReason === 'disabled' ? 'Sharing is off' : 'History unavailable'}
+            {errorReason === 'disabled' ? 'The owner turned sharing off' : 'History unavailable'}
           </h2>
           <p className="error-msg" style={{ marginTop: 12 }}>
             {error}
           </p>
-          <Link to="/login" className="btn btn-ghost btn-sm" style={{ marginTop: 20 }}>
-            Sign in as owner
-          </Link>
+          <p className="muted" style={{ marginTop: 16, fontSize: 14 }}>
+            This link points to an AutoHistory vehicle record — a maintenance timeline where every
+            service is logged with mileage and proof, and repair shops verify the work they did.
+            Ask the seller to re-enable sharing, or see how it works below.
+          </p>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 20, flexWrap: 'wrap' }}>
+            <Link to="/" className="btn btn-solid btn-sm">
+              What is AutoHistory?
+            </Link>
+            <Link to="/login" className="btn btn-ghost btn-sm">
+              Sign in
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -67,7 +77,8 @@ export default function PublicHistoryPage() {
   const { vehicle, events, badge, share } = data;
   const verifiedCount = vehicle.verifiedCount;
   const selfCount = Math.max(0, vehicle.totalEvents - verifiedCount);
-  const trustScore = badge?.trustScore ?? Math.round((verifiedCount / Math.max(1, vehicle.totalEvents)) * 100);
+  const trustScore =
+    data.trustScore ?? badge?.trustScore ?? Math.round((verifiedCount / Math.max(1, vehicle.totalEvents)) * 100);
   const isSummary = vehicle.shareLevel === 'SUMMARY';
   const AccessIcon = accessIcon(share?.visibility ?? vehicle.visibility);
 
@@ -78,7 +89,7 @@ export default function PublicHistoryPage() {
           <div className="sidebar-logo-mark">A</div>
           <span className="sidebar-logo-text">AUTOHISTORY</span>
         </div>
-        <span className="mono muted" style={{ fontSize: 11 }}>Buyer-ready history</span>
+        <span className="mono muted" style={{ fontSize: 11 }}>Shared history</span>
       </header>
       <PageTransition>
         <div className="page-content" style={{ maxWidth: 760, margin: '0 auto' }}>
@@ -101,10 +112,21 @@ export default function PublicHistoryPage() {
             </div>
           )}
 
-          <div className="hero-panel" style={{ display: 'flex', gap: 24, alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Trust score is the page's headline element — larger than any other block */}
+          <div className="hero-panel" style={{ display: 'flex', gap: 32, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ flex: '0 0 auto', textAlign: 'center' }}>
+              <TrustRing score={trustScore} size={200} />
+              <p className="mono" style={{ fontSize: 13, marginTop: 10, letterSpacing: '0.08em' }}>
+                TRUST SCORE
+              </p>
+              <p className="muted" style={{ fontSize: 12, marginTop: 4, maxWidth: 220 }}>
+                Share of this history confirmed by real repair shops, weighted by how major and how
+                recent each service is.
+              </p>
+            </div>
             <div style={{ flex: '1 1 320px', minWidth: 0 }}>
               <p className="section-eyebrow">Vehicle</p>
-              <h1 className="display page-title">
+              <h1 className="display" style={{ fontSize: 30 }}>
                 {vehicle.year} {vehicle.make} {vehicle.model}
               </h1>
               {vehicle.vin ? (
@@ -135,12 +157,6 @@ export default function PublicHistoryPage() {
                   <span className="tag">{share.detailLabel}</span>
                 )}
               </div>
-            </div>
-            <div style={{ flex: '0 0 auto', textAlign: 'center' }}>
-              <TrustRing score={trustScore} />
-              <p className="mono muted" style={{ fontSize: 11, marginTop: 8 }}>
-                TRUST SCORE
-              </p>
             </div>
           </div>
 

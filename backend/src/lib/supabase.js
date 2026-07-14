@@ -29,3 +29,11 @@ export async function verifySupabaseToken(token) {
   if (error || !data.user) return null;
   return data.user;
 }
+
+/** Returns false when the auth user was deleted from Supabase but app profile may remain. */
+export async function supabaseAuthUserExists(userId) {
+  const supabase = getSupabaseAdmin();
+  if (!supabase || !userId) return false;
+  const { data, error } = await supabase.auth.admin.getUserById(userId);
+  return !error && Boolean(data?.user);
+}

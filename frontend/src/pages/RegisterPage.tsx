@@ -1,10 +1,11 @@
 import { FormEvent, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CarFront, Wrench, Search } from 'lucide-react';
+import { CarFront, Wrench } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import AuthVisualPanel from '../components/auth/AuthVisualPanel';
 
-type AccountType = 'owner' | 'shop' | 'buyer';
+type AccountType = 'owner' | 'shop';
 
 const ROLES: Array<{
   id: AccountType;
@@ -15,25 +16,19 @@ const ROLES: Array<{
   {
     id: 'owner',
     icon: CarFront,
-    title: 'Vehicle owner',
-    blurb: 'Track maintenance, build a trust score, and share a buyer-ready history.',
+    title: 'Personal',
+    blurb: 'Track vehicles and share history links.',
   },
   {
     id: 'shop',
     icon: Wrench,
     title: 'Repair shop',
-    blurb: 'Create verified service records that customers see instantly.',
-  },
-  {
-    id: 'buyer',
-    icon: Search,
-    title: 'Buyer',
-    blurb: 'Inspect a seller’s share link before you commit to buying.',
+    blurb: 'Verify work — needs admin approval.',
   },
 ];
 
 export default function RegisterPage() {
-  const { register, registerBuyer, registerShop } = useAuth();
+  const { register, registerShop } = useAuth();
   const navigate = useNavigate();
   const [accountType, setAccountType] = useState<AccountType>('owner');
   const [fullName, setFullName] = useState('');
@@ -55,11 +50,15 @@ export default function RegisterPage() {
       if (accountType === 'owner') {
         await register({ fullName, email, password, phone: phone || undefined });
         navigate('/');
-      } else if (accountType === 'buyer') {
-        await registerBuyer({ fullName, email, password, phone: phone || undefined });
-        navigate('/buyer');
       } else {
-        await registerShop({ fullName, email, password, phone: phone || undefined, shopName, address: address || undefined });
+        await registerShop({
+          fullName,
+          email,
+          password,
+          phone: phone || undefined,
+          shopName,
+          address: address || undefined,
+        });
         navigate('/shop');
       }
     } catch (err) {
@@ -76,17 +75,7 @@ export default function RegisterPage() {
 
   return (
     <div className="auth-page">
-      <div className="auth-visual">
-        <div className="auth-mesh" />
-        <div className="auth-tagline">
-          <p>SELL WITH PROOF. BUY WITH CONFIDENCE.</p>
-          <div className="auth-proof-stack">
-            <span className="tag tag-verified">Shop verified records</span>
-            <span className="tag tag-self">Owner proof uploads</span>
-            <span className="tag tag-green">Buyer-ready share link</span>
-          </div>
-        </div>
-      </div>
+      <AuthVisualPanel variant="register" />
       <div className="auth-form-panel">
         <motion.div
           className="auth-form-inner"
@@ -94,15 +83,15 @@ export default function RegisterPage() {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
         >
-          <div className="sidebar-logo" style={{ border: 'none', padding: 0, marginBottom: 28 }}>
+          <div className="sidebar-logo" style={{ border: 'none', padding: 0, marginBottom: 16 }}>
             <div className="sidebar-logo-mark">A</div>
             <span className="sidebar-logo-text">AUTOHISTORY</span>
           </div>
           <h1 className="display" style={{ fontSize: 36, marginBottom: 6 }}>
             Create account
           </h1>
-          <p className="muted" style={{ marginBottom: 20, fontSize: 14 }}>
-            Pick the role that fits — you can connect with the others later.
+          <p className="muted" style={{ marginBottom: 14, fontSize: 13, lineHeight: 1.4 }}>
+            Personal accounts own and buy. Shops need admin approval to verify work.
           </p>
 
           <div className="role-grid">
@@ -145,6 +134,10 @@ export default function RegisterPage() {
                   <label className="label">Address</label>
                   <input className="input" value={address} onChange={(e) => setAddress(e.target.value)} />
                 </div>
+                <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>
+                  After you sign up, an admin must approve your shop before you can create verified
+                  records.
+                </p>
               </>
             )}
             <div className="field">
@@ -163,12 +156,16 @@ export default function RegisterPage() {
             </div>
             {emailSent && (
               <p className="success-msg" style={{ color: 'var(--color-green)', marginBottom: '1rem' }}>
-                Check your email for a confirmation link. After confirming, you&apos;ll land back in the app and can sign in.
+                Check your email for a confirmation link. After confirming, return here to sign in.
               </p>
             )}
             {error && <p className="error-msg">{error}</p>}
             <button type="submit" className="btn btn-solid" style={{ width: '100%' }} disabled={loading}>
-              {loading ? 'Creating…' : `Create ${accountType === 'shop' ? 'shop' : accountType === 'buyer' ? 'buyer' : 'owner'} account`}
+              {loading
+                ? 'Creating account…'
+                : accountType === 'shop'
+                  ? 'Request shop account'
+                  : 'Create account'}
             </button>
           </form>
           <p className="muted" style={{ marginTop: 24, fontSize: 14 }}>

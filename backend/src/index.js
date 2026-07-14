@@ -13,9 +13,11 @@ if (!process.env.VERCEL && !process.env.NETLIFY) {
     } catch (err) {
       console.error('Seed failed:', err.message);
     }
-    processDueReminders().then((n) => console.log(`Reminder check: ${n} notifications sent`));
+    processDueReminders()
+      .then((n) => console.log(`Reminder check: ${n} notifications sent`))
+      .catch((err) => console.error('Reminder check failed:', err.message));
     setInterval(() => {
-      processDueReminders().catch(console.error);
+      processDueReminders().catch((err) => console.error('Reminder check failed:', err.message));
     }, REMINDER_INTERVAL_MS);
   });
 }

@@ -69,7 +69,7 @@ export default function DashboardPage() {
   const verifiedCount = analytics?.shopVerifiedCount ?? analytics?.verifiedCount ?? 0;
   const selfCount = analytics?.selfReportedCount ?? 0;
   const totalEvents = analytics?.totalEvents ?? 0;
-  const trustPct = analytics ? Math.round(analytics.conversionRate * 100) : 0;
+  const trustPct = analytics ? analytics.trustScore ?? Math.round(analytics.conversionRate * 100) : 0;
 
   if (loading) {
     return (
@@ -98,10 +98,10 @@ export default function DashboardPage() {
     <PageTransition>
       <div className="hero-panel page-hero">
         <div className="hero-copy">
-          <p className="section-eyebrow">Owner command center</p>
-          <h1 className="display page-title">Your verified vehicle history</h1>
+          <p className="section-eyebrow">Overview</p>
+          <h1 className="display page-title">Your vehicles</h1>
           <p className="muted" style={{ maxWidth: 620, marginTop: 10 }}>
-            Visit a partner shop to add verified service records. Add your own entries with proof whenever you want.
+            Add shop-verified records through a partner, or log your own entries with proof.
           </p>
           {limits && (
             <p className="mono muted" style={{ marginTop: 12 }}>
@@ -111,7 +111,7 @@ export default function DashboardPage() {
         </div>
         <div className="hero-actions">
           <Link to="/shops" className="btn btn-primary">
-            <ShieldCheck size={18} /> Find verified shop
+            <ShieldCheck size={18} /> Find a shop
           </Link>
           <button type="button" className="btn btn-solid" onClick={() => setModalOpen(true)} disabled={!limits?.canAdd}>
             <Plus size={18} /> Add vehicle
@@ -132,7 +132,7 @@ export default function DashboardPage() {
             >
               <VehiclePhoto vehicle={v} className="vehicle-photo-thumb" />
               <span>
-                {v.year} {v.make} {v.model}
+                {v.nickname || `${v.year} ${v.make} ${v.model}`}
               </span>
               <span className="pill-count">{v._count?.events ?? 0}</span>
             </button>
@@ -194,10 +194,9 @@ export default function DashboardPage() {
 
       {!active ? (
         <div className="card empty-state" style={{ marginTop: 16 }}>
-          <p style={{ fontSize: 48, margin: 0 }}>🚗</p>
-          <p>No vehicles yet — add your first one to start a trust history.</p>
+          <p>No vehicles yet. Add one to begin.</p>
           <button type="button" className="btn btn-primary" style={{ marginTop: 12 }} onClick={() => setModalOpen(true)}>
-            <Plus size={16} /> Add your first vehicle
+            <Plus size={16} /> Add vehicle
           </button>
         </div>
       ) : (
@@ -242,7 +241,7 @@ export default function DashboardPage() {
                   <Clock size={16} /> Timeline
                 </Link>
                 <Link to={`/vehicles/${active.id}/share`} className="btn btn-primary">
-                  <Share2 size={16} /> Share history
+                  <Share2 size={16} /> Share
                 </Link>
               </div>
               <div className="status-chip-row">
@@ -266,7 +265,7 @@ export default function DashboardPage() {
                 {verifiedCount} of {totalEvents} events are shop verified
               </p>
               <p className="muted" style={{ marginTop: 6, fontSize: 12 }}>
-                Higher verification = stronger buyer confidence.
+                More shop-verified records raise the trust score.
               </p>
             </div>
           </div>
@@ -279,17 +278,17 @@ export default function DashboardPage() {
                   <h3 className="display" style={{ fontSize: 20 }}>Recent timeline</h3>
                 </div>
                 <Link to={`/vehicles/${active.id}`} className="btn btn-ghost btn-sm">
-                  Full timeline →
+                  View timeline
                 </Link>
               </div>
               {eventsLoading ? (
                 <div className="skeleton" style={{ height: 80, marginTop: 8 }} />
               ) : recentEvents.length === 0 ? (
                 <div className="timeline-empty">
-                  No events yet for this vehicle.
+                  No service records yet.
                   <div style={{ marginTop: 10 }}>
                     <Link to="/shops" className="btn btn-primary btn-sm">
-                      Book a verified shop
+                      Find a shop
                     </Link>
                   </div>
                 </div>
@@ -309,14 +308,14 @@ export default function DashboardPage() {
               <div className="card">
                 <p className="section-eyebrow">Marketplace</p>
                 <h3 className="display" style={{ fontSize: 20, marginBottom: 8 }}>
-                  Discover more
+                  Parts &amp; shops
                 </h3>
                 <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>
-                  Partner shops, parts and accessories tailored to {active.year} {active.make} {active.model}.
+                  Shops and parts for {active.year} {active.make} {active.model}.
                 </p>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   <Link to="/shops" className="btn btn-primary btn-sm">
-                    <ShieldCheck size={14} /> Browse shops
+                    <ShieldCheck size={14} /> View shops
                   </Link>
                   <Link to="/marketplace" className="btn btn-ghost btn-sm">
                     <ShoppingBag size={14} /> Parts
@@ -377,39 +376,39 @@ function computeNextStep({
   if (vehiclesCount === 0) {
     return {
       Icon: Plus,
-      title: 'Add your first vehicle',
-      desc: 'Start a trust history that you can later share with buyers.',
+      title: 'Add a vehicle',
+      desc: 'Start tracking maintenance for a vehicle you own.',
       primary: { label: 'Add vehicle', onClick: onAddVehicle },
     };
   }
   if (totalEvents === 0) {
     return {
       Icon: ShieldCheck,
-      title: 'Book a verified service',
-      desc: 'A partner shop creates records that are verified instantly.',
+      title: 'Add a shop-verified record',
+      desc: 'Partner shops create verified entries on your timeline.',
       primary: { label: 'Find a shop', to: '/shops' },
     };
   }
   if (verifiedCount === 0 && selfCount > 0) {
     return {
       Icon: ShieldCheck,
-      title: 'Get your first shop-verified record',
-      desc: 'Self-reports are great, but a verified record is what buyers trust most.',
+      title: 'Get a shop-verified record',
+      desc: 'Shop-verified entries carry more weight than owner records alone.',
       primary: { label: 'Find a shop', to: '/shops' },
     };
   }
   if (trustPct >= 80 && activeVehicleId) {
     return {
       Icon: Share2,
-      title: 'Ready to sell? Share your history',
-      desc: 'Generate a buyer-ready link that proves your verified maintenance trail.',
+      title: 'Share this vehicle’s history',
+      desc: 'Create a link others can open to review the timeline.',
       primary: { label: 'Share history', to: `/vehicles/${activeVehicleId}/share` },
     };
   }
   return {
     Icon: Bell,
-    title: 'Stay on top of upcoming services',
-    desc: 'Check the marketplace for parts and accessories that fit your vehicle.',
-    primary: { label: 'Open marketplace', to: '/marketplace' },
+    title: 'Browse parts for this vehicle',
+    desc: 'Compatible parts and accessories in the marketplace.',
+    primary: { label: 'View marketplace', to: '/marketplace' },
   };
 }

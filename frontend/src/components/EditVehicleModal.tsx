@@ -20,6 +20,7 @@ export default function EditVehicleModal({ vehicle, onClose, onSaved, onDeleted 
   const toast = useToast();
   const open = vehicle !== null;
 
+  const [nickname, setNickname] = useState('');
   const [make, setMake] = useState('');
   const [model, setModel] = useState('');
   const [year, setYear] = useState('');
@@ -36,6 +37,7 @@ export default function EditVehicleModal({ vehicle, onClose, onSaved, onDeleted 
 
   useEffect(() => {
     if (!vehicle) return;
+    setNickname(vehicle.nickname ?? '');
     setMake(vehicle.make);
     setModel(vehicle.model);
     setYear(String(vehicle.year));
@@ -50,6 +52,8 @@ export default function EditVehicleModal({ vehicle, onClose, onSaved, onDeleted 
   }, [vehicle]);
 
   useOverlayPanel(open, onClose);
+
+  const vinLocked = Boolean(vehicle?.vin);
 
   function onPickPhoto(file: File | null) {
     setPhoto(file);
@@ -68,15 +72,32 @@ export default function EditVehicleModal({ vehicle, onClose, onSaved, onDeleted 
       setError('Make and model are required');
       return;
     }
+    const parsedMileage = Number(mileage);
+    if (!Number.isFinite(parsedMileage) || parsedMileage < vehicle.mileage) {
+      setError(
+        `Mileage cannot be lower than the vehicle's current recorded mileage (${vehicle.mileage.toLocaleString()} km).`
+      );
+      return;
+    }
+    if (vinLocked && !vin.trim()) {
+      setError('VIN cannot be removed once it has been set.');
+      return;
+    }
     setSaving(true);
     setError('');
     try {
       const form = new FormData();
+      form.append('nickname', nickname.trim());
       form.append('make', make.trim());
       form.append('model', model.trim());
       form.append('year', year);
       form.append('mileage', mileage);
-      if (vin.trim()) form.append('vin', vin.trim().toUpperCase());
+      // Always send existing VIN when locked; never blank it out
+      if (vinLocked) {
+        form.append('vin', (vin.trim() || vehicle.vin || '').toUpperCase());
+      } else if (vin.trim()) {
+        form.append('vin', vin.trim().toUpperCase());
+      }
       if (serialNumber.trim()) form.append('serialNumber', serialNumber.trim().toUpperCase());
       form.append('visibility', visibility);
       if (photo) form.append('photo', photo);
@@ -95,12 +116,17 @@ export default function EditVehicleModal({ vehicle, onClose, onSaved, onDeleted 
     if (!vehicle) return;
     setDeleting(true);
     try {
-      await api.deleteVehicle(vehicle.id);
+      const result = await api.deleteVehicle(vehicle.id);
       onDeleted(vehicle.id);
-      toast.success('Vehicle deleted');
+      const archived = result && typeof result === 'object' && 'archived' in result && result.archived;
+      toast.success(
+        archived
+          ? 'Vehicle archived. Existing share links still work.'
+          : 'Vehicle removed'
+      );
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete vehicle');
+      setError(err instanceof Error ? err.message : 'Failed to remove vehicle');
       setDeleting(false);
     }
   }
@@ -134,6 +160,16 @@ export default function EditVehicleModal({ vehicle, onClose, onSaved, onDeleted 
 
         <form onSubmit={handleSave}>
           <div style={{ padding: 24 }}>
+            <div className="field">
+              <label className="label">Nickname (optional)</label>
+              <input
+                className="input"
+                value={nickname}
+                onChange={(e) => setNickname(e.target.value)}
+                placeholder="Daily Driver"
+                maxLength={40}
+              />
+            </div>
             <div className="grid-form-2">
               <div className="field">
                 <label className="label">Make</label>
@@ -170,14 +206,40 @@ export default function EditVehicleModal({ vehicle, onClose, onSaved, onDeleted 
               </div>
               <div className="field">
                 <label className="label">Mileage (km)</label>
-                <input className="input input-mono" type="number" value={mileage} onChange={(e) => setMileage(e.target.value)} required />
+                <input
+                  className="input input-mono"
+                  type="number"
+                  min={vehicle.mileage}
+                  value={mileage}
+                  onChange={(e) => setMileage(e.target.value)}
+                  required
+                />
+                <p className="mono muted" style={{ fontSize: 11, marginTop: 4 }}>
+                  Cannot go below {vehicle.mileage.toLocaleString()} km
+                </p>
               </div>
             </div>
 
             <div className="grid-form-2">
               <div className="field">
-                <label className="label">VIN (optional)</label>
-                <input className="input input-mono" value={vin} onChange={(e) => setVin(e.target.value.toUpperCase())} maxLength={17} style={{ textTransform: 'uppercase' }} />
+                <label className="label">{vinLocked ? 'VIN (locked)' : 'VIN (optional)'}</label>
+                <input
+                  className="input input-mono"
+                  value={vin}
+                  onChange={(e) => {
+                    if (vinLocked) return;
+                    setVin(e.target.value.toUpperCase());
+                  }}
+                  readOnly={vinLocked}
+                  maxLength={17}
+                  style={{ textTransform: 'uppercase', opacity: vinLocked ? 0.85 : 1 }}
+                  title={vinLocked ? 'VIN cannot be removed once set' : undefined}
+                />
+                {vinLocked && (
+                  <p className="mono muted" style={{ fontSize: 11, marginTop: 4 }}>
+                    VIN cannot be cleared after it is set
+                  </p>
+                )}
               </div>
               <div className="field">
                 <label className="label">N° série (optional)</label>
@@ -188,9 +250,9 @@ export default function EditVehicleModal({ vehicle, onClose, onSaved, onDeleted 
             <div className="field">
               <label className="label">Visibility</label>
               <select className="input" value={visibility} onChange={(e) => setVisibility(e.target.value as Visibility)}>
-                <option value="PRIVATE">Private — link only</option>
-                <option value="PUBLIC">Public listing — VIN visible</option>
-                <option value="PARTNER_ONLY">Partner only — insurer / dealer</option>
+                <option value="PRIVATE">Private (link only)</option>
+                <option value="PUBLIC">Public (VIN visible)</option>
+                <option value="PARTNER_ONLY">Partners only</option>
               </select>
             </div>
 
@@ -204,7 +266,7 @@ export default function EditVehicleModal({ vehicle, onClose, onSaved, onDeleted 
                 ) : (
                   <Camera size={20} />
                 )}
-                <span style={{ fontSize: 13 }}>{photo ? photo.name : 'Click to change photo'}</span>
+                <span style={{ fontSize: 13 }}>{photo ? photo.name : 'Change photo'}</span>
                 <input type="file" accept="image/png,image/jpeg,image/jpg,image/webp" style={{ display: 'none' }} onChange={(e) => onPickPhoto(e.target.files?.[0] ?? null)} />
               </label>
               {photo && (
@@ -228,13 +290,16 @@ export default function EditVehicleModal({ vehicle, onClose, onSaved, onDeleted 
             <div style={{ marginTop: 20, borderTop: '1px solid var(--color-border)', paddingTop: 18 }}>
               {!confirmDelete ? (
                 <button type="button" className="btn btn-danger btn-sm" onClick={() => setConfirmDelete(true)} disabled={deleting}>
-                  <Trash2 size={14} /> Delete vehicle
+                  <Trash2 size={14} /> Archive
                 </button>
               ) : (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                  <p className="muted" style={{ fontSize: 13, margin: 0 }}>This will permanently delete the vehicle and all its records.</p>
+                  <p className="muted" style={{ fontSize: 13, margin: 0 }}>
+                    Removes this vehicle from your dashboard. Existing share links stay valid.
+                    Vehicles with no history may be deleted permanently.
+                  </p>
                   <button type="button" className="btn btn-danger btn-sm" onClick={handleDelete} disabled={deleting}>
-                    {deleting ? <><Loader2 size={14} className="spinning" /> Deleting…</> : 'Yes, delete'}
+                    {deleting ? <><Loader2 size={14} className="spinning" /> Archiving…</> : 'Confirm archive'}
                   </button>
                   <button type="button" className="btn btn-ghost btn-sm" onClick={() => setConfirmDelete(false)}>
                     Cancel

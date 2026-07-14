@@ -26,7 +26,7 @@ import EventTimelineItem from '../components/events/EventTimelineItem';
 import { useToast } from '../components/ui/Toast';
 import { useOverlayPanel, scrollFieldIntoView } from '../hooks/useOverlayPanel';
 import { useIsMobileSheet } from '../hooks/useMediaQuery';
-import type { MaintenanceEvent, MaintenanceSuggestion } from '../types';
+import type { MaintenanceEvent, MaintenanceSuggestion, Vehicle } from '../types';
 
 const EVENT_TYPES = [
   { id: 'Oil change', icon: Droplet },
@@ -37,6 +37,17 @@ const EVENT_TYPES = [
   { id: 'Repair', icon: Wrench },
   { id: 'Other', icon: MoreHorizontal },
 ];
+
+/** Frequently logged types float to the top of the grid for this vehicle. */
+function orderEventTypes(events: MaintenanceEvent[]) {
+  const counts = new Map<string, number>();
+  for (const e of events) counts.set(e.eventType, (counts.get(e.eventType) || 0) + 1);
+  return [...EVENT_TYPES].sort((a, b) => {
+    const diff = (counts.get(b.id) || 0) - (counts.get(a.id) || 0);
+    if (diff !== 0) return diff;
+    return EVENT_TYPES.findIndex((t) => t.id === a.id) - EVENT_TYPES.findIndex((t) => t.id === b.id);
+  });
+}
 
 const FILTERS = ['All', ...EVENT_TYPES.map((e) => e.id)];
 
@@ -49,6 +60,7 @@ function formatFileSize(bytes: number): string {
 export default function VehicleDetailPage() {
   const { vehicleId } = useParams<{ vehicleId: string }>();
   const toast = useToast();
+  const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const [events, setEvents] = useState<MaintenanceEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -158,6 +170,14 @@ export default function VehicleDetailPage() {
   }, [vehicleId, filterType, trustFilter]);
 
   useEffect(() => {
+    if (!vehicleId) return;
+    api
+      .vehicle(vehicleId)
+      .then(({ vehicle: v }) => setVehicle(v))
+      .catch(() => setVehicle(null));
+  }, [vehicleId]);
+
+  useEffect(() => {
     if (drawerOpen && vehicleId) {
       api.suggestions(vehicleId).then(({ suggestions: s }) => setSuggestions(s)).catch(() => setSuggestions([]));
     }
@@ -172,6 +192,12 @@ export default function VehicleDetailPage() {
       const parsedMileage = Number(mileage);
       if (!Number.isFinite(parsedMileage) || parsedMileage < 0) {
         throw new Error('Enter a valid mileage in km');
+      }
+      const eventDate = new Date(date);
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+      if (eventDate > today) {
+        throw new Error('Event date cannot be in the future.');
       }
 
       const { event } = await api.createEvent(vehicleId, {
@@ -197,7 +223,7 @@ export default function VehicleDetailPage() {
       resetForm();
       await load();
       api.generateReminders(vehicleId).catch(() => {});
-      toast.success('Event added to your timeline.');
+      toast.success('Service record added.');
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed';
       setError(msg);
@@ -217,6 +243,12 @@ export default function VehicleDetailPage() {
       if (!Number.isFinite(parsedMileage) || parsedMileage < 0) {
         throw new Error('Enter a valid mileage in km');
       }
+      const eventDate = new Date(date);
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+      if (eventDate > today) {
+        throw new Error('Event date cannot be in the future.');
+      }
       await api.updateEvent(vehicleId, editEventTarget.id, {
         eventType,
         date,
@@ -228,7 +260,7 @@ export default function VehicleDetailPage() {
       setDrawerOpen(false);
       resetForm();
       await load();
-      toast.success('Event updated.');
+      toast.success('Service record updated.');
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed';
       setError(msg);
@@ -239,6 +271,14 @@ export default function VehicleDetailPage() {
   }
 
   const headerMileage = events[0]?.mileage ?? 0;
+  const currentMileage = vehicle?.mileage ?? headerMileage;
+  const parsedMileageInput = Number(mileage);
+  // For edits of the record that set the current odometer, lowering is still blocked server-side;
+  // warn inline before submit instead of failing on Save.
+  const mileageWarning =
+    mileage !== '' && Number.isFinite(parsedMileageInput) && parsedMileageInput < currentMileage
+      ? `Below the vehicle's current odometer (${currentMileage.toLocaleString()} km). Mileage can never decrease.`
+      : '';
   const verifiedCount = events.filter((event) => event.verified).length;
   const selfReportedCount = events.filter((event) => !event.verified).length;
 
@@ -250,19 +290,24 @@ export default function VehicleDetailPage() {
             ← Dashboard
           </Link>
           <h1 className="display page-title" style={{ marginTop: 8 }}>
-            Maintenance timeline
+            {vehicle ? vehicle.nickname || `${vehicle.year} ${vehicle.make} ${vehicle.model}` : 'Service history'}
           </h1>
+          {vehicle?.nickname && (
+            <p className="mono muted" style={{ fontSize: 13 }}>
+              {vehicle.year} {vehicle.make} {vehicle.model}
+            </p>
+          )}
           <p className="mono" style={{ color: 'var(--color-accent)', fontSize: 24 }}>
-            {headerMileage.toLocaleString()} km
+            {(vehicle?.mileage ?? headerMileage).toLocaleString()} km
           </p>
-          <p className="muted">Shop-created records are verified. Your own entries stay self-reported and proof-backed.</p>
+          <p className="muted">Shop records are verified. Owner entries are self-reported and can include proof.</p>
         </div>
         <div className="hero-actions">
           <Link to={`/vehicles/${vehicleId}/share`} className="btn btn-primary">
             Share history
           </Link>
           <button type="button" className="btn btn-solid" onClick={openAddDrawer}>
-            <Plus size={16} /> Add self-report
+            <Plus size={16} /> Add record
           </button>
         </div>
       </div>
@@ -273,7 +318,7 @@ export default function VehicleDetailPage() {
           <strong>{verifiedCount}</strong>
         </div>
         <div className="metric-pill-card">
-          <span className="mono muted">Self-reported</span>
+          <span className="mono muted">Owner records</span>
           <strong>{selfReportedCount}</strong>
         </div>
         <div className="metric-pill-card">
@@ -297,9 +342,9 @@ export default function VehicleDetailPage() {
         <div className="trust-callout self">
           <FileText size={18} />
           <div>
-            <strong>Self-reported records</strong>
+            <strong>Owner records</strong>
             <p style={{ margin: '4px 0 0', fontSize: 13 }}>
-              These are your own entries with optional proof. Ask a partner shop to verify them when possible.
+              Your own entries with optional proof. A partner shop can verify them later.
             </p>
           </div>
         </div>
@@ -311,7 +356,7 @@ export default function VehicleDetailPage() {
             <strong>Two trust levels</strong>
             <p style={{ margin: '4px 0 0', fontSize: 13 }}>
               <span style={{ color: 'var(--color-verified)' }}>Verified</span> records are created by partner shops.
-              <span style={{ color: 'var(--color-warning)' }}> Self-reported</span> entries keep your timeline complete with owner-uploaded proof.
+              <span style={{ color: 'var(--color-warning)' }}> Owner</span> records can include uploaded proof.
             </p>
           </div>
         </div>
@@ -324,7 +369,7 @@ export default function VehicleDetailPage() {
             {[
               { id: 'all', label: 'All' },
               { id: 'verified', label: 'Verified' },
-              { id: 'self', label: 'Self-reported' },
+              { id: 'self', label: 'Owner' },
             ].map((item) => (
               <button
                 key={item.id}
@@ -354,15 +399,35 @@ export default function VehicleDetailPage() {
       ) : events.length === 0 ? (
         <div className="card empty-state">
           <p style={{ fontSize: 48 }}>🚗</p>
-          <p>No maintenance events match these filters yet.</p>
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 16, flexWrap: 'wrap' }}>
-            <Link to="/shops" className="btn btn-primary">
-              Find a verified shop
-            </Link>
-            <button type="button" className="btn btn-ghost" onClick={openAddDrawer}>
-              Add a self-report
-            </button>
-          </div>
+          {filterType !== 'All' || trustFilter !== 'all' ? (
+            <>
+              <p>No records match these filters.</p>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 16, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => { setFilterType('All'); setTrustFilter('all'); }}
+                >
+                  Clear filters
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p>No service records yet.</p>
+              <p className="muted" style={{ fontSize: 13, marginTop: 4 }}>
+                Log your first service below, or have a partner shop add a verified record.
+              </p>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 16, flexWrap: 'wrap' }}>
+                <button type="button" className="btn btn-primary" onClick={openAddDrawer}>
+                  <Plus size={14} /> Log first service
+                </button>
+                <Link to="/shops" className="btn btn-ghost">
+                  Find a shop
+                </Link>
+              </div>
+            </>
+          )}
         </div>
       ) : (
         <motion.ol className="timeline-rail" variants={stagger} initial="initial" animate="animate" style={{ listStyle: 'none', margin: 0, padding: '0 0 0 28px' }}>
@@ -375,7 +440,7 @@ export default function VehicleDetailPage() {
                 onDelete={
                   ev.source !== 'SHOP' && !ev.verified
                     ? async () => {
-                        if (confirm('Delete this self-reported event?')) {
+                        if (confirm('Delete this record?')) {
                           await api.deleteEvent(vehicleId!, ev.id);
                           load();
                         }
@@ -406,7 +471,7 @@ export default function VehicleDetailPage() {
               transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
               role="dialog"
               aria-modal="true"
-              aria-label="Add self-reported event"
+              aria-label={drawerMode === 'edit' ? 'Edit service record' : 'Add service record'}
             >
               <form
                 onSubmit={drawerMode === 'edit' ? handleUpdate : handleCreate}
@@ -415,15 +480,15 @@ export default function VehicleDetailPage() {
                 <header className="drawer-header">
                   <div>
                     <span className="drawer-eyebrow">
-                      <FileText size={11} /> {drawerMode === 'edit' ? 'Edit record' : 'Self-reported'}
+                      <FileText size={11} /> {drawerMode === 'edit' ? 'Edit record' : 'Owner record'}
                     </span>
                     <h2 className="display" style={{ marginTop: 10 }}>
-                      {drawerMode === 'edit' ? 'Edit maintenance event' : 'Add a maintenance event'}
+                      {drawerMode === 'edit' ? 'Edit service record' : 'Add service record'}
                     </h2>
                     <p>
                       {drawerMode === 'edit'
-                        ? 'Update the details of this self-reported record.'
-                        : 'Your own entry — attach a receipt or photo so buyers and shops can trust it later.'}
+                        ? 'Update the details of this owner record.'
+                        : 'Add details and optional proof (receipt or photo).'}
                     </p>
                   </div>
                   <button
@@ -454,7 +519,7 @@ export default function VehicleDetailPage() {
                       <span className="hint">Pick the closest match</span>
                     </div>
                     <div className="event-type-grid">
-                      {EVENT_TYPES.map((t) => (
+                      {orderEventTypes(events).map((t) => (
                         <button
                           key={t.id}
                           type="button"
@@ -482,6 +547,8 @@ export default function VehicleDetailPage() {
                           className="input input-mono"
                           type="date"
                           value={date}
+                          min={vehicle ? `${vehicle.year}-01-01` : undefined}
+                          max={new Date().toISOString().slice(0, 10)}
                           onChange={(e) => setDate(e.target.value)}
                           onFocus={(e) => scrollFieldIntoView(e.target)}
                           required
@@ -503,6 +570,11 @@ export default function VehicleDetailPage() {
                           />
                           <span className="input-prefix-suffix">km</span>
                         </div>
+                        {mileageWarning && (
+                          <p className="error-msg" style={{ marginTop: 6, fontSize: 12 }}>
+                            {mileageWarning}
+                          </p>
+                        )}
                       </div>
                     </div>
                     <div className="field-grid-2" style={{ marginTop: 12 }}>
@@ -635,7 +707,7 @@ export default function VehicleDetailPage() {
                       </>
                     ) : (
                       <>
-                        <Plus size={16} /> Save event
+                        <Plus size={16} /> Add record
                       </>
                     )}
                   </button>

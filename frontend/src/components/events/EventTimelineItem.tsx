@@ -107,7 +107,7 @@ export default function EventTimelineItem({
 
         {canDelete && (
           <button type="button" className="btn btn-danger btn-sm event-delete" onClick={onDelete}>
-            <Trash2 size={14} /> Delete
+            <Trash2 size={14} /> Delete record
           </button>
         )}
       </article>

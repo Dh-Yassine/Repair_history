@@ -27,14 +27,19 @@ export default function AnalyticsPage() {
   const { user } = useAuth();
   const [owner, setOwner] = useState<OwnerAnalytics | null>(null);
   const [shop, setShop] = useState<ShopAnalytics | null>(null);
+  const [monthly, setMonthly] = useState<Array<{ month: string; count: number }>>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
       try {
         if (user?.role === 'SHOP') {
-          const { analytics } = await api.shopAnalytics();
+          const [{ analytics }, monthlyData] = await Promise.all([
+            api.shopAnalytics(),
+            api.shopMonthlyAnalytics().catch(() => ({ monthly: [] })),
+          ]);
           setShop(analytics);
+          setMonthly(monthlyData.monthly);
         } else {
           const { analytics } = await api.ownerAnalytics();
           setOwner(analytics);
@@ -85,6 +90,22 @@ export default function AnalyticsPage() {
             </div>
             <p className="muted">Pending</p>
           </div>
+        </div>
+        <div className="card" style={{ marginTop: 16 }}>
+          <h2 className="display" style={{ fontSize: 22, marginBottom: 4 }}>
+            Verified records per month
+          </h2>
+          <p className="muted" style={{ fontSize: 13, marginBottom: 16 }}>
+            Last 12 months of verified work created or confirmed by your shop.
+          </p>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={monthly}>
+              <XAxis dataKey="month" stroke="#3d4350" tick={{ fill: '#6b7280', fontSize: 10 }} />
+              <YAxis stroke="#3d4350" tick={{ fill: '#6b7280', fontSize: 11 }} allowDecimals={false} />
+              <Tooltip contentStyle={chartTooltipStyle} />
+              <Bar dataKey="count" fill="#22d47a" radius={[2, 2, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
         <div className="card" style={{ marginTop: 16 }}>
           <h2 className="display" style={{ fontSize: 22, marginBottom: 12 }}>

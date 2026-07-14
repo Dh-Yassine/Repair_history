@@ -1,20 +1,38 @@
 import { useEffect, useState } from 'react';
-import { Ban, Flag, Shield, Users } from 'lucide-react';
+import { Ban, CheckCircle2, Eye, Flag, Shield, Store, Users, XCircle } from 'lucide-react';
 import { api } from '../api';
 import PageTransition from '../components/layout/PageTransition';
-import type { AdminStats, AdminUser, ModerationReport, MaintenanceEvent, BadgeAnalytics } from '../types';
+import type {
+  AdminStats,
+  AdminUser,
+  ModerationReport,
+  MaintenanceEvent,
+  BadgeAnalytics,
+  SiteVisitStats,
+} from '../types';
 
 const PARTNER_KEY = import.meta.env.VITE_PARTNER_API_KEY || 'dev-partner-key-change-me';
 
-type Tab = 'overview' | 'users' | 'moderation' | 'partners';
+type Tab = 'overview' | 'traffic' | 'users' | 'shops' | 'moderation' | 'partners';
+type VisitRange = '24h' | '7d' | '30d' | '90d';
+
+const RANGES: { id: VisitRange; label: string }[] = [
+  { id: '24h', label: '24 hours' },
+  { id: '7d', label: '7 days' },
+  { id: '30d', label: '30 days' },
+  { id: '90d', label: '90 days' },
+];
 
 export default function AdminPage() {
   const [tab, setTab] = useState<Tab>('overview');
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [users, setUsers] = useState<AdminUser[]>([]);
+  const [pendingShops, setPendingShops] = useState<AdminUser[]>([]);
   const [reports, setReports] = useState<ModerationReport[]>([]);
   const [flagged, setFlagged] = useState<MaintenanceEvent[]>([]);
   const [badgeStats, setBadgeStats] = useState<BadgeAnalytics | null>(null);
+  const [visitStats, setVisitStats] = useState<SiteVisitStats | null>(null);
+  const [visitRange, setVisitRange] = useState<VisitRange>('7d');
   const [loading, setLoading] = useState(true);
   const [actionMsg, setActionMsg] = useState('');
 
@@ -28,9 +46,18 @@ export default function AdminPage() {
     }
   }
 
+  async function loadTraffic(range: VisitRange = visitRange) {
+    setVisitStats(await api.adminVisits(range));
+  }
+
   async function loadUsers() {
     const { users: u } = await api.adminUsers();
     setUsers(u);
+  }
+
+  async function loadPendingShops() {
+    const { shops } = await api.adminPendingShops();
+    setPendingShops(shops);
   }
 
   async function loadModeration() {
@@ -44,7 +71,9 @@ export default function AdminPage() {
     setActionMsg('');
     try {
       if (t === 'overview') await loadOverview();
+      if (t === 'traffic') await loadTraffic();
       if (t === 'users') await loadUsers();
+      if (t === 'shops') await loadPendingShops();
       if (t === 'moderation') await loadModeration();
       if (t === 'partners') {
         try {
@@ -64,10 +93,34 @@ export default function AdminPage() {
     loadTab(tab);
   }, [tab]);
 
+  async function changeVisitRange(range: VisitRange) {
+    setVisitRange(range);
+    setLoading(true);
+    try {
+      await loadTraffic(range);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function toggleBan(u: AdminUser) {
     await api.adminBanUser(u.id, !u.banned);
     setActionMsg(u.banned ? 'User unbanned' : 'User banned');
     loadUsers();
+  }
+
+  async function approveShop(id: string) {
+    await api.adminVerifyShop(id, true);
+    setActionMsg('Shop approved — they can verify records now');
+    loadPendingShops();
+    if (stats) setStats({ ...stats, pendingShops: Math.max(0, (stats.pendingShops ?? 1) - 1) });
+  }
+
+  async function rejectShop(id: string) {
+    await api.adminVerifyShop(id, false);
+    setActionMsg('Shop request rejected');
+    loadPendingShops();
+    if (stats) setStats({ ...stats, pendingShops: Math.max(0, (stats.pendingShops ?? 1) - 1) });
   }
 
   async function resolveReport(id: string, flagTarget: boolean) {
@@ -81,9 +134,13 @@ export default function AdminPage() {
     loadModeration();
   }
 
+  const maxDay = visitStats ? Math.max(1, ...visitStats.timeline.map((d) => d.count)) : 1;
+
   const tabs: { id: Tab; label: string; icon: typeof Users }[] = [
     { id: 'overview', label: 'Overview', icon: Shield },
+    { id: 'traffic', label: 'Traffic', icon: Eye },
     { id: 'users', label: 'Users', icon: Users },
+    { id: 'shops', label: 'Shop approvals', icon: Store },
     { id: 'moderation', label: 'Moderation', icon: Flag },
     { id: 'partners', label: 'Partners', icon: Shield },
   ];
@@ -94,7 +151,7 @@ export default function AdminPage() {
         Admin console
       </h1>
       <p className="muted" style={{ marginBottom: 20 }}>
-        Platform users, fraud moderation, and partner analytics.
+        Platform users, shop approvals, site traffic, fraud moderation, and partner analytics.
       </p>
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 24 }}>
@@ -106,6 +163,9 @@ export default function AdminPage() {
             onClick={() => setTab(t.id)}
           >
             <t.icon size={16} /> {t.label}
+            {t.id === 'shops' && (stats?.pendingShops ?? pendingShops.length) > 0
+              ? ` (${stats?.pendingShops ?? pendingShops.length})`
+              : ''}
           </button>
         ))}
       </div>
@@ -131,6 +191,12 @@ export default function AdminPage() {
                 <strong style={{ fontSize: 28 }}>{stats.shops}</strong>
               </div>
               <div className="card-stat">
+                <span className="mono muted">Pending shops</span>
+                <strong style={{ fontSize: 28, color: stats.pendingShops ? 'var(--color-warning)' : undefined }}>
+                  {stats.pendingShops ?? 0}
+                </strong>
+              </div>
+              <div className="card-stat">
                 <span className="mono muted">Vehicles</span>
                 <strong style={{ fontSize: 28 }}>{stats.vehicles}</strong>
               </div>
@@ -152,6 +218,200 @@ export default function AdminPage() {
             </div>
           )}
 
+          {tab === 'shops' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <p className="muted" style={{ marginBottom: 4 }}>
+                New repair shops cannot verify records until you approve them here.
+              </p>
+              {pendingShops.length === 0 ? (
+                <p className="muted">No shop accounts waiting for approval.</p>
+              ) : (
+                pendingShops.map((s) => (
+                  <div key={s.id} className="card" style={{ padding: 16 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+                      <div>
+                        <strong style={{ fontSize: 16 }}>{s.shopName || 'Unnamed shop'}</strong>
+                        <p className="muted" style={{ margin: '4px 0 0', fontSize: 14 }}>
+                          {s.fullName} · {s.email}
+                          {s.phone ? ` · ${s.phone}` : ''}
+                        </p>
+                        {s.address && (
+                          <p className="muted" style={{ margin: '4px 0 0', fontSize: 13 }}>
+                            {s.address}
+                          </p>
+                        )}
+                        <p className="mono muted" style={{ marginTop: 8, fontSize: 11 }}>
+                          Requested {new Date(s.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                        <button type="button" className="btn btn-solid btn-sm" onClick={() => approveShop(s.id)}>
+                          <CheckCircle2 size={14} /> Approve
+                        </button>
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => rejectShop(s.id)}>
+                          <XCircle size={14} /> Reject
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {tab === 'traffic' && visitStats && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {RANGES.map((r) => (
+                  <button
+                    key={r.id}
+                    type="button"
+                    className={`btn btn-sm ${visitRange === r.id ? 'btn-solid' : 'btn-outline'}`}
+                    onClick={() => changeVisitRange(r.id)}
+                  >
+                    {r.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="grid-stats">
+                <div className="card-stat">
+                  <span className="mono muted">Page views</span>
+                  <strong style={{ fontSize: 28 }}>{visitStats.totalVisits}</strong>
+                </div>
+                <div className="card-stat">
+                  <span className="mono muted">Unique visitors</span>
+                  <strong style={{ fontSize: 28 }}>{visitStats.uniqueVisitors}</strong>
+                </div>
+                <div className="card-stat">
+                  <span className="mono muted">Signed-in visitors</span>
+                  <strong style={{ fontSize: 28 }}>{visitStats.signedInVisitors}</strong>
+                </div>
+              </div>
+
+              {visitStats.timeline.length > 0 && (
+                <section>
+                  <h2 className="display" style={{ fontSize: 22, marginBottom: 12 }}>
+                    Visits by day
+                  </h2>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-end',
+                      gap: 6,
+                      height: 120,
+                      overflowX: 'auto',
+                      paddingBottom: 4,
+                    }}
+                  >
+                    {visitStats.timeline.map((d) => (
+                      <div
+                        key={d.date}
+                        title={`${d.date}: ${d.count}`}
+                        style={{
+                          flex: '1 0 28px',
+                          minWidth: 28,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: 4,
+                          height: '100%',
+                          justifyContent: 'flex-end',
+                        }}
+                      >
+                        <span className="mono" style={{ fontSize: 10 }}>
+                          {d.count}
+                        </span>
+                        <div
+                          style={{
+                            width: '100%',
+                            height: `${Math.max(4, (d.count / maxDay) * 80)}px`,
+                            background: 'var(--color-accent, #1a5c4a)',
+                            borderRadius: 4,
+                            opacity: 0.85,
+                          }}
+                        />
+                        <span className="mono muted" style={{ fontSize: 9 }}>
+                          {d.date.slice(5)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              <section>
+                <h2 className="display" style={{ fontSize: 22, marginBottom: 12 }}>
+                  Top pages
+                </h2>
+                {visitStats.topPaths.length === 0 ? (
+                  <p className="muted">No visits in this period yet. Open the site in another tab to generate traffic.</p>
+                ) : (
+                  <div className="card" style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+                      <thead>
+                        <tr className="mono muted" style={{ textAlign: 'left' }}>
+                          <th style={{ padding: 8 }}>Path</th>
+                          <th style={{ padding: 8 }}>Views</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {visitStats.topPaths.map((p) => (
+                          <tr key={p.path} style={{ borderTop: '1px solid var(--color-border)' }}>
+                            <td style={{ padding: 8 }} className="mono">
+                              {p.path}
+                            </td>
+                            <td style={{ padding: 8 }}>{p.count}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </section>
+
+              <section>
+                <h2 className="display" style={{ fontSize: 22, marginBottom: 12 }}>
+                  Recent visits
+                </h2>
+                {visitStats.recent.length === 0 ? (
+                  <p className="muted">No recent visits.</p>
+                ) : (
+                  <div className="card" style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                      <thead>
+                        <tr className="mono muted" style={{ textAlign: 'left' }}>
+                          <th style={{ padding: 8 }}>When</th>
+                          <th style={{ padding: 8 }}>Path</th>
+                          <th style={{ padding: 8 }}>Session</th>
+                          <th style={{ padding: 8 }}>Auth</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {visitStats.recent.map((v, i) => (
+                          <tr key={`${v.createdAt}-${i}`} style={{ borderTop: '1px solid var(--color-border)' }}>
+                            <td style={{ padding: 8 }} className="mono muted">
+                              {new Date(v.createdAt).toLocaleString()}
+                            </td>
+                            <td style={{ padding: 8 }} className="mono">
+                              {v.path}
+                            </td>
+                            <td style={{ padding: 8 }} className="mono muted">
+                              {v.sessionId}…
+                            </td>
+                            <td style={{ padding: 8 }}>
+                              {v.signedIn ? <span className="tag tag-green">signed in</span> : <span className="muted">guest</span>}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </section>
+            </div>
+          )}
+
           {tab === 'users' && (
             <div className="card" style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
@@ -160,6 +420,7 @@ export default function AdminPage() {
                     <th style={{ padding: 8 }}>Name</th>
                     <th style={{ padding: 8 }}>Email</th>
                     <th style={{ padding: 8 }}>Role</th>
+                    <th style={{ padding: 8 }}>Status</th>
                     <th style={{ padding: 8 }}>Vehicles</th>
                     <th style={{ padding: 8 }} />
                   </tr>
@@ -167,10 +428,24 @@ export default function AdminPage() {
                 <tbody>
                   {users.map((u) => (
                     <tr key={u.id} style={{ borderTop: '1px solid var(--color-border)' }}>
-                      <td style={{ padding: 8 }}>{u.fullName}</td>
+                      <td style={{ padding: 8 }}>
+                        {u.fullName}
+                        {u.shopName ? <span className="muted"> · {u.shopName}</span> : null}
+                      </td>
                       <td style={{ padding: 8 }}>{u.email}</td>
                       <td style={{ padding: 8 }}>
                         <span className="tag">{u.role}</span>
+                      </td>
+                      <td style={{ padding: 8 }}>
+                        {u.banned ? (
+                          <span className="tag" style={{ color: 'var(--color-danger)' }}>Banned</span>
+                        ) : u.role === 'SHOP' && !u.shopVerified ? (
+                          <span className="tag tag-warning">Pending</span>
+                        ) : u.role === 'SHOP' ? (
+                          <span className="tag tag-verified">Approved</span>
+                        ) : (
+                          <span className="muted">—</span>
+                        )}
                       </td>
                       <td style={{ padding: 8 }}>{u._count?.vehicles ?? '—'}</td>
                       <td style={{ padding: 8 }}>

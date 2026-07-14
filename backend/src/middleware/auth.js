@@ -19,8 +19,12 @@ export async function requireAuth(req, res, next) {
       if (!profile) {
         return res.status(401).json({ error: 'Profile not found. Complete registration.' });
       }
-      if (profile.banned) {
-        return res.status(403).json({ error: 'Account suspended. Contact support.' });
+      if (profile.banned || profile.deletedAt) {
+        return res.status(403).json({
+          error: profile.deletedAt
+            ? 'This account has been deleted.'
+            : 'Account suspended. Contact support.',
+        });
       }
 
       req.user = { id: profile.id, email: profile.email, role: profile.role };

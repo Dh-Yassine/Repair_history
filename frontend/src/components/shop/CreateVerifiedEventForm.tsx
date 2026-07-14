@@ -10,19 +10,16 @@ const EVENT_TYPES = ['Oil change', 'Tire rotation', 'Brake service', 'Battery re
 type StepId = 'lookup' | 'create' | 'done';
 
 const STEPS = [
-  { id: 'lookup', label: 'Find customer', hint: 'Email + optional VIN' },
-  { id: 'create', label: 'Service details', hint: 'Type, mileage, cost' },
-  { id: 'done', label: 'Verified', hint: 'Owner notified' },
+  { id: 'lookup', label: 'Lookup', hint: 'Email, VIN, or serial' },
+  { id: 'create', label: 'Details', hint: 'Type, mileage, cost' },
+  { id: 'done', label: 'Done', hint: 'Verified on save' },
 ];
 
 export default function CreateVerifiedEventForm({ onCreated }: { onCreated: () => void }) {
   const toast = useToast();
   const [step, setStep] = useState<StepId>('lookup');
+  const [query, setQuery] = useState('');
   const [ownerEmail, setOwnerEmail] = useState('');
-  const [vin, setVin] = useState('');
-  const [make, setMake] = useState('');
-  const [model, setModel] = useState('');
-  const [year, setYear] = useState('');
   const [ownerName, setOwnerName] = useState('');
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedVehicleId, setSelectedVehicleId] = useState('');
@@ -41,11 +38,8 @@ export default function CreateVerifiedEventForm({ onCreated }: { onCreated: () =
 
   function resetAll() {
     setStep('lookup');
+    setQuery('');
     setOwnerEmail('');
-    setVin('');
-    setMake('');
-    setModel('');
-    setYear('');
     setOwnerName('');
     setVehicles([]);
     setSelectedVehicleId('');
@@ -63,9 +57,10 @@ export default function CreateVerifiedEventForm({ onCreated }: { onCreated: () =
     setError('');
     setLookupMsg('');
     try {
-      const result = await api.shopLookupVehicle({ ownerEmail, vin, make, model, year });
+      const result = await api.shopLookupVehicle({ q: query.trim() });
       setVehicles(result.vehicles);
       setOwnerName(result.owner.fullName || '');
+      setOwnerEmail(result.owner.email);
       setSelectedVehicleId(result.vehicles[0]?.id || '');
       if (result.vehicles.length === 0) {
         setLookupMsg(`Owner ${result.owner.fullName} found, but no matching vehicle. Ask the owner to add the vehicle first.`);
@@ -89,10 +84,6 @@ export default function CreateVerifiedEventForm({ onCreated }: { onCreated: () =
         {
           ownerEmail,
           vehicleId: selectedVehicleId || undefined,
-          vin,
-          make,
-          model,
-          year,
           eventType,
           date,
           mileage,
@@ -102,7 +93,7 @@ export default function CreateVerifiedEventForm({ onCreated }: { onCreated: () =
         },
         proof ?? undefined
       );
-      toast.success('Verified record created. Owner notified.');
+      toast.success('Verified record created.');
       setStep('done');
       onCreated();
     } catch (err) {
@@ -128,42 +119,21 @@ export default function CreateVerifiedEventForm({ onCreated }: { onCreated: () =
             <span className="wizard-card-num">1</span>
             <div>
               <h3 className="display">Find the customer vehicle</h3>
-              <p>Email is enough. Add VIN or vehicle details to narrow multi-vehicle accounts.</p>
+              <p>One search box: the customer&apos;s email, or a full/partial VIN or serial number.</p>
             </div>
           </div>
           <div className="field">
-            <label className="label">Owner email</label>
+            <label className="label">Customer email, VIN, or n° série</label>
             <input
               className="input"
-              type="email"
-              value={ownerEmail}
-              onChange={(e) => setOwnerEmail(e.target.value)}
-              placeholder="customer@email.com"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="customer@email.com or VF1RFB00…"
               required
             />
-          </div>
-          <div className="grid-form-2">
-            <div className="field">
-              <label className="label">VIN (optional)</label>
-              <input
-                className="input input-mono"
-                value={vin}
-                onChange={(e) => setVin(e.target.value.toUpperCase())}
-                placeholder="17-character VIN"
-              />
-            </div>
-            <div className="field">
-              <label className="label">Year</label>
-              <input className="input input-mono" type="number" value={year} onChange={(e) => setYear(e.target.value)} />
-            </div>
-            <div className="field">
-              <label className="label">Make</label>
-              <input className="input" value={make} onChange={(e) => setMake(e.target.value)} />
-            </div>
-            <div className="field">
-              <label className="label">Model</label>
-              <input className="input" value={model} onChange={(e) => setModel(e.target.value)} />
-            </div>
+            <p className="mono subtle" style={{ fontSize: 11, marginTop: 4 }}>
+              VIN and serial searches match partial input · email must be exact
+            </p>
           </div>
           {lookupMsg && <p className="muted" style={{ fontSize: 13 }}>{lookupMsg}</p>}
           {error && step === 'lookup' && <p className="error-msg">{error}</p>}
@@ -180,8 +150,11 @@ export default function CreateVerifiedEventForm({ onCreated }: { onCreated: () =
           <div className="wizard-card-head">
             <span className="wizard-card-num">2</span>
             <div>
-              <h3 className="display">Create verified service record</h3>
-              <p>Shop-created records are trusted instantly. The owner is notified automatically.</p>
+              <h3 className="display">Service details</h3>
+              <p>
+                <ShieldCheck size={13} style={{ verticalAlign: 'middle', color: 'var(--color-verified)' }} />{' '}
+                Verified immediately on save — no review step. The owner is notified automatically.
+              </p>
             </div>
           </div>
 
@@ -262,7 +235,7 @@ export default function CreateVerifiedEventForm({ onCreated }: { onCreated: () =
             className="btn btn-solid"
             disabled={submitting || !ownerEmail || (!selectedVehicleId && vehicles.length > 0)}
           >
-            <ShieldCheck size={16} /> {submitting ? 'Creating…' : 'Create verified record'}
+            <ShieldCheck size={16} /> {submitting ? 'Saving…' : 'Create record'}
           </button>
         </form>
 
@@ -280,7 +253,7 @@ export default function CreateVerifiedEventForm({ onCreated }: { onCreated: () =
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button type="button" className="btn btn-solid" onClick={resetAll}>
-                <RotateCcw size={16} /> Create another
+                <RotateCcw size={16} /> Add another
               </button>
             </div>
           </div>

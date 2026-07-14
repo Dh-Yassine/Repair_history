@@ -33,49 +33,84 @@ enum EventSource {
   SHOP
 }
 
+enum VehicleStatus {
+  ACTIVE
+  ARCHIVED
+}
+
 model User {
-  id                String             @id @default(uuid())
-  fullName          String
-  email             String             @unique
-  phone             String?
-  passwordHash      String?
-  role              UserRole           @default(OWNER)
-  maxVehicles       Int                @default(3)
-  subscriptionType  String             @default("free")
-  shopName          String?
-  address           String?
-  shopVerified      Boolean            @default(false)
-  banned            Boolean            @default(false)
-  createdAt         DateTime           @default(now())
-  vehicles          Vehicle[]
-  notifications     Notification[]
-  verifications     Verification[]
-  shopReminders     ServiceReminder[]  @relation("ShopReminders")
-  shopCreatedEvents MaintenanceEvent[] @relation("ShopCreatedEvents")
-  featuredAds       FeaturedShopAd[]
+  id                 String             @id @default(uuid())
+  fullName           String
+  email              String             @unique
+  phone              String?
+  passwordHash       String?
+  role               UserRole           @default(OWNER)
+  maxVehicles        Int                @default(3)
+  subscriptionType   String             @default("free")
+  shopName           String?
+  address            String?
+  shopVerified       Boolean            @default(false)
+  banned             Boolean            @default(false)
+  emailNotifications Boolean            @default(true)
+  inAppNotifications Boolean            @default(true)
+  deletedAt          DateTime?
+  createdAt          DateTime           @default(now())
+  vehicles           Vehicle[]
+  notifications      Notification[]
+  verifications      Verification[]
+  shopReminders      ServiceReminder[]  @relation("ShopReminders")
+  shopCreatedEvents  MaintenanceEvent[] @relation("ShopCreatedEvents")
+  featuredAds        FeaturedShopAd[]
+  shopConnections    ShopConnection[]   @relation("ShopConnections")
+  ownerConnections   ShopConnection[]   @relation("OwnerConnections")
+}
+
+/// Links a shop to an owner it has actually serviced or looked up.
+/// Scopes the shop's pending-verification queue so unverified owner reports
+/// are not globally visible to every registered shop.
+model ShopConnection {
+  id        String   @id @default(uuid())
+  shopId    String
+  shop      User     @relation("ShopConnections", fields: [shopId], references: [id], onDelete: Cascade)
+  ownerId   String
+  owner     User     @relation("OwnerConnections", fields: [ownerId], references: [id], onDelete: Cascade)
+  /// LOOKUP (shop found the owner), SERVICE (shop created/verified a record), OWNER_ADDED (owner chose the shop)
+  source    String   @default("LOOKUP")
+  createdAt DateTime @default(now())
+
+  @@unique([shopId, ownerId])
+  @@index([shopId])
+  @@index([ownerId])
 }
 
 model Vehicle {
-  id         String             @id @default(uuid())
-  ownerId    String
-  owner      User               @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  vin           String?
-  serialNumber  String?
-  make          String
-  model      String
-  year       Int
-  mileage    Float              @default(0)
-  photoPath  String?
-  visibility VisibilityType     @default(PRIVATE)
-  shareToken String?            @unique
-  shareLevel ShareLevel         @default(NONE)
-  createdAt  DateTime           @default(now())
-  events     MaintenanceEvent[]
-  badge      Badge?
-  reminders  ServiceReminder[]
+  id               String             @id @default(uuid())
+  ownerId          String
+  owner            User               @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  vin              String?            @unique
+  serialNumber     String?
+  nickname         String?
+  make             String
+  model            String
+  year             Int
+  mileage          Float              @default(0)
+  photoPath        String?
+  visibility       VisibilityType     @default(PRIVATE)
+  shareToken       String?            @unique
+  shareLevel       ShareLevel         @default(NONE)
+  /// True once a share token has ever been issued (survives turn-off / regenerate).
+  shareEverEnabled Boolean            @default(false)
+  status           VehicleStatus      @default(ACTIVE)
+  archivedAt       DateTime?
+  createdAt        DateTime           @default(now())
+  events           MaintenanceEvent[]
+  badge            Badge?
+  reminders        ServiceReminder[]
 
   @@index([ownerId])
   @@index([shareToken])
+  @@index([status])
+  @@index([ownerId, status])
 }
 
 model Badge {
@@ -148,6 +183,10 @@ model ServiceReminder {
   dueMileage      Float?
   dueDate         DateTime?
   message         String?
+  /// Event this reminder was derived from ("based on your last oil change ...")
+  sourceEventId   String?
+  sourceDate      DateTime?
+  sourceMileage   Float?
   createdByShopId String?
   shop            User?     @relation("ShopReminders", fields: [createdByShopId], references: [id], onDelete: SetNull)
   completed       Boolean   @default(false)
@@ -229,6 +268,22 @@ model BadgeEvent {
   @@index([shareToken])
   @@index([eventType])
   @@index([createdAt])
+}
+
+/// Anonymous SPA page views for admin traffic analytics (Supabase Postgres).
+model SiteVisit {
+  id        String   @id @default(uuid())
+  path      String
+  sessionId String
+  referrer  String?
+  userAgent String?
+  userId    String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([path])
+  @@index([sessionId])
+  @@index([createdAt, path])
 }
 
 model ModerationReport {

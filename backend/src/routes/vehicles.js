@@ -4,6 +4,13 @@ import { getVehicleLimits } from '../lib/limits.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { memoryUpload } from '../lib/upload.js';
 import { BUCKETS, deleteUpload, resolveFileUrl, saveUpload, vehiclePhotoKey } from '../lib/storage.js';
+import {
+  assertMileageNotBelowVehicle,
+  assertVinNotCleared,
+  assertVinUnique,
+  canHardDeleteVehicle,
+  normalizeVin,
+} from '../lib/integrity.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -17,8 +24,14 @@ const upload = memoryUpload({
   },
 });
 
-async function getOwnedVehicle(vehicleId, ownerId) {
-  return prisma.vehicle.findFirst({ where: { id: vehicleId, ownerId } });
+async function getOwnedVehicle(vehicleId, ownerId, { includeArchived = false } = {}) {
+  return prisma.vehicle.findFirst({
+    where: {
+      id: vehicleId,
+      ownerId,
+      ...(includeArchived ? {} : { status: 'ACTIVE' }),
+    },
+  });
 }
 
 async function withPhotoUrl(vehicle) {
@@ -34,7 +47,7 @@ async function withPhotoUrl(vehicle) {
 
 router.get('/', async (req, res) => {
   const vehicles = await prisma.vehicle.findMany({
-    where: { ownerId: req.user.id },
+    where: { ownerId: req.user.id, status: 'ACTIVE' },
     orderBy: { createdAt: 'desc' },
     include: { _count: { select: { events: true } } },
   });
@@ -58,7 +71,7 @@ router.post('/', (req, res, next) => {
       });
     }
 
-    const { vin, serialNumber, make, model, year, mileage, visibility } = req.body;
+    const { vin, serialNumber, nickname, make, model, year, mileage, visibility } = req.body;
     if (!make?.trim() || !model?.trim() || year === undefined) {
       return res.status(400).json({ error: 'make, model, and year are required' });
     }
@@ -67,6 +80,15 @@ router.post('/', (req, res, next) => {
     if (Number.isNaN(parsedYear)) {
       return res.status(400).json({ error: 'year must be a number' });
     }
+
+    const parsedMileage = mileage !== undefined && mileage !== '' ? parseFloat(mileage) : 0;
+    if (Number.isNaN(parsedMileage) || parsedMileage < 0) {
+      return res.status(400).json({ error: 'Mileage must be a valid number of kilometres.' });
+    }
+
+    const normalizedVin = normalizeVin(vin);
+    const vinClash = await assertVinUnique(prisma, normalizedVin);
+    if (vinClash) return res.status(409).json(vinClash);
 
     let photoPath = null;
     if (req.file) {
@@ -80,19 +102,24 @@ router.post('/', (req, res, next) => {
     const vehicle = await prisma.vehicle.create({
       data: {
         ownerId: req.user.id,
-        vin: vin?.trim().toUpperCase() || null,
+        vin: normalizedVin,
         serialNumber: serialNumber?.trim().toUpperCase() || null,
+        nickname: nickname?.trim() || null,
         make: make.trim(),
         model: model.trim(),
         year: parsedYear,
-        mileage: mileage !== undefined && mileage !== '' ? parseFloat(mileage) : 0,
+        mileage: parsedMileage,
         photoPath,
         visibility: visibility || 'PRIVATE',
+        status: 'ACTIVE',
       },
     });
     res.status(201).json({ vehicle: await withPhotoUrl(vehicle) });
   } catch (err) {
     console.error('create vehicle failed:', err);
+    if (err.code === 'P2002' && err.meta?.target?.includes('vin')) {
+      return res.status(409).json({ error: 'This VIN is already registered.' });
+    }
     res.status(500).json({ error: err.message || 'Failed to create vehicle' });
   }
 });
@@ -109,46 +136,121 @@ router.patch('/:id', (req, res, next) => {
     next();
   });
 }, async (req, res) => {
-  const existing = await getOwnedVehicle(req.params.id, req.user.id);
-  if (!existing) return res.status(404).json({ error: 'Vehicle not found' });
+  try {
+    const existing = await getOwnedVehicle(req.params.id, req.user.id);
+    if (!existing) return res.status(404).json({ error: 'Vehicle not found' });
 
-  let photoPath = existing.photoPath;
-  if (req.file) {
-    if (!req.file.buffer?.length) {
-      return res.status(400).json({ error: 'Photo upload was empty — try again or skip the photo' });
+    let photoPath = existing.photoPath;
+    if (req.file) {
+      if (!req.file.buffer?.length) {
+        return res.status(400).json({ error: 'Photo upload was empty — try again or skip the photo' });
+      }
+      if (existing.photoPath) await deleteUpload(BUCKETS.vehicles, existing.photoPath);
+      const key = vehiclePhotoKey(req.file.originalname);
+      photoPath = await saveUpload(BUCKETS.vehicles, key, req.file.buffer, req.file.mimetype);
     }
-    if (existing.photoPath) await deleteUpload(BUCKETS.vehicles, existing.photoPath);
-    const key = vehiclePhotoKey(req.file.originalname);
-    photoPath = await saveUpload(BUCKETS.vehicles, key, req.file.buffer, req.file.mimetype);
-  }
 
-  const { vin, serialNumber, make, model, year, mileage, visibility } = req.body;
-  const vehicle = await prisma.vehicle.update({
-    where: { id: req.params.id },
-    data: {
-      ...(vin !== undefined && { vin: vin?.trim().toUpperCase() || null }),
-      ...(serialNumber !== undefined && { serialNumber: serialNumber?.trim().toUpperCase() || null }),
-      ...(make !== undefined && { make: make.trim() }),
-      ...(model !== undefined && { model: model.trim() }),
-      ...(year !== undefined && { year: parseInt(year, 10) }),
-      ...(mileage !== undefined && { mileage: parseFloat(mileage) }),
-      ...(req.file && { photoPath }),
-      ...(visibility !== undefined && { visibility }),
-    },
-  });
-  res.json({ vehicle: await withPhotoUrl(vehicle) });
+    const { vin, serialNumber, nickname, make, model, year, mileage, visibility } = req.body;
+
+    if (vin !== undefined) {
+      const clearErr = assertVinNotCleared(existing.vin, vin);
+      if (clearErr) return res.status(400).json(clearErr);
+
+      const normalizedVin = normalizeVin(vin);
+      // If VIN already set and incoming normalizes to same value, keep it.
+      // If changing to a different VIN, check uniqueness.
+      if (normalizedVin && normalizedVin !== existing.vin) {
+        const vinClash = await assertVinUnique(prisma, normalizedVin, existing.id);
+        if (vinClash) return res.status(409).json(vinClash);
+      }
+      // If existing VIN and client omitted meaningful change — handled by clear check
+    }
+
+    if (mileage !== undefined && mileage !== '') {
+      const parsedMileage = parseFloat(mileage);
+      const mileageErr = assertMileageNotBelowVehicle(parsedMileage, existing.mileage);
+      if (mileageErr) return res.status(400).json(mileageErr);
+    }
+
+    const nextVin =
+      vin === undefined
+        ? undefined
+        : normalizeVin(vin) ?? (existing.vin ? existing.vin : null);
+
+    // Never allow clearing an existing VIN even if normalize returned null
+    const vinUpdate =
+      vin === undefined
+        ? {}
+        : existing.vin && !normalizeVin(vin)
+          ? {} // should already have returned 400 above
+          : { vin: nextVin };
+
+    const vehicle = await prisma.vehicle.update({
+      where: { id: req.params.id },
+      data: {
+        ...vinUpdate,
+        ...(serialNumber !== undefined && { serialNumber: serialNumber?.trim().toUpperCase() || null }),
+        ...(nickname !== undefined && { nickname: nickname?.trim() || null }),
+        ...(make !== undefined && { make: make.trim() }),
+        ...(model !== undefined && { model: model.trim() }),
+        ...(year !== undefined && { year: parseInt(year, 10) }),
+        ...(mileage !== undefined && mileage !== '' && { mileage: parseFloat(mileage) }),
+        ...(req.file && { photoPath }),
+        ...(visibility !== undefined && { visibility }),
+      },
+    });
+    res.json({ vehicle: await withPhotoUrl(vehicle) });
+  } catch (err) {
+    console.error('update vehicle failed:', err);
+    if (err.code === 'P2002' && err.meta?.target?.includes('vin')) {
+      return res.status(409).json({ error: 'This VIN is already registered.' });
+    }
+    res.status(500).json({ error: err.message || 'Failed to update vehicle' });
+  }
 });
 
+/**
+ * Soft-delete (archive) by default.
+ * Hard delete only when zero events AND no share link was ever created.
+ */
 router.delete('/:id', async (req, res) => {
-  const existing = await getOwnedVehicle(req.params.id, req.user.id);
-  if (!existing) return res.status(404).json({ error: 'Vehicle not found' });
-  if (existing.photoPath) await deleteUpload(BUCKETS.vehicles, existing.photoPath);
-  await prisma.vehicle.delete({ where: { id: req.params.id } });
-  res.status(204).send();
+  try {
+    const existing = await getOwnedVehicle(req.params.id, req.user.id, { includeArchived: true });
+    if (!existing) return res.status(404).json({ error: 'Vehicle not found' });
+    if (existing.status === 'ARCHIVED') {
+      return res.status(400).json({ error: 'This vehicle is already archived.' });
+    }
+
+    const eventCount = await prisma.maintenanceEvent.count({ where: { vehicleId: existing.id } });
+
+    if (canHardDeleteVehicle(existing, eventCount)) {
+      if (existing.photoPath) await deleteUpload(BUCKETS.vehicles, existing.photoPath);
+      await prisma.vehicle.delete({ where: { id: req.params.id } });
+      return res.status(204).send();
+    }
+
+    const vehicle = await prisma.vehicle.update({
+      where: { id: req.params.id },
+      data: {
+        status: 'ARCHIVED',
+        archivedAt: new Date(),
+        // Keep shareToken / shareLevel / events intact for public history
+      },
+    });
+
+    res.json({
+      vehicle: await withPhotoUrl(vehicle),
+      archived: true,
+      message: 'Vehicle archived. Existing share links and history remain available.',
+    });
+  } catch (err) {
+    console.error('delete vehicle failed:', err);
+    res.status(500).json({ error: err.message || 'Failed to remove vehicle' });
+  }
 });
 
 router.get('/:id/photo', async (req, res) => {
-  const vehicle = await getOwnedVehicle(req.params.id, req.user.id);
+  const vehicle = await getOwnedVehicle(req.params.id, req.user.id, { includeArchived: true });
   if (!vehicle?.photoPath) return res.status(404).json({ error: 'Photo not found' });
   const url = await resolveFileUrl(BUCKETS.vehicles, vehicle.photoPath, { publicBucket: true });
   res.redirect(url);

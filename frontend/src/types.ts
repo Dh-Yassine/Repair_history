@@ -14,6 +14,8 @@ export interface User {
   shopName?: string | null;
   address?: string | null;
   shopVerified?: boolean;
+  emailNotifications?: boolean;
+  inAppNotifications?: boolean;
   createdAt: string;
 }
 
@@ -54,6 +56,7 @@ export interface Vehicle {
   ownerId: string;
   vin: string | null;
   serialNumber?: string | null;
+  nickname?: string | null;
   make: string;
   model: string;
   year: number;
@@ -63,6 +66,9 @@ export interface Vehicle {
   visibility: VisibilityType;
   shareLevel?: ShareLevel;
   shareToken?: string | null;
+  shareEverEnabled?: boolean;
+  status?: 'ACTIVE' | 'ARCHIVED';
+  archivedAt?: string | null;
   createdAt: string;
   _count?: { events: number };
 }
@@ -105,6 +111,9 @@ export interface ServiceReminder {
   dueMileage: number | null;
   dueDate: string | null;
   message: string | null;
+  sourceEventId?: string | null;
+  sourceDate?: string | null;
+  sourceMileage?: number | null;
   completed: boolean;
   vehicle?: { make: string; model: string; year: number };
   shop?: { shopName: string | null };
@@ -122,6 +131,8 @@ export interface OwnerAnalytics {
   averageServiceCost: number;
   serviceFrequency: number;
   conversionRate: number;
+  /** Weighted (event type × recency) verified share, 0–100 */
+  trustScore?: number;
   verifiedCount: number;
   selfReportedCount?: number;
   shopVerifiedCount?: number;
@@ -235,8 +246,9 @@ export interface PublicShareMeta {
 export interface PublicHistory {
   vehicle: PublicVehicle;
   events: MaintenanceEvent[];
+  trustScore?: number;
   share?: PublicShareMeta;
-  badge: { isAnimated: boolean; trustScore: number } | null;
+  badge?: { isAnimated: boolean; trustScore: number } | null;
 }
 
 export interface SparePart {
@@ -272,6 +284,7 @@ export interface AdminStats {
   events: number;
   flaggedEvents: number;
   pendingReports: number;
+  pendingShops?: number;
 }
 
 export interface AdminUser {
@@ -281,6 +294,9 @@ export interface AdminUser {
   role: UserRole;
   banned: boolean;
   shopName?: string | null;
+  shopVerified?: boolean;
+  address?: string | null;
+  phone?: string | null;
   createdAt: string;
   _count?: { vehicles: number };
 }
@@ -301,6 +317,23 @@ export interface BadgeAnalytics {
   uniqueBadges: number;
   conversionRate: number;
   topBadges: Array<{ token: string; count: number }>;
+}
+
+export interface SiteVisitStats {
+  range: string;
+  since: string;
+  totalVisits: number;
+  uniqueVisitors: number;
+  signedInVisitors: number;
+  topPaths: Array<{ path: string; count: number }>;
+  timeline: Array<{ date: string; count: number }>;
+  recent: Array<{
+    path: string;
+    sessionId: string;
+    createdAt: string;
+    referrer: string | null;
+    signedIn: boolean;
+  }>;
 }
 
 export interface InsuranceInsights {

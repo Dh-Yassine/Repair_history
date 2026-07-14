@@ -39,7 +39,7 @@ export default function TrustRing({ score, size = 120 }: { score: number; size?:
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: 22,
+          fontSize: Math.max(18, Math.round(size / 5.5)),
         }}
       >
         {pct}%

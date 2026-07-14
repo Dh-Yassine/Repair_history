@@ -13,11 +13,12 @@ import VehicleDetailPage from './pages/VehicleDetailPage';
 import VehicleSharePage from './pages/VehicleSharePage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import BuyerPage from './pages/BuyerPage';
-import PlaceholderPage from './pages/PlaceholderPage';
+import SettingsPage from './pages/SettingsPage';
 import MarketplacePage from './pages/MarketplacePage';
 import FeaturedShopsPage from './pages/FeaturedShopsPage';
 import AdminPage from './pages/AdminPage';
 import AuthCallbackPage from './pages/AuthCallbackPage';
+import VisitTracker from './components/VisitTracker';
 
 function homeForRole(role?: string) {
   if (role === 'ADMIN') return '/admin';
@@ -151,7 +152,7 @@ function AppRoutes() {
           element={
             <PrivateRoute>
               <ShellLayout theme={user?.role === 'SHOP' ? 'shop' : user?.role === 'BUYER' ? 'buyer' : 'owner'}>
-                <PlaceholderPage title="Settings" desc={`Signed in as ${user?.email}`} />
+                <SettingsPage />
               </ShellLayout>
             </PrivateRoute>
           }
@@ -186,6 +187,7 @@ export default function App() {
   return (
     <AuthProvider>
       <ToastProvider>
+        <VisitTracker />
         <AppRoutes />
       </ToastProvider>
     </AuthProvider>

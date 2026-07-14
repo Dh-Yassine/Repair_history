@@ -1,10 +1,14 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
-import { notifyUser } from '../lib/notify.js';
-import { sendEmail } from '../lib/email.js';
+import { notifyUser, emailUser } from '../lib/notify.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { memoryUpload } from '../lib/upload.js';
 import { BUCKETS, documentKey, resolveFileUrl, saveUpload } from '../lib/storage.js';
+import {
+  assertEventDate,
+  assertMileageNotBelowVehicle,
+  assertNoShopSelfService,
+} from '../lib/integrity.js';
 
 const upload = memoryUpload({ maxSize: 10 * 1024 * 1024 });
 
@@ -14,9 +18,46 @@ async function saveProof(req) {
   return saveUpload(BUCKETS.proofs, key, req.file.buffer, req.file.mimetype);
 }
 
+/** Record that this shop has a real relationship with this owner. */
+async function recordConnection(shopId, ownerId, source = 'LOOKUP') {
+  if (!shopId || !ownerId || shopId === ownerId) return;
+  await prisma.shopConnection.upsert({
+    where: { shopId_ownerId: { shopId, ownerId } },
+    create: { shopId, ownerId, source },
+    // A service relationship is stronger than a lookup — upgrade, never downgrade
+    update: source === 'SERVICE' ? { source } : {},
+  });
+}
+
 const router = Router();
 router.use(requireAuth);
 router.use(requireRole('SHOP'));
+
+/** Shops can sign in before approval, but cannot create/verify records until an admin approves. */
+async function requireShopApproved(req, res, next) {
+  try {
+    const shop = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { shopVerified: true, banned: true, role: true },
+    });
+    if (!shop || shop.role !== 'SHOP') {
+      return res.status(403).json({ error: 'Shop account required' });
+    }
+    if (shop.banned) {
+      return res.status(403).json({ error: 'This shop account is banned' });
+    }
+    if (!shop.shopVerified) {
+      return res.status(403).json({
+        error: 'Your shop is pending admin approval. You can sign in, but you cannot verify records yet.',
+        reason: 'shop_pending',
+      });
+    }
+    next();
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Shop approval check failed' });
+  }
+}
 
 router.get('/profile', async (req, res) => {
   const shop = await prisma.user.findUnique({ where: { id: req.user.id } });
@@ -25,9 +66,26 @@ router.get('/profile', async (req, res) => {
   res.json({ shop: profile });
 });
 
+// All shop work below requires admin approval
+router.use(requireShopApproved);
+
+/**
+ * Pending queue: only unverified owner reports for owners connected to this
+ * shop (previous lookup or service). Never a global feed of all users' data.
+ */
 router.get('/events', async (req, res) => {
   const shop = await prisma.user.findUnique({ where: { id: req.user.id } });
   const shopName = shop?.shopName?.trim() ?? null;
+
+  const connections = await prisma.shopConnection.findMany({
+    where: { shopId: req.user.id },
+    select: { ownerId: true },
+  });
+  const ownerIds = connections.map((c) => c.ownerId);
+
+  if (ownerIds.length === 0) {
+    return res.json({ events: [], shopName, connectedOwners: 0 });
+  }
 
   const events = await prisma.maintenanceEvent.findMany({
     where: {
@@ -35,44 +93,97 @@ router.get('/events', async (req, res) => {
       verification: null,
       source: 'OWNER',
       createdByShopId: null,
+      vehicle: { ownerId: { in: ownerIds }, status: 'ACTIVE' },
     },
     orderBy: { date: 'desc' },
     include: {
       vehicle: {
-        select: { id: true, make: true, model: true, year: true, vin: true, serialNumber: true, mileage: true },
+        select: {
+          id: true,
+          make: true,
+          model: true,
+          year: true,
+          vin: true,
+          serialNumber: true,
+          mileage: true,
+          owner: { select: { fullName: true, email: true } },
+        },
       },
       documents: { select: { id: true, fileName: true, fileType: true } },
     },
     take: 100,
   });
 
-  res.json({ events, shopName });
+  res.json({ events, shopName, connectedOwners: ownerIds.length });
 });
 
+/**
+ * Owner/vehicle lookup with a single query: exact email, or partial VIN /
+ * serial number match. Legacy per-field body still accepted.
+ */
 router.post('/vehicles/lookup', async (req, res) => {
-  const { ownerEmail, vin, serialNumber, make, model, year } = req.body;
-  if (!ownerEmail?.trim()) {
-    return res.status(400).json({ error: 'ownerEmail is required' });
+  const { q, ownerEmail, vin, serialNumber, make, model, year } = req.body;
+  const query = q?.trim();
+
+  let owner = null;
+  let vehicles = [];
+
+  if (query) {
+    if (query.includes('@')) {
+      owner = await prisma.user.findUnique({
+        where: { email: query.toLowerCase() },
+        select: { id: true, fullName: true, email: true, role: true, vehicles: { where: { status: 'ACTIVE' } } },
+      });
+      if (!owner || owner.role !== 'OWNER') {
+        return res.status(404).json({ error: 'No owner account found for that email.' });
+      }
+      vehicles = owner.vehicles;
+    } else {
+      const normalized = query.toUpperCase();
+      const matches = await prisma.vehicle.findMany({
+        where: {
+          status: 'ACTIVE',
+          OR: [
+            { vin: { contains: normalized } },
+            { serialNumber: { contains: normalized } },
+          ],
+        },
+        include: { owner: { select: { id: true, fullName: true, email: true, role: true } } },
+        take: 10,
+      });
+      const valid = matches.filter((v) => v.owner.role === 'OWNER');
+      if (valid.length === 0) {
+        return res.status(404).json({ error: 'No vehicle found matching that VIN or serial number.' });
+      }
+      owner = valid[0].owner;
+      vehicles = valid.filter((v) => v.owner.id === owner.id).map(({ owner: _o, ...v }) => v);
+    }
+  } else {
+    if (!ownerEmail?.trim()) {
+      return res.status(400).json({ error: 'Enter an email, VIN, or serial number to search' });
+    }
+    const found = await prisma.user.findUnique({
+      where: { email: ownerEmail.trim().toLowerCase() },
+      select: { id: true, fullName: true, email: true, role: true, vehicles: { where: { status: 'ACTIVE' } } },
+    });
+    if (!found || found.role !== 'OWNER') return res.status(404).json({ error: 'Owner not found' });
+    owner = found;
+
+    const normalizedVin = vin?.trim().toUpperCase();
+    const normalizedSerial = serialNumber?.trim().toUpperCase();
+    const hasVehicleCriteria = Boolean(normalizedVin || normalizedSerial || make?.trim() || model?.trim() || year);
+    vehicles = found.vehicles.filter((vehicle) => {
+      if (!hasVehicleCriteria) return true;
+      if (normalizedVin && vehicle.vin?.toUpperCase() === normalizedVin) return true;
+      if (normalizedSerial && vehicle.serialNumber?.toUpperCase() === normalizedSerial) return true;
+      if (make?.trim() && vehicle.make.toLowerCase() !== make.trim().toLowerCase()) return false;
+      if (model?.trim() && vehicle.model.toLowerCase() !== model.trim().toLowerCase()) return false;
+      if (year && vehicle.year !== Number(year)) return false;
+      return true;
+    });
   }
 
-  const owner = await prisma.user.findUnique({
-    where: { email: ownerEmail.trim().toLowerCase() },
-    select: { id: true, fullName: true, email: true, vehicles: true },
-  });
-  if (!owner) return res.status(404).json({ error: 'Owner not found' });
-
-  const normalizedVin = vin?.trim().toUpperCase();
-  const normalizedSerial = serialNumber?.trim().toUpperCase();
-  const hasVehicleCriteria = Boolean(normalizedVin || normalizedSerial || make?.trim() || model?.trim() || year);
-  const vehicles = owner.vehicles.filter((vehicle) => {
-    if (!hasVehicleCriteria) return true;
-    if (normalizedVin && vehicle.vin?.toUpperCase() === normalizedVin) return true;
-    if (normalizedSerial && vehicle.serialNumber?.toUpperCase() === normalizedSerial) return true;
-    if (make?.trim() && vehicle.make.toLowerCase() !== make.trim().toLowerCase()) return false;
-    if (model?.trim() && vehicle.model.toLowerCase() !== model.trim().toLowerCase()) return false;
-    if (year && vehicle.year !== Number(year)) return false;
-    return true;
-  });
+  await recordConnection(req.user.id, owner.id, 'LOOKUP');
 
   res.json({
     owner: { id: owner.id, fullName: owner.fullName, email: owner.email },
@@ -94,6 +205,36 @@ router.get('/verifications', async (req, res) => {
     take: 50,
   });
   res.json({ verifications });
+});
+
+/** Monthly verified-record counts for the last 12 months. */
+router.get('/analytics/monthly', async (req, res) => {
+  const since = new Date();
+  since.setMonth(since.getMonth() - 11);
+  since.setDate(1);
+  since.setHours(0, 0, 0, 0);
+
+  const verifications = await prisma.verification.findMany({
+    where: { shopId: req.user.id, verifiedAt: { gte: since } },
+    select: { verifiedAt: true },
+  });
+
+  const months = [];
+  const counts = new Map();
+  const cursor = new Date(since);
+  for (let i = 0; i < 12; i++) {
+    const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`;
+    months.push(key);
+    counts.set(key, 0);
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+  for (const v of verifications) {
+    const d = new Date(v.verifiedAt);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    if (counts.has(key)) counts.set(key, counts.get(key) + 1);
+  }
+
+  res.json({ monthly: months.map((m) => ({ month: m, count: counts.get(m) })) });
 });
 
 router.post('/events', upload.single('proof'), async (req, res) => {
@@ -123,11 +264,14 @@ router.post('/events', upload.single('proof'), async (req, res) => {
 
     const owner = await prisma.user.findUnique({
       where: { email: ownerEmail.trim().toLowerCase() },
-      include: { vehicles: true },
+      include: { vehicles: { where: { status: 'ACTIVE' } } },
     });
     if (!owner || owner.role !== 'OWNER') {
       return res.status(404).json({ error: 'Owner not found' });
     }
+
+    const selfServiceErr = assertNoShopSelfService(shop.id, owner.id);
+    if (selfServiceErr) return res.status(403).json(selfServiceErr);
 
     const normalizedVin = vin?.trim().toUpperCase();
     const normalizedSerial = serialNumber?.trim().toUpperCase();
@@ -152,6 +296,13 @@ router.post('/events', upload.single('proof'), async (req, res) => {
       return res.status(400).json({ error: 'mileage must be a number' });
     }
 
+    const mileageErr = assertMileageNotBelowVehicle(parsedMileage, vehicle.mileage);
+    if (mileageErr) return res.status(400).json(mileageErr);
+
+    const parsedDate = new Date(date);
+    const dateErr = assertEventDate(parsedDate, vehicle.year);
+    if (dateErr) return res.status(400).json(dateErr);
+
     const event = await prisma.$transaction(async (tx) => {
       const created = await tx.maintenanceEvent.create({
         data: {
@@ -159,7 +310,7 @@ router.post('/events', upload.single('proof'), async (req, res) => {
           createdByShopId: shop.id,
           source: 'SHOP',
           eventType: eventType.trim(),
-          date: new Date(date),
+          date: parsedDate,
           mileage: parsedMileage,
           cost: parsedCost,
           garageName: shop.shopName || shop.fullName,
@@ -189,13 +340,15 @@ router.post('/events', upload.single('proof'), async (req, res) => {
       return created;
     });
 
+    await recordConnection(shop.id, owner.id, 'SERVICE');
+
     const { generateRemindersFromEvents } = await import('../lib/reminders.js');
     generateRemindersFromEvents(vehicle.id).catch(console.error);
 
     const vehicleLabel = `${vehicle.year} ${vehicle.make} ${vehicle.model}`;
     const msg = `${shop.shopName || 'A repair shop'} added and verified ${event.eventType} for your ${vehicleLabel}.`;
     await notifyUser(owner.id, msg, 'verification');
-    await sendEmail(owner.email, 'AutoHistory: verified service record added', `${msg}\n\nView your timeline in AutoHistory.`);
+    await emailUser(owner.id, 'AutoHistory: verified service record added', `${msg}\n\nView your timeline in AutoHistory.`);
 
     res.status(201).json({ event });
   } catch (err) {
@@ -217,6 +370,19 @@ router.post('/events/:eventId/verify', upload.single('proof'), async (req, res) 
       return res.status(409).json({ error: 'Event already verified' });
     }
 
+    const selfServiceErr = assertNoShopSelfService(req.user.id, event.vehicle.ownerId);
+    if (selfServiceErr) return res.status(403).json(selfServiceErr);
+
+    // Only verify events from owners connected to this shop
+    const connection = await prisma.shopConnection.findUnique({
+      where: { shopId_ownerId: { shopId: req.user.id, ownerId: event.vehicle.ownerId } },
+    });
+    if (!connection) {
+      return res.status(403).json({
+        error: 'You can only verify records for customers connected to your shop. Look the owner up first.',
+      });
+    }
+
     const verification = await prisma.$transaction(async (tx) => {
       const v = await tx.verification.create({
         data: {
@@ -234,11 +400,13 @@ router.post('/events/:eventId/verify', upload.single('proof'), async (req, res) 
       return v;
     });
 
+    await recordConnection(req.user.id, event.vehicle.ownerId, 'SERVICE');
+
     const vehicleLabel = `${event.vehicle.year} ${event.vehicle.make} ${event.vehicle.model}`;
     const verifyMsg = `${shop?.shopName || 'A repair shop'} verified your ${event.eventType} on ${vehicleLabel}.`;
     await notifyUser(event.vehicle.ownerId, verifyMsg, 'verification');
-    await sendEmail(
-      event.vehicle.owner.email,
+    await emailUser(
+      event.vehicle.ownerId,
       'AutoHistory: maintenance verified',
       `${verifyMsg}\n\nView your timeline in AutoHistory.`
     );
@@ -248,6 +416,32 @@ router.post('/events/:eventId/verify', upload.single('proof'), async (req, res) 
     console.error(err);
     res.status(500).json({ error: err.message || 'Verification failed' });
   }
+});
+
+/**
+ * Owner proof file for a pending report the shop is reviewing.
+ * Only for unverified events of connected owners.
+ */
+router.get('/events/:eventId/documents/:documentId/file', async (req, res) => {
+  const event = await prisma.maintenanceEvent.findUnique({
+    where: { id: req.params.eventId },
+    include: { vehicle: { select: { ownerId: true } } },
+  });
+  if (!event) return res.status(404).json({ error: 'Event not found' });
+  if (event.verified) return res.status(403).json({ error: 'Event is already verified' });
+
+  const connection = await prisma.shopConnection.findUnique({
+    where: { shopId_ownerId: { shopId: req.user.id, ownerId: event.vehicle.ownerId } },
+  });
+  if (!connection) return res.status(403).json({ error: 'Not connected to this owner' });
+
+  const document = await prisma.document.findFirst({
+    where: { id: req.params.documentId, eventId: event.id },
+  });
+  if (!document) return res.status(404).json({ error: 'Document not found' });
+
+  const url = await resolveFileUrl(BUCKETS.documents, document.filePath);
+  res.json({ url, fileName: document.fileName, fileType: document.fileType });
 });
 
 router.post('/reminders', async (req, res) => {
@@ -274,8 +468,7 @@ router.post('/reminders', async (req, res) => {
     const label = `${vehicle.year} ${vehicle.make} ${vehicle.model}`;
     const msg = `Shop reminder: ${serviceType} for ${label} on ${dueDate || 'upcoming mileage'}`;
     await notifyUser(vehicle.ownerId, msg, 'reminder');
-    const owner = await prisma.user.findUnique({ where: { id: vehicle.ownerId } });
-    await sendEmail(owner.email, 'AutoHistory: service reminder from your shop', msg);
+    await emailUser(vehicle.ownerId, 'AutoHistory: service reminder from your shop', msg);
 
     res.status(201).json({ reminder });
   } catch (err) {

@@ -1,6 +1,13 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
-import { generateShareToken, buildEmbedSnippet } from '../lib/share.js';
+import {
+  generateShareToken,
+  buildEmbedSnippet,
+  computeTrustScore,
+  sanitizeVehiclePublic,
+  sanitizeEventPublic,
+  publicShareMeta,
+} from '../lib/share.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 
 const router = Router({ mergeParams: true });
@@ -9,8 +16,8 @@ router.use(requireRole('OWNER'));
 
 async function getOwnedVehicle(vehicleId, ownerId) {
   return prisma.vehicle.findFirst({
-    where: { id: vehicleId, ownerId },
-    include: { badge: true, events: { select: { verified: true, source: true } } },
+    where: { id: vehicleId, ownerId, status: 'ACTIVE' },
+    include: { badge: true, events: { select: { verified: true, source: true, eventType: true, date: true } } },
   });
 }
 
@@ -23,7 +30,7 @@ function shareStats(vehicle) {
     verifiedCount,
     shopVerifiedCount,
     selfReportedCount: Math.max(totalEvents - verifiedCount, 0),
-    trustScore: totalEvents ? Math.round((verifiedCount / totalEvents) * 100) : 0,
+    trustScore: computeTrustScore(vehicle.events ?? []),
   };
 }
 
@@ -50,6 +57,45 @@ router.get('/', async (req, res) => {
   });
 });
 
+/**
+ * Owner-only preview of exactly what a buyer sees at a given detail level,
+ * built with the same sanitizers as the public endpoint. Works before any
+ * share link exists so the owner never has to choose blind.
+ */
+router.get('/preview', async (req, res) => {
+  const vehicle = await prisma.vehicle.findFirst({
+    where: { id: req.params.vehicleId, ownerId: req.user.id, status: 'ACTIVE' },
+    include: {
+      events: {
+        orderBy: { date: 'desc' },
+        include: {
+          documents: { select: { id: true, fileName: true } },
+          verification: {
+            select: {
+              status: true,
+              verifiedAt: true,
+              notes: true,
+              shop: { select: { id: true, shopName: true, fullName: true } },
+            },
+          },
+          createdByShop: { select: { id: true, shopName: true, fullName: true } },
+        },
+      },
+    },
+  });
+  if (!vehicle) return res.status(404).json({ error: 'Vehicle not found' });
+
+  const level = req.query.level === 'SUMMARY' ? 'SUMMARY' : 'FULL';
+  const previewVehicle = { ...vehicle, shareLevel: level, shareToken: vehicle.shareToken || 'preview' };
+
+  res.json({
+    vehicle: sanitizeVehiclePublic(previewVehicle),
+    events: vehicle.events.map((e) => sanitizeEventPublic(e, level)),
+    trustScore: computeTrustScore(vehicle.events),
+    share: publicShareMeta(previewVehicle),
+  });
+});
+
 router.post('/enable', async (req, res) => {
   const vehicle = await getOwnedVehicle(req.params.vehicleId, req.user.id);
   if (!vehicle) return res.status(404).json({ error: 'Vehicle not found' });
@@ -62,6 +108,7 @@ router.post('/enable', async (req, res) => {
     data: {
       shareToken: token,
       shareLevel: shareLevel && shareLevel !== 'NONE' ? shareLevel : 'FULL',
+      shareEverEnabled: true,
       ...(visibility && { visibility }),
     },
     include: { badge: true },
@@ -107,23 +154,29 @@ router.patch('/', async (req, res) => {
   });
 });
 
+/**
+ * Rotate the share token only. Must not touch events, mileage, trust score,
+ * shareLevel, visibility, or any other vehicle fields.
+ */
 router.post('/regenerate-token', async (req, res) => {
   const vehicle = await getOwnedVehicle(req.params.vehicleId, req.user.id);
   if (!vehicle) return res.status(404).json({ error: 'Vehicle not found' });
   if (vehicle.shareLevel === 'NONE') {
-    return res.status(400).json({ error: 'Enable sharing first' });
+    return res.status(400).json({ error: 'Enable sharing first before regenerating the link.' });
   }
 
   const token = generateShareToken();
   const updated = await prisma.vehicle.update({
     where: { id: vehicle.id },
-    data: { shareToken: token },
+    // Intentionally only shareToken (+ mark ever-enabled). No history/trust changes.
+    data: { shareToken: token, shareEverEnabled: true },
   });
 
   const appBase = process.env.APP_BASE_URL || 'http://localhost:5173';
   res.json({
     shareToken: updated.shareToken,
     shareUrl: `${appBase}/history/${updated.shareToken}`,
+    message: 'Share link rotated. History and trust score are unchanged.',
   });
 });
 
@@ -138,7 +191,7 @@ router.post('/badge', async (req, res) => {
     shareLevel = 'FULL';
     await prisma.vehicle.update({
       where: { id: vehicle.id },
-      data: { shareToken, shareLevel },
+      data: { shareToken, shareLevel, shareEverEnabled: true },
     });
   }
 

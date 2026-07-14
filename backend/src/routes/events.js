@@ -2,13 +2,13 @@ import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { formParser } from '../lib/upload.js';
+import { assertEventDate, assertMileageNotBelowVehicle } from '../lib/integrity.js';
 
 const router = Router({ mergeParams: true });
 router.use(requireAuth);
 router.use(requireRole('OWNER'));
 
 function readFields(req) {
-  // Supports FormData (Netlify) and JSON (local dev)
   const body = req.body && typeof req.body === 'object' ? req.body : {};
   return {
     eventType: body.eventType,
@@ -21,7 +21,9 @@ function readFields(req) {
 }
 
 async function getOwnedVehicle(vehicleId, ownerId) {
-  return prisma.vehicle.findFirst({ where: { id: vehicleId, ownerId } });
+  return prisma.vehicle.findFirst({
+    where: { id: vehicleId, ownerId, status: 'ACTIVE' },
+  });
 }
 
 function buildEventFilters(query) {
@@ -81,14 +83,12 @@ router.post('/', (req, res, next) => {
     }
 
     const parsedMileage = parseFloat(mileage);
-    if (Number.isNaN(parsedMileage) || parsedMileage < 0) {
-      return res.status(400).json({ error: 'mileage must be a valid number' });
-    }
+    const mileageErr = assertMileageNotBelowVehicle(parsedMileage, vehicle.mileage);
+    if (mileageErr) return res.status(400).json(mileageErr);
 
     const parsedDate = new Date(date);
-    if (Number.isNaN(parsedDate.getTime())) {
-      return res.status(400).json({ error: 'date must be valid' });
-    }
+    const dateErr = assertEventDate(parsedDate, vehicle.year);
+    if (dateErr) return res.status(400).json(dateErr);
 
     let parsedCost = null;
     if (cost !== undefined && cost !== null && cost !== '') {
@@ -161,35 +161,65 @@ router.patch('/:eventId', (req, res, next) => {
   }
   next();
 }, async (req, res) => {
-  const vehicle = await getOwnedVehicle(req.params.vehicleId, req.user.id);
-  if (!vehicle) return res.status(404).json({ error: 'Vehicle not found' });
+  try {
+    const vehicle = await getOwnedVehicle(req.params.vehicleId, req.user.id);
+    if (!vehicle) return res.status(404).json({ error: 'Vehicle not found' });
 
-  const existing = await prisma.maintenanceEvent.findFirst({
-    where: { id: req.params.eventId, vehicleId: vehicle.id },
-  });
-  if (!existing) return res.status(404).json({ error: 'Event not found' });
-  if (existing.source === 'SHOP' || existing.verified) {
-    return res.status(403).json({ error: 'Verified shop records cannot be edited by the owner' });
+    const existing = await prisma.maintenanceEvent.findFirst({
+      where: { id: req.params.eventId, vehicleId: vehicle.id },
+    });
+    if (!existing) return res.status(404).json({ error: 'Event not found' });
+    if (existing.source === 'SHOP' || existing.verified) {
+      return res.status(403).json({ error: 'Verified shop records cannot be edited by the owner' });
+    }
+
+    const { eventType, date, mileage, garageName, notes, cost } = readFields(req);
+
+    let nextMileage = existing.mileage;
+    if (mileage !== undefined && mileage !== null && mileage !== '') {
+      nextMileage = parseFloat(mileage);
+      // Floor is the vehicle's stored odometer. If this event currently equals
+      // the vehicle mileage, lowering it would violate monotonic odometer history.
+      const mileageErr = assertMileageNotBelowVehicle(nextMileage, vehicle.mileage);
+      if (mileageErr) return res.status(400).json(mileageErr);
+    }
+
+    let nextDate = existing.date;
+    if (date !== undefined && date !== null && date !== '') {
+      nextDate = new Date(date);
+      const dateErr = assertEventDate(nextDate, vehicle.year);
+      if (dateErr) return res.status(400).json(dateErr);
+    }
+
+    const event = await prisma.maintenanceEvent.update({
+      where: { id: req.params.eventId },
+      data: {
+        ...(eventType !== undefined && { eventType: eventType.trim() }),
+        ...(date !== undefined && date !== null && date !== '' && { date: nextDate }),
+        ...(mileage !== undefined && mileage !== null && mileage !== '' && { mileage: nextMileage }),
+        ...(cost !== undefined && { cost: cost === '' || cost == null ? null : parseFloat(cost) }),
+        ...(garageName !== undefined && { garageName: garageName?.trim() || null }),
+        ...(notes !== undefined && { notes: notes?.trim() || null }),
+      },
+      include: {
+        documents: { include: { ocrResult: true } },
+        verification: { include: { shop: { select: { id: true, shopName: true, fullName: true } } } },
+        createdByShop: { select: { id: true, shopName: true, fullName: true } },
+      },
+    });
+
+    if (nextMileage > vehicle.mileage) {
+      await prisma.vehicle.update({
+        where: { id: vehicle.id },
+        data: { mileage: nextMileage },
+      });
+    }
+
+    res.json({ event });
+  } catch (err) {
+    console.error('update event failed:', err);
+    res.status(500).json({ error: err.message || 'Failed to update event' });
   }
-
-  const { eventType, date, mileage, garageName, notes, cost } = readFields(req);
-  const event = await prisma.maintenanceEvent.update({
-    where: { id: req.params.eventId },
-    data: {
-      ...(eventType !== undefined && { eventType: eventType.trim() }),
-      ...(date !== undefined && { date: new Date(date) }),
-      ...(mileage !== undefined && { mileage: parseFloat(mileage) }),
-      ...(cost !== undefined && { cost: cost === '' || cost == null ? null : parseFloat(cost) }),
-      ...(garageName !== undefined && { garageName: garageName?.trim() || null }),
-      ...(notes !== undefined && { notes: notes?.trim() || null }),
-    },
-    include: {
-      documents: { include: { ocrResult: true } },
-      verification: { include: { shop: { select: { id: true, shopName: true, fullName: true } } } },
-      createdByShop: { select: { id: true, shopName: true, fullName: true } },
-    },
-  });
-  res.json({ event });
 });
 
 router.delete('/:eventId', async (req, res) => {

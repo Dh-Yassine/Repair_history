@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../lib/prisma.js';
 import { requireAuth, requireSupabaseUser } from '../middleware/auth.js';
-import { isSupabaseConfigured } from '../lib/supabase.js';
+import { isSupabaseConfigured, supabaseAuthUserExists } from '../lib/supabase.js';
 
 const router = Router();
 
@@ -46,7 +46,7 @@ router.post('/register/shop', async (req, res) => {
         role: 'SHOP',
         shopName: shopName.trim(),
         address: address?.trim() || null,
-        shopVerified: true,
+        shopVerified: false,
       },
     });
 
@@ -168,8 +168,13 @@ router.post('/sync-profile', requireSupabaseUser, async (req, res) => {
     if (!email) return res.status(400).json({ error: 'Email required from auth provider' });
 
     const emailTaken = await prisma.user.findUnique({ where: { email } });
-    if (emailTaken) {
-      return res.status(409).json({ error: 'Email already registered with a different account' });
+    if (emailTaken && emailTaken.id !== authUser.id) {
+      const authStillExists = await supabaseAuthUserExists(emailTaken.id);
+      if (authStillExists) {
+        return res.status(409).json({ error: 'Email already registered with a different account' });
+      }
+      // Supabase auth was deleted but app profile remained — allow re-signup
+      await prisma.user.delete({ where: { id: emailTaken.id } });
     }
 
     const resolvedRole = role || meta.role;
@@ -188,7 +193,7 @@ router.post('/sync-profile', requireSupabaseUser, async (req, res) => {
         role: userRole,
         shopName: userRole === 'SHOP' ? resolvedShopName : null,
         address: userRole === 'SHOP' ? (address ? String(address).trim() : meta.address ? String(meta.address).trim() : null) : null,
-        shopVerified: userRole === 'SHOP',
+        shopVerified: false,
       },
     });
 
@@ -214,18 +219,151 @@ router.get('/me', requireAuth, async (req, res) => {
 
 router.patch('/me', requireAuth, async (req, res) => {
   try {
-    const { fullName, phone } = req.body;
+    const { fullName, phone, shopName, address, emailNotifications, inAppNotifications } = req.body;
+    if (fullName !== undefined && !String(fullName).trim()) {
+      return res.status(400).json({ error: 'Name cannot be empty' });
+    }
+    const isShop = req.user.role === 'SHOP';
     const user = await prisma.user.update({
       where: { id: req.user.id },
       data: {
-        ...(fullName !== undefined && { fullName: fullName.trim() }),
-        ...(phone !== undefined && { phone: phone?.trim() || null }),
+        ...(fullName !== undefined && { fullName: String(fullName).trim() }),
+        ...(phone !== undefined && { phone: String(phone).trim() || null }),
+        ...(isShop && shopName !== undefined && String(shopName).trim()
+          ? { shopName: String(shopName).trim() }
+          : {}),
+        ...(isShop && address !== undefined && { address: String(address).trim() || null }),
+        ...(emailNotifications !== undefined && { emailNotifications: Boolean(emailNotifications) }),
+        ...(inAppNotifications !== undefined && { inAppNotifications: Boolean(inAppNotifications) }),
       },
     });
     res.json({ user: publicUser(user) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Profile update failed' });
+  }
+});
+
+/**
+ * Password change for local JWT mode. With Supabase Auth enabled the client
+ * calls supabase.auth.updateUser({ password }) directly instead.
+ */
+router.post('/change-password', requireAuth, async (req, res) => {
+  if (isSupabaseConfigured()) {
+    return res.status(400).json({ error: 'Password changes are handled by the sign-in provider.' });
+  }
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Current and new password are required' });
+    }
+    if (String(newPassword).length < 6) {
+      return res.status(400).json({ error: 'New password must be at least 6 characters' });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+    if (!user?.passwordHash || !(await bcrypt.compare(currentPassword, user.passwordHash))) {
+      return res.status(401).json({ error: 'Current password is incorrect' });
+    }
+
+    const passwordHash = await bcrypt.hash(String(newPassword), 10);
+    await prisma.user.update({ where: { id: user.id }, data: { passwordHash } });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Password change failed' });
+  }
+});
+
+/**
+ * Account deletion.
+ * If the user has any vehicle with an active/ever share link OR any shop-verified
+ * event, anonymize PII instead of hard-deleting so buyer share links keep working.
+ */
+router.delete('/me', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (user.deletedAt) {
+      return res.status(400).json({ error: 'This account has already been deleted.' });
+    }
+
+    const vehicles = await prisma.vehicle.findMany({
+      where: { ownerId: userId },
+      select: {
+        id: true,
+        shareToken: true,
+        shareEverEnabled: true,
+        events: { select: { verified: true }, where: { verified: true }, take: 1 },
+      },
+    });
+
+    const hasProtectedHistory = vehicles.some(
+      (v) => v.shareToken || v.shareEverEnabled || v.events.length > 0
+    );
+
+    // Also protect if this user (as a shop) created verified events still on other vehicles
+    const shopVerifiedCount = await prisma.maintenanceEvent.count({
+      where: { createdByShopId: userId, verified: true },
+    });
+    const shopVerificationCount = await prisma.verification.count({
+      where: { shopId: userId },
+    });
+
+    const mustAnonymize =
+      hasProtectedHistory || shopVerifiedCount > 0 || shopVerificationCount > 0;
+
+    if (mustAnonymize) {
+      const anonymized = await prisma.user.update({
+        where: { id: userId },
+        data: {
+          fullName: 'Deleted User',
+          email: `deleted+${userId}@deleted.autohistory.local`,
+          phone: null,
+          passwordHash: null,
+          shopName: user.role === 'SHOP' ? 'Former shop' : null,
+          address: null,
+          banned: true,
+          deletedAt: new Date(),
+        },
+      });
+
+      // Best-effort: remove Supabase auth user so the email can be reused
+      try {
+        const { getSupabaseAdmin, isSupabaseConfigured } = await import('../lib/supabase.js');
+        if (isSupabaseConfigured()) {
+          const admin = getSupabaseAdmin();
+          await admin?.auth.admin.deleteUser(userId);
+        }
+      } catch (authErr) {
+        console.warn('Supabase auth delete after anonymize failed:', authErr.message);
+      }
+
+      return res.json({
+        anonymized: true,
+        message:
+          'Account anonymized. Shared vehicle histories remain available to buyers who already have the link.',
+        user: publicUser(anonymized),
+      });
+    }
+
+    await prisma.user.delete({ where: { id: userId } });
+
+    try {
+      const { getSupabaseAdmin, isSupabaseConfigured } = await import('../lib/supabase.js');
+      if (isSupabaseConfigured()) {
+        const admin = getSupabaseAdmin();
+        await admin?.auth.admin.deleteUser(userId);
+      }
+    } catch (authErr) {
+      console.warn('Supabase auth delete after hard delete failed:', authErr.message);
+    }
+
+    res.status(204).send();
+  } catch (err) {
+    console.error('account delete failed:', err);
+    res.status(500).json({ error: err.message || 'Account deletion failed' });
   }
 });
 

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
+import { notifyUser, emailUser } from '../lib/notify.js';
 
 const router = Router();
 
@@ -24,6 +25,33 @@ router.get('/featured-shops', async (_req, res) => {
     take: 6,
   });
   res.json({ ads });
+});
+
+/** Owner requests a quote/booking from a featured shop. Notifies the shop. */
+router.post('/featured-shops/:adId/contact', requireAuth, requireRole('OWNER'), async (req, res) => {
+  try {
+    const ad = await prisma.featuredShopAd.findUnique({
+      where: { id: req.params.adId },
+      include: { shop: { select: { id: true, shopName: true } } },
+    });
+    if (!ad || !ad.active) return res.status(404).json({ error: 'This shop listing is no longer active.' });
+
+    const owner = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { fullName: true, email: true, phone: true },
+    });
+
+    const message = req.body?.message?.trim().slice(0, 500) || null;
+    const contactMsg = `Quote request from ${owner.fullName} (${owner.email}${owner.phone ? `, ${owner.phone}` : ''})${message ? `: "${message}"` : '.'}`;
+
+    await notifyUser(ad.shop.id, contactMsg, 'contact');
+    await emailUser(ad.shop.id, 'AutoHistory: new quote request', `${contactMsg}\n\nReply directly to the customer to schedule.`);
+
+    res.status(201).json({ ok: true, message: `Request sent to ${ad.shop.shopName || 'the shop'}. They will contact you by email.` });
+  } catch (err) {
+    console.error('featured shop contact failed:', err);
+    res.status(500).json({ error: 'Could not send your request. Try again.' });
+  }
 });
 
 router.post('/badge-events', async (req, res) => {
@@ -72,6 +100,16 @@ router.get('/badge-analytics', requirePartnerKey, async (req, res) => {
 router.post('/featured-shops', requireAuth, requireRole('SHOP', 'ADMIN'), async (req, res) => {
   const shopId = req.user.role === 'ADMIN' ? req.body.shopId : req.user.id;
   if (!shopId) return res.status(400).json({ error: 'shopId required' });
+
+  if (req.user.role === 'SHOP') {
+    const me = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { shopVerified: true },
+    });
+    if (!me?.shopVerified) {
+      return res.status(403).json({ error: 'Shop must be approved before creating featured ads' });
+    }
+  }
 
   const { ctaButton, startDate, endDate, days = 30 } = req.body;
   const start = startDate ? new Date(startDate) : new Date();

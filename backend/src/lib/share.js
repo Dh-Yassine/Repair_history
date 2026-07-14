@@ -4,6 +4,48 @@ export function generateShareToken() {
   return crypto.randomBytes(24).toString('hex');
 }
 
+/**
+ * Weighted trust score.
+ *
+ * Each event contributes weight = typeWeight × recencyFactor:
+ * - typeWeight: major mechanical work counts 3, routine service 2, minor/cosmetic 1.
+ * - recencyFactor: exponential decay with a 24-month half-life, floored at 0.25
+ *   so old verified history never becomes worthless.
+ *
+ * Score = 100 × (weighted verified) / (weighted total). A verified brake job
+ * last month therefore moves the score far more than a verified oil change
+ * from three years ago.
+ */
+const MAJOR_TYPES = /brake|timing|transmission|engine|clutch|suspension|gearbox|turbo|head gasket|injector|embrayage|frein|moteur|distribution/i;
+const MINOR_TYPES = /wiper|bulb|wash|detail|cosmetic|accessor|essuie|ampoule|lavage/i;
+
+export function eventTypeWeight(eventType) {
+  const t = String(eventType || '');
+  if (MAJOR_TYPES.test(t)) return 3;
+  if (MINOR_TYPES.test(t)) return 1;
+  return 2;
+}
+
+export function eventRecencyFactor(eventDate, now = new Date()) {
+  const date = eventDate instanceof Date ? eventDate : new Date(eventDate);
+  if (Number.isNaN(date.getTime())) return 0.25;
+  const ageMonths = Math.max(0, (now - date) / (1000 * 60 * 60 * 24 * 30.44));
+  return Math.max(0.25, Math.pow(0.5, ageMonths / 24));
+}
+
+export function computeTrustScore(events, now = new Date()) {
+  if (!events || events.length === 0) return 0;
+  let weightedTotal = 0;
+  let weightedVerified = 0;
+  for (const e of events) {
+    const w = eventTypeWeight(e.eventType) * eventRecencyFactor(e.date, now);
+    weightedTotal += w;
+    if (e.verified) weightedVerified += w;
+  }
+  if (weightedTotal === 0) return 0;
+  return Math.round((weightedVerified / weightedTotal) * 100);
+}
+
 export function canAccessPublic(vehicle, { partnerKey } = {}) {
   if (!vehicle.shareToken || vehicle.shareLevel === 'NONE') {
     return { allowed: false, reason: 'disabled' };

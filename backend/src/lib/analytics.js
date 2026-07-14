@@ -1,3 +1,5 @@
+import { computeTrustScore } from './share.js';
+
 const SERVICE_RULES = {
   'Oil change': { months: 6, km: 8000 },
   'Tire rotation': { months: 6, km: 10000 },
@@ -54,6 +56,8 @@ export function computeOwnerAnalytics(vehicles) {
     averageServiceCost: Math.round(averageServiceCost * 100) / 100,
     serviceFrequency,
     conversionRate: Math.round(conversionRate * 100) / 100,
+    /** Weighted (type × recency) trust score across all vehicles' events. */
+    trustScore: computeTrustScore(allEvents),
     verifiedCount,
     shopVerifiedCount,
     selfReportedCount,

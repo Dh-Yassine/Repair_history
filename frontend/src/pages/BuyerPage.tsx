@@ -24,10 +24,10 @@ export default function BuyerPage() {
     <PageTransition>
       <div className="hero-panel page-hero compact">
         <div className="hero-copy">
-          <p className="section-eyebrow">Buyer tools</p>
-          <h1 className="display page-title">Check vehicle history</h1>
+          <p className="section-eyebrow">Buyer</p>
+          <h1 className="display page-title">Vehicle history</h1>
           <p className="muted" style={{ marginTop: 10, maxWidth: 560 }}>
-            Paste the seller's AutoHistory share link to inspect every maintenance record before you commit to buying.
+            Paste a share link to review the maintenance timeline.
           </p>
         </div>
       </div>
@@ -51,12 +51,12 @@ export default function BuyerPage() {
               />
             </div>
             <p className="mono subtle" style={{ fontSize: 11, marginTop: 6 }}>
-              Tip: you can paste the full link or just the token at the end.
+              Full URL or token only.
             </p>
           </div>
           {error && <p className="error-msg">{error}</p>}
           <button type="submit" className="btn btn-solid">
-            Open history <ArrowRight size={16} />
+            View history <ArrowRight size={16} />
           </button>
         </form>
       </div>
@@ -70,7 +70,7 @@ export default function BuyerPage() {
             Verified records
           </h3>
           <p className="muted" style={{ fontSize: 13 }}>
-            These were created or certified directly by partner repair shops. They carry the strongest trust signal.
+            These were created or certified by partner shops. Highest trust level.
           </p>
         </div>
         <div className="card">

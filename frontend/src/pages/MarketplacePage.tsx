@@ -50,15 +50,15 @@ export default function MarketplacePage() {
           <div className="hero-icon" style={{ marginBottom: 14 }}>
             <ShoppingBag size={24} />
           </div>
-          <p className="section-eyebrow">Partner Marketplace</p>
-          <h1 className="display page-title">Parts matched to your car</h1>
+          <p className="section-eyebrow">Marketplace</p>
+          <h1 className="display page-title">Parts for your vehicle</h1>
           <p className="muted" style={{ marginTop: 10 }}>
             Pick a vehicle and AutoHistory filters compatible parts, supplier links, and universal accessories.
           </p>
         </div>
         <div className="hero-actions">
           <span className="tag tag-green">
-            <PackageCheck size={12} /> Affiliate-ready catalog
+            <PackageCheck size={12} /> Partner catalog
           </span>
         </div>
       </div>
@@ -134,7 +134,7 @@ export default function MarketplacePage() {
                     className="btn btn-outline btn-sm"
                     style={{ marginTop: 'auto', alignSelf: 'flex-start' }}
                   >
-                    Buy <ExternalLink size={14} />
+                    View listing <ExternalLink size={14} />
                   </a>
                 </article>
               ))}

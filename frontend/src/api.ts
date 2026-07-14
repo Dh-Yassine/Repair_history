@@ -83,6 +83,25 @@ export const api = {
 
   me: () => request<{ user: import('./types').User }>('/api/auth/me'),
 
+  updateProfile: (body: {
+    fullName?: string;
+    phone?: string;
+    shopName?: string;
+    address?: string;
+    emailNotifications?: boolean;
+    inAppNotifications?: boolean;
+  }) =>
+    request<{ user: import('./types').User }>('/api/auth/me', {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }),
+
+  changePassword: (body: { currentPassword: string; newPassword: string }) =>
+    request<{ ok: boolean }>('/api/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
   decodeVin: (vin: string) =>
     request<import('./types').VinDecode>(`/api/vin/${encodeURIComponent(vin.trim())}`),
 
@@ -90,6 +109,8 @@ export const api = {
     request<{ vehicles: import('./types').Vehicle[]; limits: import('./types').VehicleLimits }>(
       '/api/vehicles'
     ),
+
+  vehicle: (id: string) => request<{ vehicle: import('./types').Vehicle }>(`/api/vehicles/${id}`),
 
   createVehicle: (body: Record<string, unknown> | FormData) =>
     request<{ vehicle: import('./types').Vehicle }>('/api/vehicles', {
@@ -106,7 +127,16 @@ export const api = {
   vehiclePhotoUrl: (id: string) => `/api/vehicles/${id}/photo`,
 
   deleteVehicle: (id: string) =>
-    request<void>(`/api/vehicles/${id}`, { method: 'DELETE' }),
+    request<{ vehicle?: import('./types').Vehicle; archived?: boolean; message?: string } | void>(
+      `/api/vehicles/${id}`,
+      { method: 'DELETE' }
+    ),
+
+  deleteAccount: () =>
+    request<{ anonymized?: boolean; message?: string; user?: import('./types').User } | void>(
+      '/api/auth/me',
+      { method: 'DELETE' }
+    ),
 
   events: (vehicleId: string, params?: Record<string, string>) => {
     const qs = params ? `?${new URLSearchParams(params)}` : '';
@@ -170,9 +200,11 @@ export const api = {
     request<{ ok: boolean }>('/api/notifications/read-all', { method: 'POST' }),
 
   shopEvents: () =>
-    request<{ events: import('./types').MaintenanceEvent[]; shopName: string | null }>(
-      '/api/shop/events'
-    ),
+    request<{
+      events: import('./types').MaintenanceEvent[];
+      shopName: string | null;
+      connectedOwners?: number;
+    }>('/api/shop/events'),
 
   shopVerifications: () =>
     request<{ verifications: (import('./types').Verification & { event?: import('./types').MaintenanceEvent })[] }>(
@@ -180,7 +212,8 @@ export const api = {
     ),
 
   shopLookupVehicle: (body: {
-    ownerEmail: string;
+    q?: string;
+    ownerEmail?: string;
     vin?: string;
     make?: string;
     model?: string;
@@ -190,6 +223,9 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
+
+  shopMonthlyAnalytics: () =>
+    request<{ monthly: Array<{ month: string; count: number }> }>('/api/shop/analytics/monthly'),
 
   shopCreateEvent: (
     body: {
@@ -221,6 +257,11 @@ export const api = {
 
   getShareSettings: (vehicleId: string) =>
     request<{ share: import('./types').ShareSettings }>(`/api/vehicles/${vehicleId}/share`),
+
+  sharePreview: (vehicleId: string, level: 'SUMMARY' | 'FULL') =>
+    request<import('./types').PublicHistory>(
+      `/api/vehicles/${vehicleId}/share/preview?level=${level}`
+    ),
 
   enableSharing: (vehicleId: string, body: { shareLevel?: string; visibility?: string }) =>
     request<{ share: import('./types').ShareSettings }>(`/api/vehicles/${vehicleId}/share/enable`, {
@@ -300,8 +341,19 @@ export const api = {
 
   shopProofUrl: (filename: string) => `/api/shop/proofs/${encodeURIComponent(filename)}`,
 
+  shopDocumentFile: (eventId: string, documentId: string) =>
+    request<{ url: string; fileName: string; fileType: string }>(
+      `/api/shop/events/${eventId}/documents/${documentId}/file`
+    ),
+
   featuredShops: () =>
     request<{ ads: import('./types').FeaturedShopAd[] }>('/api/partners/featured-shops'),
+
+  contactFeaturedShop: (adId: string, message?: string) =>
+    request<{ ok: boolean; message: string }>(`/api/partners/featured-shops/${adId}/contact`, {
+      method: 'POST',
+      body: JSON.stringify({ message }),
+    }),
 
   marketplaceParts: (vehicleId: string) =>
     request<{ vehicle: { make: string; model: string; year: number }; parts: import('./types').SparePart[] }>(
@@ -324,6 +376,18 @@ export const api = {
   adminStats: () => request<import('./types').AdminStats>('/api/admin/stats'),
 
   adminUsers: () => request<{ users: import('./types').AdminUser[] }>('/api/admin/users'),
+
+  adminPendingShops: () =>
+    request<{ shops: import('./types').AdminUser[] }>('/api/admin/shops/pending'),
+
+  adminVerifyShop: (id: string, approved: boolean) =>
+    request<{ shop: { id: string; shopVerified: boolean; banned: boolean } }>(
+      `/api/admin/shops/${id}/verify`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ approved }),
+      }
+    ),
 
   adminBanUser: (id: string, banned: boolean) =>
     request<{ user: { id: string; banned: boolean } }>(`/api/admin/users/${id}/ban`, {
@@ -350,4 +414,19 @@ export const api = {
 
   adminSeedDemoReport: () =>
     request<{ ok?: boolean; created?: number }>('/api/admin/seed-reports-demo', { method: 'POST' }),
+
+  trackVisit: (body: {
+    path: string;
+    sessionId: string;
+    referrer?: string;
+    userAgent?: string;
+    userId?: string;
+  }) =>
+    request<void>('/api/public/visits', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }).catch(() => undefined),
+
+  adminVisits: (range: '24h' | '7d' | '30d' | '90d' = '7d') =>
+    request<import('./types').SiteVisitStats>(`/api/admin/visits?range=${range}`),
 };

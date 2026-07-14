@@ -1,6 +1,5 @@
 import { prisma } from './prisma.js';
-import { notifyUser } from './notify.js';
-import { sendEmail } from './email.js';
+import { notifyUser, emailUser } from './notify.js';
 
 const DEFAULT_INTERVALS = {
   'Oil change': { months: 6, km: 8000 },
@@ -28,13 +27,17 @@ export async function generateRemindersFromEvents(vehicleId) {
     dueDate.setMonth(dueDate.getMonth() + rule.months);
     const dueMileage = last.mileage + rule.km;
 
+    const lastDateLabel = new Date(last.date).toLocaleDateString('en-GB');
     const reminder = await prisma.serviceReminder.create({
       data: {
         vehicleId,
         serviceType,
         dueDate,
         dueMileage,
-        message: `Based on your last ${serviceType.toLowerCase()}.`,
+        message: `Based on your last ${serviceType.toLowerCase()} on ${lastDateLabel} at ${Math.round(last.mileage).toLocaleString('en-US')} km (every ${rule.months} months or ${rule.km.toLocaleString('en-US')} km).`,
+        sourceEventId: last.id,
+        sourceDate: last.date,
+        sourceMileage: last.mileage,
       },
     });
     created.push(reminder);
@@ -59,8 +62,8 @@ export async function processDueReminders() {
     const msg = `${r.serviceType} due for ${label}${r.message ? ` — ${r.message}` : ''}`;
 
     await notifyUser(r.vehicle.ownerId, msg, 'reminder');
-    await sendEmail(
-      r.vehicle.owner.email,
+    await emailUser(
+      r.vehicle.ownerId,
       `AutoHistory: ${r.serviceType} reminder`,
       `${msg}\n\nLog in to AutoHistory to schedule service.`
     );

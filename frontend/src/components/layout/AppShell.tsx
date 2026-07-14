@@ -19,34 +19,34 @@ interface TopbarContext {
 
 function buildTopbarContext(pathname: string, role?: string): TopbarContext {
   if (pathname.startsWith('/vehicles/') && pathname.endsWith('/share')) {
-    return { title: 'Share history', subtitle: 'Choose access, detail, then send a buyer-ready link' };
+    return { title: 'Share history', subtitle: 'Set detail level, then copy the link' };
   }
   if (pathname.startsWith('/vehicles/')) {
-    return { title: 'Timeline', subtitle: 'Verified shop records and self-reported events' };
+    return { title: 'Service history', subtitle: 'Shop-verified and owner records' };
   }
   if (pathname.startsWith('/analytics')) {
-    return { title: 'Analytics', subtitle: 'Trust score, cost trends, and upcoming services' };
+    return { title: 'Analytics', subtitle: 'Trust score, spend, and service types' };
   }
   if (pathname.startsWith('/marketplace')) {
-    return { title: 'Marketplace', subtitle: 'Parts and accessories matched to your vehicle' };
+    return { title: 'Marketplace', subtitle: 'Parts matched to your vehicle' };
   }
   if (pathname.startsWith('/shops')) {
-    return { title: 'Verified shops', subtitle: 'Partner garages that create trusted service records' };
+    return { title: 'Shops', subtitle: 'Partners that add verified records' };
   }
   if (pathname.startsWith('/settings')) {
-    return { title: 'Settings', subtitle: 'Profile, plan, and integrations' };
+    return { title: 'Settings', subtitle: 'Profile and plan' };
   }
   if (pathname.startsWith('/buyer') || pathname.startsWith('/history/')) {
-    return { title: 'Check history', subtitle: 'Inspect a seller-shared link before you buy' };
+    return { title: 'History', subtitle: 'Open a shared maintenance link' };
   }
   if (pathname.startsWith('/shop')) {
-    return { title: 'Shop operations', subtitle: 'Create verified records, manage owner reports' };
+    return { title: 'Shop', subtitle: 'Verified records and owner reports' };
   }
   if (pathname.startsWith('/admin')) {
-    return { title: 'Admin', subtitle: 'Platform overview' };
+    return { title: 'Admin', subtitle: 'Users, moderation, and partners' };
   }
   if (role === 'OWNER') {
-    return { title: 'Dashboard', subtitle: 'Your verified vehicle history at a glance' };
+    return { title: 'Dashboard', subtitle: 'Vehicles and recent activity' };
   }
   return { title: 'Dashboard', subtitle: '' };
 }
@@ -55,17 +55,17 @@ const ownerNav = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/analytics', icon: BarChart3, label: 'Analytics' },
   { to: '/marketplace', icon: ShoppingBag, label: 'Marketplace' },
-  { to: '/shops', icon: Wrench, label: 'Verified Shops' },
+  { to: '/shops', icon: Wrench, label: 'Shops' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ];
 
 const shopNav = [
-  { to: '/shop', icon: Wrench, label: 'Service Records' },
+  { to: '/shop', icon: Wrench, label: 'Records' },
   { to: '/analytics', icon: BarChart3, label: 'Analytics' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ];
 
-const buyerNav = [{ to: '/buyer', icon: Clock, label: 'Check History' }];
+const buyerNav = [{ to: '/buyer', icon: Clock, label: 'History' }];
 
 const adminNav = [{ to: '/admin', icon: Shield, label: 'Admin' }];
 

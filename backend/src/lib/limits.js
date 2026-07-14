@@ -2,7 +2,9 @@ import { prisma } from './prisma.js';
 
 export async function getVehicleLimits(userId) {
   const user = await prisma.user.findUnique({ where: { id: userId } });
-  const count = await prisma.vehicle.count({ where: { ownerId: userId } });
+  const count = await prisma.vehicle.count({
+    where: { ownerId: userId, status: 'ACTIVE' },
+  });
   const max = user?.maxVehicles ?? 3;
   const isPaid = user?.subscriptionType !== 'free';
   return {

@@ -88,9 +88,12 @@ export default function NotificationsPanel() {
             </div>
             <div className="notifications-panel-body">
               {notifications.length === 0 ? (
-                <p className="muted" style={{ fontSize: 13, margin: 0 }}>
-                  No notifications yet
-                </p>
+                <div style={{ padding: '8px 0' }}>
+                  <p className="muted" style={{ fontSize: 13, margin: 0 }}>
+                    Nothing yet. You&apos;ll be notified here when a shop verifies a record or a
+                    service reminder comes due.
+                  </p>
+                </div>
               ) : (
                 notifications.map((n) => (
                   <button

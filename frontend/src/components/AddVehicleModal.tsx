@@ -54,6 +54,8 @@ export default function AddVehicleModal({
 
   useOverlayPanel(open, handleClose);
 
+  const [decodeFailed, setDecodeFailed] = useState(false);
+
   async function decodeVin() {
     if (vin.length < 11) {
       setError('Enter at least 11 characters of the VIN');
@@ -61,6 +63,7 @@ export default function AddVehicleModal({
     }
     setDecoding(true);
     setError('');
+    setDecodeFailed(false);
     try {
       const d = await api.decodeVin(vin);
       setMake(d.make);
@@ -68,8 +71,9 @@ export default function AddVehicleModal({
       if (d.year) setYear(String(d.year));
       setVin(d.vin);
       setStep(2);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not decode VIN');
+    } catch {
+      setDecodeFailed(true);
+      setError("Couldn't find that VIN — enter the details manually below.");
     } finally {
       setDecoding(false);
     }
@@ -100,6 +104,7 @@ export default function AddVehicleModal({
       const form = new FormData();
       if (vin) form.append('vin', vin);
       if (serialNumber) form.append('serialNumber', serialNumber);
+      if (nickname.trim()) form.append('nickname', nickname.trim());
       form.append('make', make);
       form.append('model', model);
       form.append('year', year);
@@ -108,7 +113,7 @@ export default function AddVehicleModal({
       await api.createVehicle(form);
       setStep(3);
       onSuccess();
-      toast.success('Vehicle added to your garage');
+      toast.success('Vehicle added');
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to add vehicle';
       setError(msg);
@@ -145,8 +150,8 @@ export default function AddVehicleModal({
               </h2>
               <p className="muted" style={{ fontSize: 13, marginTop: 4 }}>
                 {step === 1 && identifierLabel}
-                {step === 2 && 'Add a photo and a few details'}
-                {step === 3 && 'All set'}
+                {step === 2 && 'Photo and details'}
+                {step === 3 && 'Vehicle added'}
               </p>
             </div>
             <button type="button" className="btn btn-ghost btn-sm" onClick={handleClose} aria-label="Close">
@@ -158,7 +163,7 @@ export default function AddVehicleModal({
         <div style={{ padding: 24 }}>
           {!canAdd ? (
             <div>
-              <p className="error-msg">You've reached your free plan limit (3 vehicles).</p>
+              <p className="error-msg">Free plan limit reached (3 vehicles).</p>
               <p className="muted" style={{ fontSize: 13, marginTop: 8 }}>
                 Upgrade your plan to add more vehicles and unlock advanced sharing features.
               </p>
@@ -167,36 +172,6 @@ export default function AddVehicleModal({
             <AnimatePresence mode="wait">
               {step === 1 && (
                 <motion.div key="s1" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                  <div className="segmented" style={{ marginBottom: 16, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                    <button
-                      type="button"
-                      className={mode === 'vin' ? 'active' : ''}
-                      style={{ flex: '1 1 auto' }}
-                      onClick={() => { setMode('vin'); setError(''); }}
-                    >
-                      <ScanLine size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />
-                      VIN
-                    </button>
-                    <button
-                      type="button"
-                      className={mode === 'serial' ? 'active' : ''}
-                      style={{ flex: '1 1 auto' }}
-                      onClick={() => { setMode('serial'); setError(''); }}
-                    >
-                      <Hash size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />
-                      N° série
-                    </button>
-                    <button
-                      type="button"
-                      className={mode === 'manual' ? 'active' : ''}
-                      style={{ flex: '1 1 auto' }}
-                      onClick={() => { setMode('manual'); setError(''); }}
-                    >
-                      <Keyboard size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />
-                      Manual
-                    </button>
-                  </div>
-
                   {mode === 'vin' ? (
                     <>
                       <div className="field">
@@ -216,21 +191,58 @@ export default function AddVehicleModal({
                           />
                         </div>
                         <p className="mono subtle" style={{ fontSize: 11, marginTop: 4 }}>
-                          {vin.length} / 17 · International 17-character identifier
+                          {vin.length} / 17 · Make, model, and year are filled in automatically
                         </p>
                       </div>
                       {error && <p className="error-msg">{error}</p>}
-                      <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+                      <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
                         <button type="button" className="btn btn-solid" onClick={decodeVin} disabled={decoding}>
-                          {decoding ? 'Scanning…' : 'Decode VIN'}
+                          {decoding ? 'Decoding…' : 'Decode VIN'}
                         </button>
+                        {decodeFailed && (
+                          <button
+                            type="button"
+                            className="btn btn-outline"
+                            onClick={() => { setMode('manual'); setError(''); setDecodeFailed(false); }}
+                          >
+                            <Keyboard size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />
+                            Enter details manually
+                          </button>
+                        )}
                         <button type="button" className="btn btn-ghost" onClick={handleClose}>
                           Cancel
+                        </button>
+                      </div>
+                      <div style={{ marginTop: 20, paddingTop: 14, borderTop: '1px solid var(--color-border)', display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-sm"
+                          onClick={() => { setMode('serial'); setError(''); }}
+                        >
+                          <Hash size={13} style={{ verticalAlign: 'middle', marginRight: 5 }} />
+                          No VIN? Use the French n° série
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-sm"
+                          onClick={() => { setMode('manual'); setError(''); }}
+                        >
+                          <Keyboard size={13} style={{ verticalAlign: 'middle', marginRight: 5 }} />
+                          Enter details manually
                         </button>
                       </div>
                     </>
                   ) : (
                     <>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        style={{ marginBottom: 14 }}
+                        onClick={() => { setMode('vin'); setError(''); }}
+                      >
+                        <ScanLine size={13} style={{ verticalAlign: 'middle', marginRight: 5 }} />
+                        Back to VIN decode
+                      </button>
                       {mode === 'serial' && (
                         <div className="field">
                           <label className="label">Numéro de série (carte grise)</label>
@@ -331,7 +343,7 @@ export default function AddVehicleModal({
                       ) : (
                         <>
                           <Camera size={22} />
-                          <span>Add a photo, or we use the default AutoHistory visual</span>
+                          <span>Optional photo</span>
                         </>
                       )}
                       <input
@@ -368,7 +380,7 @@ export default function AddVehicleModal({
                     Vehicle added
                   </h3>
                   <p className="muted" style={{ margin: '12px 0 24px' }}>
-                    Visit a partner shop to add your first verified service record, or open the timeline to add a self-report.
+                    Add a shop-verified record later, or log a service on the timeline.
                   </p>
                   <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
                     <button type="button" className="btn btn-solid" onClick={handleClose}>

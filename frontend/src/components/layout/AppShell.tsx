@@ -11,63 +11,51 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import NotificationsPanel from '../NotificationsPanel';
+import LanguageToggle from '../LanguageToggle';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 interface TopbarContext {
   title: string;
   subtitle: string;
 }
 
-function buildTopbarContext(pathname: string, role?: string): TopbarContext {
+function buildTopbarContext(
+  pathname: string,
+  t: (key: string) => string,
+  role?: string
+): TopbarContext {
   if (pathname.startsWith('/vehicles/') && pathname.endsWith('/share')) {
-    return { title: 'Share history', subtitle: 'Set detail level, then copy the link' };
+    return { title: t('topbar.shareTitle'), subtitle: t('topbar.shareSub') };
   }
   if (pathname.startsWith('/vehicles/')) {
-    return { title: 'Service history', subtitle: 'Shop-verified and owner records' };
+    return { title: t('topbar.serviceTitle'), subtitle: t('topbar.serviceSub') };
   }
   if (pathname.startsWith('/analytics')) {
-    return { title: 'Analytics', subtitle: 'Trust score, spend, and service types' };
+    return { title: t('topbar.analyticsTitle'), subtitle: t('topbar.analyticsSub') };
   }
   if (pathname.startsWith('/marketplace')) {
-    return { title: 'Marketplace', subtitle: 'Parts matched to your vehicle' };
+    return { title: t('topbar.marketplaceTitle'), subtitle: t('topbar.marketplaceSub') };
   }
   if (pathname.startsWith('/shops')) {
-    return { title: 'Shops', subtitle: 'Partners that add verified records' };
+    return { title: t('topbar.shopsTitle'), subtitle: t('topbar.shopsSub') };
   }
   if (pathname.startsWith('/settings')) {
-    return { title: 'Settings', subtitle: 'Profile and plan' };
+    return { title: t('topbar.settingsTitle'), subtitle: t('topbar.settingsSub') };
   }
   if (pathname.startsWith('/buyer') || pathname.startsWith('/history/')) {
-    return { title: 'History', subtitle: 'Open a shared maintenance link' };
+    return { title: t('topbar.historyTitle'), subtitle: t('topbar.historySub') };
   }
   if (pathname.startsWith('/shop')) {
-    return { title: 'Shop', subtitle: 'Verified records and owner reports' };
+    return { title: t('topbar.shopTitle'), subtitle: t('topbar.shopSub') };
   }
   if (pathname.startsWith('/admin')) {
-    return { title: 'Admin', subtitle: 'Users, moderation, and partners' };
+    return { title: t('topbar.adminTitle'), subtitle: t('topbar.adminSub') };
   }
   if (role === 'OWNER') {
-    return { title: 'Dashboard', subtitle: 'Vehicles and recent activity' };
+    return { title: t('topbar.dashboardTitle'), subtitle: t('topbar.dashboardSub') };
   }
-  return { title: 'Dashboard', subtitle: '' };
+  return { title: t('topbar.dashboardTitle'), subtitle: '' };
 }
-
-const ownerNav = [
-  { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/analytics', icon: BarChart3, label: 'Analytics' },
-  { to: '/marketplace', icon: ShoppingBag, label: 'Marketplace' },
-  { to: '/shops', icon: Wrench, label: 'Shops' },
-  { to: '/settings', icon: Settings, label: 'Settings' },
-];
-
-const shopNav = [
-  { to: '/shop', icon: Wrench, label: 'Records' },
-  { to: '/analytics', icon: BarChart3, label: 'Analytics' },
-  { to: '/settings', icon: Settings, label: 'Settings' },
-];
-
-const buyerNav = [{ to: '/buyer', icon: Clock, label: 'History' }];
-
-const adminNav = [{ to: '/admin', icon: Shield, label: 'Admin' }];
 
 export default function AppShell({
   children,
@@ -77,8 +65,27 @@ export default function AppShell({
   theme?: 'owner' | 'shop' | 'buyer';
 }) {
   const { user, logout } = useAuth();
+  const { t } = useLanguage();
   const location = useLocation();
-  const topbar = buildTopbarContext(location.pathname, user?.role);
+  const topbar = buildTopbarContext(location.pathname, t, user?.role);
+
+  const ownerNav = [
+    { to: '/', icon: LayoutDashboard, label: t('nav.dashboard') },
+    { to: '/analytics', icon: BarChart3, label: t('nav.analytics') },
+    { to: '/marketplace', icon: ShoppingBag, label: t('nav.marketplace') },
+    { to: '/shops', icon: Wrench, label: t('nav.shops') },
+    { to: '/settings', icon: Settings, label: t('nav.settings') },
+  ];
+
+  const shopNav = [
+    { to: '/shop', icon: Wrench, label: t('nav.records') },
+    { to: '/analytics', icon: BarChart3, label: t('nav.analytics') },
+    { to: '/settings', icon: Settings, label: t('nav.settings') },
+  ];
+
+  const buyerNav = [{ to: '/buyer', icon: Clock, label: t('nav.history') }];
+  const adminNav = [{ to: '/admin', icon: Shield, label: t('nav.admin') }];
+
   const nav =
     user?.role === 'ADMIN'
       ? adminNav
@@ -94,6 +101,8 @@ export default function AppShell({
     .slice(0, 2)
     .toUpperCase();
 
+  const planLabel = t('common.plan', { plan: user?.subscriptionType || t('common.free') });
+
   return (
     <div className={`app-shell ${theme === 'shop' ? 'theme-shop' : ''}`}>
       <aside className="sidebar">
@@ -104,7 +113,7 @@ export default function AppShell({
         <nav className="sidebar-nav">
           {nav.map((item) => (
             <NavLink
-              key={item.label}
+              key={item.to}
               to={item.to}
               end={item.to === '/'}
               className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
@@ -121,10 +130,10 @@ export default function AppShell({
               {user?.shopName || user?.fullName}
             </div>
             <span className="tag" style={{ marginTop: 4, fontSize: 10 }}>
-              {user?.subscriptionType || 'free'} plan
+              {planLabel}
             </span>
           </div>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={logout} aria-label="Sign out">
+          <button type="button" className="btn btn-ghost btn-sm" onClick={logout} aria-label={t('common.signOut')}>
             <LogOut size={16} />
           </button>
         </div>
@@ -137,6 +146,7 @@ export default function AppShell({
             {topbar.subtitle && <span className="mono muted topbar-subtitle">{topbar.subtitle}</span>}
           </div>
           <div className="topbar-actions">
+            <LanguageToggle compact />
             {user?.role === 'OWNER' && <NotificationsPanel />}
             <div className="topbar-avatar mobile-only" aria-hidden>
               {initials}
@@ -145,7 +155,7 @@ export default function AppShell({
               type="button"
               className="btn btn-ghost btn-sm topbar-icon-btn mobile-only"
               onClick={logout}
-              aria-label="Sign out"
+              aria-label={t('common.signOut')}
             >
               <LogOut size={18} />
             </button>
@@ -154,10 +164,10 @@ export default function AppShell({
         <main className="page-content">{children}</main>
       </div>
 
-      <nav className="mobile-tabs" aria-label="Main navigation">
+      <nav className="mobile-tabs" aria-label={t('nav.mainNav')}>
         {nav.slice(0, 5).map((item) => (
           <NavLink
-            key={item.label}
+            key={item.to}
             to={item.to}
             end={item.to === '/'}
             className={({ isActive }) => `mobile-tab-link ${isActive ? 'active' : ''}`}

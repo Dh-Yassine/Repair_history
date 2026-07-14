@@ -6,10 +6,12 @@ import { useAuth } from '../context/AuthContext';
 import { isSupabaseAuthEnabled, supabase } from '../lib/supabase';
 import { useToast } from '../components/ui/Toast';
 import PageTransition from '../components/layout/PageTransition';
+import { useLanguage } from '../i18n/LanguageContext';
 import type { VehicleLimits } from '../types';
 
 export default function SettingsPage() {
   const { user, refreshUser, logout } = useAuth();
+  const { t } = useLanguage();
   const toast = useToast();
   const navigate = useNavigate();
 
@@ -49,7 +51,7 @@ export default function SettingsPage() {
   async function saveProfile(e: FormEvent) {
     e.preventDefault();
     if (!fullName.trim()) {
-      toast.error('Name cannot be empty');
+      toast.error(t('settings.nameRequired'));
       return;
     }
     setSavingProfile(true);
@@ -60,9 +62,9 @@ export default function SettingsPage() {
         ...(isShop ? { shopName: shopName.trim(), address: address.trim() } : {}),
       });
       await refreshUser();
-      toast.success('Profile saved');
+      toast.success(t('settings.profileSaved'));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not save profile');
+      toast.error(err instanceof Error ? err.message : t('settings.saveProfileFailed'));
     } finally {
       setSavingProfile(false);
     }
@@ -72,11 +74,11 @@ export default function SettingsPage() {
     e.preventDefault();
     setPasswordError('');
     if (newPassword.length < 6) {
-      setPasswordError('New password must be at least 6 characters.');
+      setPasswordError(t('settings.passwordTooShort'));
       return;
     }
     if (newPassword !== confirmPassword) {
-      setPasswordError('New passwords do not match.');
+      setPasswordError(t('settings.passwordMismatch'));
       return;
     }
     setSavingPassword(true);
@@ -90,9 +92,9 @@ export default function SettingsPage() {
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-      toast.success('Password updated');
+      toast.success(t('settings.passwordUpdated'));
     } catch (err) {
-      setPasswordError(err instanceof Error ? err.message : 'Password change failed');
+      setPasswordError(err instanceof Error ? err.message : t('settings.passwordChangeFailed'));
     } finally {
       setSavingPassword(false);
     }
@@ -110,14 +112,14 @@ export default function SettingsPage() {
       // revert on failure
       setEmailNotifications(emailNotifications);
       setInAppNotifications(inAppNotifications);
-      toast.error(err instanceof Error ? err.message : 'Could not save preferences');
+      toast.error(err instanceof Error ? err.message : t('settings.notifsSaveFailed'));
     }
   }
 
   async function deleteAccount() {
     setDeleteError('');
     if (deleteConfirm !== 'DELETE') {
-      setDeleteError('Type DELETE in capitals to confirm.');
+      setDeleteError(t('settings.typeDelete'));
       return;
     }
     setDeleting(true);
@@ -126,12 +128,12 @@ export default function SettingsPage() {
       const msg =
         result && 'message' in (result as object) && (result as { message?: string }).message
           ? (result as { message: string }).message
-          : 'Your account has been deleted.';
+          : t('settings.accountDeleted');
       toast.success(msg);
       logout();
       navigate('/', { replace: true });
     } catch (err) {
-      setDeleteError(err instanceof Error ? err.message : 'Account deletion failed');
+      setDeleteError(err instanceof Error ? err.message : t('settings.deleteFailed'));
       setDeleting(false);
     }
   }
@@ -141,20 +143,20 @@ export default function SettingsPage() {
   return (
     <PageTransition>
       <h1 className="display" style={{ fontSize: 40, marginBottom: 8 }}>
-        Settings
+        {t('settings.title')}
       </h1>
       <p className="muted" style={{ marginBottom: 24 }}>
-        Profile, security, notifications, and plan for {user?.email}
+        {t('settings.lead')} · {user?.email}
       </p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 640 }}>
         <section className="card">
           <h2 className="display" style={{ fontSize: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <UserRound size={18} /> Profile
+            <UserRound size={18} /> {t('settings.profile')}
           </h2>
           <form onSubmit={saveProfile} style={{ marginTop: 16 }}>
             <div className="field">
-              <label className="label" htmlFor="settings-name">Full name</label>
+              <label className="label" htmlFor="settings-name">{t('settings.fullName')}</label>
               <input
                 id="settings-name"
                 className="input"
@@ -164,20 +166,20 @@ export default function SettingsPage() {
               />
             </div>
             <div className="field">
-              <label className="label" htmlFor="settings-phone">Phone</label>
+              <label className="label" htmlFor="settings-phone">{t('settings.phone')}</label>
               <input
                 id="settings-phone"
                 className="input"
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="Optional"
+                placeholder={t('common.optional')}
               />
             </div>
             {isShop && (
               <>
                 <div className="field">
-                  <label className="label" htmlFor="settings-shopname">Shop name</label>
+                  <label className="label" htmlFor="settings-shopname">{t('settings.shopName')}</label>
                   <input
                     id="settings-shopname"
                     className="input"
@@ -187,38 +189,38 @@ export default function SettingsPage() {
                   />
                 </div>
                 <div className="field">
-                  <label className="label" htmlFor="settings-address">Address</label>
+                  <label className="label" htmlFor="settings-address">{t('settings.address')}</label>
                   <input
                     id="settings-address"
                     className="input"
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
-                    placeholder="Street, city"
+                    placeholder={t('settings.addressHint')}
                   />
                 </div>
               </>
             )}
             <div className="field">
-              <label className="label">Email</label>
+              <label className="label">{t('auth.email')}</label>
               <input className="input" value={user?.email ?? ''} disabled />
               <p className="mono subtle" style={{ fontSize: 11, marginTop: 4 }}>
-                Email is your sign-in identifier and cannot be changed here.
+                {t('settings.emailHint')}
               </p>
             </div>
             <button type="submit" className="btn btn-solid" disabled={savingProfile}>
-              {savingProfile ? 'Saving…' : 'Save profile'}
+              {savingProfile ? t('common.saving') : t('settings.saveProfile')}
             </button>
           </form>
         </section>
 
         <section className="card">
           <h2 className="display" style={{ fontSize: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <KeyRound size={18} /> Password
+            <KeyRound size={18} /> {t('settings.password')}
           </h2>
           <form onSubmit={savePassword} style={{ marginTop: 16 }}>
             {!supabaseAuth && (
               <div className="field">
-                <label className="label" htmlFor="settings-current-pass">Current password</label>
+                <label className="label" htmlFor="settings-current-pass">{t('settings.currentPassword')}</label>
                 <input
                   id="settings-current-pass"
                   className="input"
@@ -232,7 +234,7 @@ export default function SettingsPage() {
             )}
             <div className="grid-form-2">
               <div className="field">
-                <label className="label" htmlFor="settings-new-pass">New password</label>
+                <label className="label" htmlFor="settings-new-pass">{t('settings.newPassword')}</label>
                 <input
                   id="settings-new-pass"
                   className="input"
@@ -244,7 +246,7 @@ export default function SettingsPage() {
                 />
               </div>
               <div className="field">
-                <label className="label" htmlFor="settings-confirm-pass">Confirm new password</label>
+                <label className="label" htmlFor="settings-confirm-pass">{t('settings.confirmPassword')}</label>
                 <input
                   id="settings-confirm-pass"
                   className="input"
@@ -258,14 +260,14 @@ export default function SettingsPage() {
             </div>
             {passwordError && <p className="error-msg">{passwordError}</p>}
             <button type="submit" className="btn btn-solid" disabled={savingPassword}>
-              {savingPassword ? 'Updating…' : 'Update password'}
+              {savingPassword ? t('settings.updating') : t('settings.updatePassword')}
             </button>
           </form>
         </section>
 
         <section className="card">
           <h2 className="display" style={{ fontSize: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Bell size={18} /> Notifications
+            <Bell size={18} /> {t('settings.notifications')}
           </h2>
           <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
@@ -275,9 +277,9 @@ export default function SettingsPage() {
                 onChange={(e) => saveNotifications({ email: e.target.checked })}
               />
               <span>
-                Email notifications
+                {t('settings.emailNotifs')}
                 <span className="muted" style={{ display: 'block', fontSize: 13 }}>
-                  Service reminders and verification updates by email
+                  {t('settings.emailNotifsHint')}
                 </span>
               </span>
             </label>
@@ -288,9 +290,9 @@ export default function SettingsPage() {
                 onChange={(e) => saveNotifications({ inApp: e.target.checked })}
               />
               <span>
-                In-app notifications
+                {t('settings.inAppNotifs')}
                 <span className="muted" style={{ display: 'block', fontSize: 13 }}>
-                  Alerts in the notification bell inside the app
+                  {t('settings.inAppNotifsHint')}
                 </span>
               </span>
             </label>
@@ -299,27 +301,27 @@ export default function SettingsPage() {
 
         <section className="card">
           <h2 className="display" style={{ fontSize: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <CreditCard size={18} /> Plan
+            <CreditCard size={18} /> {t('settings.plan')}
           </h2>
           <div style={{ marginTop: 16 }}>
             <p>
-              Current plan: <span className="tag">{plan === 'free' ? 'Free' : plan}</span>
+              {t('settings.currentPlan')} <span className="tag">{plan === 'free' ? t('common.free') : plan}</span>
             </p>
             {isOwner && limits && (
               <p className="muted" style={{ marginTop: 8, fontSize: 14 }}>
-                {limits.count} of {limits.max} vehicles used
-                {limits.count >= limits.max && plan === 'free' && ' — you have reached the free limit'}
+                {t('settings.vehiclesUsed', { n: limits.count, max: limits.max })}
+                {limits.count >= limits.max && plan === 'free' && ` ${t('settings.atLimit')}`}
               </p>
             )}
             <p className="muted" style={{ marginTop: 8, fontSize: 13 }}>
-              The free plan includes {isOwner ? 'up to 3 vehicles, service logging, and share links' : 'all current features'}.
+              {isOwner ? t('settings.freeIncludes') : t('settings.allFeaturesIncluded')}
             </p>
             <a
               className="btn btn-outline btn-sm"
               style={{ marginTop: 12, display: 'inline-flex' }}
               href={`mailto:upgrade@autohistory.app?subject=Plan upgrade request&body=Account: ${user?.email}`}
             >
-              Contact us about a larger plan
+              {t('settings.contactLarger')}
             </a>
           </div>
         </section>
@@ -329,15 +331,13 @@ export default function SettingsPage() {
             className="display"
             style={{ fontSize: 20, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-danger, #b3261e)' }}
           >
-            <AlertTriangle size={18} /> Delete account
+            <AlertTriangle size={18} /> {t('settings.deleteAccount')}
           </h2>
           <p className="muted" style={{ marginTop: 12, fontSize: 14 }}>
-            If any of your vehicles has shared or shop-verified history, your personal details are
-            anonymized and the shared timelines stay available to buyers who already have the link.
-            Otherwise the account and its data are removed entirely. This cannot be undone.
+            {t('settings.deleteInfo')}
           </p>
           <div className="field" style={{ marginTop: 16 }}>
-            <label className="label" htmlFor="settings-delete-confirm">Type DELETE to confirm</label>
+            <label className="label" htmlFor="settings-delete-confirm">{t('settings.typeDelete')}</label>
             <input
               id="settings-delete-confirm"
               className="input input-mono"
@@ -354,7 +354,7 @@ export default function SettingsPage() {
             disabled={deleting || deleteConfirm !== 'DELETE'}
             onClick={deleteAccount}
           >
-            {deleting ? 'Deleting…' : 'Delete my account'}
+            {deleting ? t('settings.deleting') : t('settings.deleteMyAccount')}
           </button>
         </section>
       </div>

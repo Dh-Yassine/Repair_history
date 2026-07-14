@@ -4,12 +4,15 @@ import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import AuthVisualPanel from '../components/auth/AuthVisualPanel';
+import LanguageToggle from '../components/LanguageToggle';
 import { scrollFieldIntoView } from '../hooks/useOverlayPanel';
+import { useLanguage } from '../i18n/LanguageContext';
 
 const EASE = [0.16, 1, 0.3, 1] as [number, number, number, number];
 
 export default function LoginPage() {
   const { login } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -26,7 +29,7 @@ export default function LoginPage() {
         u.role === 'ADMIN' ? '/admin' : u.role === 'SHOP' ? '/shop' : u.role === 'BUYER' ? '/buyer' : '/'
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not sign in');
+      setError(err instanceof Error ? err.message : t('auth.couldNotSignIn'));
     } finally {
       setLoading(false);
     }
@@ -43,20 +46,23 @@ export default function LoginPage() {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5, ease: EASE, delay: 0.1 }}
         >
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+            <LanguageToggle compact />
+          </div>
           <div className="auth-form-mobile-logo sidebar-logo">
             <div className="sidebar-logo-mark">A</div>
             <span className="sidebar-logo-text">AUTOHISTORY</span>
           </div>
 
-          <p className="auth-form-eyebrow mono">Account</p>
-          <h1 className="display auth-form-title">Sign in</h1>
-          <p className="muted auth-form-desc">
-            Sign in to manage your vehicles and service history
-          </p>
+          <p className="auth-form-eyebrow mono">{t('auth.account')}</p>
+          <h1 className="display auth-form-title">{t('auth.signInTitle')}</h1>
+          <p className="muted auth-form-desc">{t('auth.signInLead')}</p>
 
           <form onSubmit={handleSubmit} className="auth-form">
             <div className="field">
-              <label className="label" htmlFor="email">Email</label>
+              <label className="label" htmlFor="email">
+                {t('auth.email')}
+              </label>
               <input
                 id="email"
                 className="input"
@@ -69,7 +75,9 @@ export default function LoginPage() {
               />
             </div>
             <div className="field">
-              <label className="label" htmlFor="password">Password</label>
+              <label className="label" htmlFor="password">
+                {t('auth.password')}
+              </label>
               <input
                 id="password"
                 className="input"
@@ -83,14 +91,18 @@ export default function LoginPage() {
             </div>
             {error && <p className="error-msg">{error}</p>}
             <button type="submit" className="btn btn-solid auth-submit" disabled={loading}>
-              {loading ? 'Signing in…' : (
-                <>Sign in <ArrowRight size={16} /></>
+              {loading ? (
+                t('auth.signingIn')
+              ) : (
+                <>
+                  {t('common.signIn')} <ArrowRight size={16} />
+                </>
               )}
             </button>
           </form>
 
           <p className="muted auth-switch">
-            No account yet? <Link to="/register">Create account</Link>
+            {t('auth.noAccount')} <Link to="/register">{t('common.createAccount')}</Link>
           </p>
         </motion.div>
       </div>

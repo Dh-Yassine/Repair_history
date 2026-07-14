@@ -7,6 +7,9 @@ import PageTransition, { stagger, staggerItem } from '../components/layout/PageT
 import EventTimelineItem from '../components/events/EventTimelineItem';
 import PublicEventSummaryCard from '../components/events/PublicEventSummaryCard';
 import TrustRing from '../components/ui/TrustRing';
+import LanguageToggle from '../components/LanguageToggle';
+import { useLanguage } from '../i18n/LanguageContext';
+import { translateShareMeta } from '../i18n/shareMeta';
 import type { PublicHistory } from '../types';
 
 function accessIcon(visibility?: string) {
@@ -15,6 +18,7 @@ function accessIcon(visibility?: string) {
 }
 
 export default function PublicHistoryPage() {
+  const { t } = useLanguage();
   const { token } = useParams<{ token: string }>();
   const [searchParams] = useSearchParams();
   const [data, setData] = useState<PublicHistory | null>(null);
@@ -29,7 +33,7 @@ export default function PublicHistoryPage() {
       .then(setData)
       .catch((e) => {
         const err = e as Error & { reason?: string };
-        setError(err.message || 'Unavailable');
+        setError(err.message || t('public.unavailable'));
         setErrorReason(err.reason || '');
       })
       .finally(() => setLoading(false));
@@ -49,22 +53,20 @@ export default function PublicHistoryPage() {
         <div className="card" style={{ maxWidth: 520, margin: '0 auto', textAlign: 'center' }}>
           <EyeOff size={32} style={{ color: 'var(--color-warning)', marginBottom: 12 }} />
           <h2 className="display" style={{ fontSize: 24 }}>
-            {errorReason === 'disabled' ? 'The owner turned sharing off' : 'History unavailable'}
+            {errorReason === 'disabled' ? t('public.sharingOff') : t('public.unavailable')}
           </h2>
           <p className="error-msg" style={{ marginTop: 12 }}>
             {error}
           </p>
           <p className="muted" style={{ marginTop: 16, fontSize: 14 }}>
-            This link points to an AutoHistory vehicle record — a maintenance timeline where every
-            service is logged with mileage and proof, and repair shops verify the work they did.
-            Ask the seller to re-enable sharing, or see how it works below.
+            {t('public.whatIsBody')}
           </p>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 20, flexWrap: 'wrap' }}>
             <Link to="/" className="btn btn-solid btn-sm">
-              What is AutoHistory?
+              {t('public.whatIs')}
             </Link>
             <Link to="/login" className="btn btn-ghost btn-sm">
-              Sign in
+              {t('common.signIn')}
             </Link>
           </div>
         </div>
@@ -75,6 +77,7 @@ export default function PublicHistoryPage() {
   if (!data) return null;
 
   const { vehicle, events, badge, share } = data;
+  const shareUi = share ? translateShareMeta(t, share) : null;
   const verifiedCount = vehicle.verifiedCount;
   const selfCount = Math.max(0, vehicle.totalEvents - verifiedCount);
   const trustScore =
@@ -89,24 +92,27 @@ export default function PublicHistoryPage() {
           <div className="sidebar-logo-mark">A</div>
           <span className="sidebar-logo-text">AUTOHISTORY</span>
         </div>
-        <span className="mono muted" style={{ fontSize: 11 }}>Shared history</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span className="mono muted" style={{ fontSize: 11 }}>{t('public.sharedHistory')}</span>
+          <LanguageToggle compact />
+        </div>
       </header>
       <PageTransition>
         <div className="page-content" style={{ maxWidth: 760, margin: '0 auto' }}>
-          {share && (
+          {share && shareUi && (
             <div className="public-share-banner">
               <div className="public-share-banner-item">
                 <AccessIcon size={16} />
                 <div>
-                  <strong>{share.accessLabel}</strong>
-                  <span>{share.accessDescription}</span>
+                  <strong>{shareUi.accessLabel}</strong>
+                  <span>{shareUi.accessDescription}</span>
                 </div>
               </div>
               <div className="public-share-banner-item">
                 {isSummary ? <Eye size={16} /> : <Eye size={16} style={{ color: 'var(--color-verified)' }} />}
                 <div>
-                  <strong>{share.detailLabel}</strong>
-                  <span>{share.description}</span>
+                  <strong>{shareUi.detailLabel}</strong>
+                  <span>{shareUi.description}</span>
                 </div>
               </div>
             </div>
@@ -117,15 +123,14 @@ export default function PublicHistoryPage() {
             <div style={{ flex: '0 0 auto', textAlign: 'center' }}>
               <TrustRing score={trustScore} size={200} />
               <p className="mono" style={{ fontSize: 13, marginTop: 10, letterSpacing: '0.08em' }}>
-                TRUST SCORE
+                {t('public.trustScore')}
               </p>
               <p className="muted" style={{ fontSize: 12, marginTop: 4, maxWidth: 220 }}>
-                Share of this history confirmed by real repair shops, weighted by how major and how
-                recent each service is.
+                {t('public.trustExplain')}
               </p>
             </div>
             <div style={{ flex: '1 1 320px', minWidth: 0 }}>
-              <p className="section-eyebrow">Vehicle</p>
+              <p className="section-eyebrow">{t('public.vehicle')}</p>
               <h1 className="display" style={{ fontSize: 30 }}>
                 {vehicle.year} {vehicle.make} {vehicle.model}
               </h1>
@@ -139,22 +144,22 @@ export default function PublicHistoryPage() {
                 </p>
               ) : (
                 <p className="mono subtle" style={{ marginTop: 8, fontSize: 12 }}>
-                  Identifier hidden in this view
+                  {t('public.idHidden')}
                 </p>
               )}
               <p className="muted" style={{ marginTop: 10 }}>
-                <span style={{ color: 'var(--color-verified)' }}>Verified</span> records were created or certified by repair shops.
-                <span style={{ color: 'var(--color-warning)' }}> Self-reported</span> records may include owner proof but are not shop-certified.
+                <span style={{ color: 'var(--color-verified)' }}>{t('vehicle.verified')}</span> {t('buyer.verifiedBody')}
+                <span style={{ color: 'var(--color-warning)' }}> {t('dashboard.selfReported')}</span> {t('buyer.selfBody')}
               </p>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14 }}>
                 <span className="tag tag-verified">
-                  <ShieldCheck size={12} /> {verifiedCount} verified
+                  <ShieldCheck size={12} /> {t('public.verifiedCount', { n: verifiedCount })}
                 </span>
                 <span className="tag tag-self">
-                  <FileText size={12} /> {selfCount} self-reported
+                  <FileText size={12} /> {t('public.selfCount', { n: selfCount })}
                 </span>
-                {share && (
-                  <span className="tag">{share.detailLabel}</span>
+                {shareUi && (
+                  <span className="tag">{shareUi.detailLabel}</span>
                 )}
               </div>
             </div>
@@ -162,22 +167,22 @@ export default function PublicHistoryPage() {
 
           <div className="metric-strip">
             <div className="metric-pill-card">
-              <span className="mono muted">Total records</span>
+              <span className="mono muted">{t('public.totalRecords')}</span>
               <strong>{vehicle.totalEvents}</strong>
             </div>
             <div className="metric-pill-card">
-              <span className="mono muted">Shop verified</span>
+              <span className="mono muted">{t('public.shopVerified')}</span>
               <strong>{verifiedCount}</strong>
             </div>
             <div className="metric-pill-card">
-              <span className="mono muted">Self-reported</span>
+              <span className="mono muted">{t('public.selfReported')}</span>
               <strong>{selfCount}</strong>
             </div>
           </div>
 
           {events.length === 0 ? (
             <div className="timeline-empty" style={{ marginTop: 16 }}>
-              No public maintenance records available yet.
+              {t('public.noRecords')}
             </div>
           ) : (
             <motion.ol

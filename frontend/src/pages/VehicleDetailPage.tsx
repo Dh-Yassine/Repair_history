@@ -26,6 +26,7 @@ import EventTimelineItem from '../components/events/EventTimelineItem';
 import { useToast } from '../components/ui/Toast';
 import { useOverlayPanel, scrollFieldIntoView } from '../hooks/useOverlayPanel';
 import { useIsMobileSheet } from '../hooks/useMediaQuery';
+import { useLanguage, useEventTypeLabel } from '../i18n/LanguageContext';
 import type { MaintenanceEvent, MaintenanceSuggestion, Vehicle } from '../types';
 
 const EVENT_TYPES = [
@@ -60,6 +61,8 @@ function formatFileSize(bytes: number): string {
 export default function VehicleDetailPage() {
   const { vehicleId } = useParams<{ vehicleId: string }>();
   const toast = useToast();
+  const { t } = useLanguage();
+  const labelEvent = useEventTypeLabel();
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const [events, setEvents] = useState<MaintenanceEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -159,7 +162,7 @@ export default function VehicleDetailPage() {
       const { events: list } = await api.events(vehicleId, params);
       setEvents(list);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load');
+      setError(e instanceof Error ? e.message : t('shop.failedLoad'));
     } finally {
       setLoading(false);
     }
@@ -191,13 +194,13 @@ export default function VehicleDetailPage() {
     try {
       const parsedMileage = Number(mileage);
       if (!Number.isFinite(parsedMileage) || parsedMileage < 0) {
-        throw new Error('Enter a valid mileage in km');
+        throw new Error(t('vehicle.invalidMileage'));
       }
       const eventDate = new Date(date);
       const today = new Date();
       today.setHours(23, 59, 59, 999);
       if (eventDate > today) {
-        throw new Error('Event date cannot be in the future.');
+        throw new Error(t('vehicle.futureDateError'));
       }
 
       const { event } = await api.createEvent(vehicleId, {
@@ -212,10 +215,10 @@ export default function VehicleDetailPage() {
       if (uploadFile) {
         try {
           await api.uploadDocument(vehicleId, event.id, uploadFile);
-          toast.info('Receipt attached to this event.');
+          toast.info(t('vehicle.receiptAttached'));
         } catch (uploadErr) {
-          const uploadMsg = uploadErr instanceof Error ? uploadErr.message : 'Receipt upload failed';
-          toast.error(`Event saved, but receipt upload failed: ${uploadMsg}`);
+          const uploadMsg = uploadErr instanceof Error ? uploadErr.message : t('common.failed');
+          toast.error(t('vehicle.eventSavedUploadFailed', { msg: uploadMsg }));
         }
       }
 
@@ -223,9 +226,9 @@ export default function VehicleDetailPage() {
       resetForm();
       await load();
       api.generateReminders(vehicleId).catch(() => {});
-      toast.success('Service record added.');
+      toast.success(t('vehicle.recordAdded'));
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed';
+      const msg = err instanceof Error ? err.message : t('common.failed');
       setError(msg);
       toast.error(msg);
     } finally {
@@ -241,13 +244,13 @@ export default function VehicleDetailPage() {
     try {
       const parsedMileage = Number(mileage);
       if (!Number.isFinite(parsedMileage) || parsedMileage < 0) {
-        throw new Error('Enter a valid mileage in km');
+        throw new Error(t('vehicle.invalidMileage'));
       }
       const eventDate = new Date(date);
       const today = new Date();
       today.setHours(23, 59, 59, 999);
       if (eventDate > today) {
-        throw new Error('Event date cannot be in the future.');
+        throw new Error(t('vehicle.futureDateError'));
       }
       await api.updateEvent(vehicleId, editEventTarget.id, {
         eventType,
@@ -260,9 +263,9 @@ export default function VehicleDetailPage() {
       setDrawerOpen(false);
       resetForm();
       await load();
-      toast.success('Service record updated.');
+      toast.success(t('vehicle.recordUpdated'));
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed';
+      const msg = err instanceof Error ? err.message : t('common.failed');
       setError(msg);
       toast.error(msg);
     } finally {
@@ -277,7 +280,7 @@ export default function VehicleDetailPage() {
   // warn inline before submit instead of failing on Save.
   const mileageWarning =
     mileage !== '' && Number.isFinite(parsedMileageInput) && parsedMileageInput < currentMileage
-      ? `Below the vehicle's current odometer (${currentMileage.toLocaleString()} km). Mileage can never decrease.`
+      ? t('vehicle.mileageWarn', { current: currentMileage.toLocaleString() })
       : '';
   const verifiedCount = events.filter((event) => event.verified).length;
   const selfReportedCount = events.filter((event) => !event.verified).length;
@@ -287,10 +290,10 @@ export default function VehicleDetailPage() {
       <div className="hero-panel page-hero compact">
         <div className="hero-copy">
           <Link to="/" className="mono muted" style={{ fontSize: 12 }}>
-            ← Dashboard
+            {t('vehicle.backDashboard')}
           </Link>
           <h1 className="display page-title" style={{ marginTop: 8 }}>
-            {vehicle ? vehicle.nickname || `${vehicle.year} ${vehicle.make} ${vehicle.model}` : 'Service history'}
+            {vehicle ? vehicle.nickname || `${vehicle.year} ${vehicle.make} ${vehicle.model}` : t('vehicle.serviceHistory')}
           </h1>
           {vehicle?.nickname && (
             <p className="mono muted" style={{ fontSize: 13 }}>
@@ -300,29 +303,29 @@ export default function VehicleDetailPage() {
           <p className="mono" style={{ color: 'var(--color-accent)', fontSize: 24 }}>
             {(vehicle?.mileage ?? headerMileage).toLocaleString()} km
           </p>
-          <p className="muted">Shop records are verified. Owner entries are self-reported and can include proof.</p>
+          <p className="muted">{t('vehicle.serviceLead')}</p>
         </div>
         <div className="hero-actions">
           <Link to={`/vehicles/${vehicleId}/share`} className="btn btn-primary">
-            Share history
+            {t('vehicle.shareHistory')}
           </Link>
           <button type="button" className="btn btn-solid" onClick={openAddDrawer}>
-            <Plus size={16} /> Add record
+            <Plus size={16} /> {t('vehicle.addRecord')}
           </button>
         </div>
       </div>
 
       <div className="metric-strip">
         <div className="metric-pill-card">
-          <span className="mono muted">Shop verified</span>
+          <span className="mono muted">{t('events.shopVerified')}</span>
           <strong>{verifiedCount}</strong>
         </div>
         <div className="metric-pill-card">
-          <span className="mono muted">Owner records</span>
+          <span className="mono muted">{t('auth.ownerRecords')}</span>
           <strong>{selfReportedCount}</strong>
         </div>
         <div className="metric-pill-card">
-          <span className="mono muted">Total records</span>
+          <span className="mono muted">{t('public.totalRecords')}</span>
           <strong>{events.length}</strong>
         </div>
       </div>
@@ -331,9 +334,9 @@ export default function VehicleDetailPage() {
         <div className="trust-callout verified">
           <ShieldCheck size={18} />
           <div>
-            <strong>Shop-verified records</strong>
+            <strong>{t('vehicle.trustVerifiedTitle')}</strong>
             <p style={{ margin: '4px 0 0', fontSize: 13 }}>
-              These are created or certified by a partner shop. They count fully toward your trust score.
+              {t('vehicle.trustVerifiedDesc')}
             </p>
           </div>
         </div>
@@ -342,9 +345,9 @@ export default function VehicleDetailPage() {
         <div className="trust-callout self">
           <FileText size={18} />
           <div>
-            <strong>Owner records</strong>
+            <strong>{t('auth.ownerRecords')}</strong>
             <p style={{ margin: '4px 0 0', fontSize: 13 }}>
-              Your own entries with optional proof. A partner shop can verify them later.
+              {t('vehicle.trustOwnerDesc')}
             </p>
           </div>
         </div>
@@ -353,10 +356,10 @@ export default function VehicleDetailPage() {
         <div className="trust-callout">
           <Info size={18} />
           <div>
-            <strong>Two trust levels</strong>
+            <strong>{t('vehicle.twoLevelsTitle')}</strong>
             <p style={{ margin: '4px 0 0', fontSize: 13 }}>
-              <span style={{ color: 'var(--color-verified)' }}>Verified</span> records are created by partner shops.
-              <span style={{ color: 'var(--color-warning)' }}> Owner</span> records can include uploaded proof.
+              <span style={{ color: 'var(--color-verified)' }}>{t('vehicle.verifiedRecordsDesc')}</span>
+              <span style={{ color: 'var(--color-warning)' }}> {t('vehicle.ownerRecordsDesc')}</span>
             </p>
           </div>
         </div>
@@ -364,12 +367,12 @@ export default function VehicleDetailPage() {
 
       <div className="control-bar">
         <div className="control-group">
-          <span className="mono muted" style={{ fontSize: 11 }}>TRUST</span>
+          <span className="mono muted" style={{ fontSize: 11 }}>{t('vehicle.trust')}</span>
           <div className="segmented">
             {[
-              { id: 'all', label: 'All' },
-              { id: 'verified', label: 'Verified' },
-              { id: 'self', label: 'Owner' },
+              { id: 'all', label: t('common.all') },
+              { id: 'verified', label: t('vehicle.verified') },
+              { id: 'self', label: t('vehicle.owner') },
             ].map((item) => (
               <button
                 key={item.id}
@@ -383,11 +386,11 @@ export default function VehicleDetailPage() {
           </div>
         </div>
         <div className="control-group pills-scroll">
-          <span className="mono muted" style={{ fontSize: 11 }}>TYPE</span>
+          <span className="mono muted" style={{ fontSize: 11 }}>{t('vehicle.type')}</span>
           <div className="pills-row">
           {FILTERS.map((f) => (
             <button key={f} type="button" className={`pill ${filterType === f ? 'active' : ''}`} onClick={() => setFilterType(f)}>
-              {f}
+              {f === 'All' ? t('common.all') : labelEvent(f)}
             </button>
           ))}
           </div>
@@ -401,29 +404,29 @@ export default function VehicleDetailPage() {
           <p style={{ fontSize: 48 }}>🚗</p>
           {filterType !== 'All' || trustFilter !== 'all' ? (
             <>
-              <p>No records match these filters.</p>
+              <p>{t('vehicle.emptyFiltered')}</p>
               <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 16, flexWrap: 'wrap' }}>
                 <button
                   type="button"
                   className="btn btn-primary"
                   onClick={() => { setFilterType('All'); setTrustFilter('all'); }}
                 >
-                  Clear filters
+                  {t('vehicle.clearFilters')}
                 </button>
               </div>
             </>
           ) : (
             <>
-              <p>No service records yet.</p>
+              <p>{t('dashboard.noRecords')}</p>
               <p className="muted" style={{ fontSize: 13, marginTop: 4 }}>
-                Log your first service below, or have a partner shop add a verified record.
+                {t('vehicle.emptyNoneSub')}
               </p>
               <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 16, flexWrap: 'wrap' }}>
                 <button type="button" className="btn btn-primary" onClick={openAddDrawer}>
-                  <Plus size={14} /> Log first service
+                  <Plus size={14} /> {t('vehicle.logFirst')}
                 </button>
                 <Link to="/shops" className="btn btn-ghost">
-                  Find a shop
+                  {t('vehicle.findShop')}
                 </Link>
               </div>
             </>
@@ -440,7 +443,7 @@ export default function VehicleDetailPage() {
                 onDelete={
                   ev.source !== 'SHOP' && !ev.verified
                     ? async () => {
-                        if (confirm('Delete this record?')) {
+                        if (confirm(t('vehicle.deleteConfirm'))) {
                           await api.deleteEvent(vehicleId!, ev.id);
                           load();
                         }
@@ -471,7 +474,7 @@ export default function VehicleDetailPage() {
               transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
               role="dialog"
               aria-modal="true"
-              aria-label={drawerMode === 'edit' ? 'Edit service record' : 'Add service record'}
+              aria-label={drawerMode === 'edit' ? t('vehicle.editService') : t('vehicle.addService')}
             >
               <form
                 onSubmit={drawerMode === 'edit' ? handleUpdate : handleCreate}
@@ -480,22 +483,22 @@ export default function VehicleDetailPage() {
                 <header className="drawer-header">
                   <div>
                     <span className="drawer-eyebrow">
-                      <FileText size={11} /> {drawerMode === 'edit' ? 'Edit record' : 'Owner record'}
+                      <FileText size={11} /> {drawerMode === 'edit' ? t('vehicle.editRecord') : t('vehicle.ownerRecord')}
                     </span>
                     <h2 className="display" style={{ marginTop: 10 }}>
-                      {drawerMode === 'edit' ? 'Edit service record' : 'Add service record'}
+                      {drawerMode === 'edit' ? t('vehicle.editService') : t('vehicle.addService')}
                     </h2>
                     <p>
                       {drawerMode === 'edit'
-                        ? 'Update the details of this owner record.'
-                        : 'Add details and optional proof (receipt or photo).'}
+                        ? t('vehicle.editServiceDesc')
+                        : t('vehicle.addServiceDesc')}
                     </p>
                   </div>
                   <button
                     type="button"
                     className="drawer-close"
                     onClick={closeDrawer}
-                    aria-label="Close"
+                    aria-label={t('common.close')}
                     disabled={submitting}
                   >
                     <X size={18} />
@@ -507,7 +510,7 @@ export default function VehicleDetailPage() {
                     <div className="drawer-suggestion">
                       <Sparkles size={16} />
                       <div>
-                        <strong style={{ display: 'block', fontSize: 13 }}>Recommendation</strong>
+                        <strong style={{ display: 'block', fontSize: 13 }}>{t('vehicle.recommendation')}</strong>
                         <span style={{ color: 'var(--color-text-muted)' }}>{suggestions[0].reason}</span>
                       </div>
                     </div>
@@ -515,20 +518,20 @@ export default function VehicleDetailPage() {
 
                   <section className="drawer-section">
                     <div className="drawer-section-head">
-                      <h3>Service type</h3>
-                      <span className="hint">Pick the closest match</span>
+                      <h3>{t('vehicle.serviceType')}</h3>
+                      <span className="hint">{t('vehicle.pickClosest')}</span>
                     </div>
                     <div className="event-type-grid">
-                      {orderEventTypes(events).map((t) => (
+                      {orderEventTypes(events).map((et) => (
                         <button
-                          key={t.id}
+                          key={et.id}
                           type="button"
-                          className={`event-type-card ${eventType === t.id ? 'selected' : ''}`}
-                          onClick={() => setEventType(t.id)}
-                          aria-pressed={eventType === t.id}
+                          className={`event-type-card ${eventType === et.id ? 'selected' : ''}`}
+                          onClick={() => setEventType(et.id)}
+                          aria-pressed={eventType === et.id}
                         >
-                          <t.icon size={18} />
-                          <span>{t.id}</span>
+                          <et.icon size={18} />
+                          <span>{labelEvent(et.id)}</span>
                         </button>
                       ))}
                     </div>
@@ -536,12 +539,12 @@ export default function VehicleDetailPage() {
 
                   <section className="drawer-section">
                     <div className="drawer-section-head">
-                      <h3>Service details</h3>
-                      <span className="hint">Required: date and mileage</span>
+                      <h3>{t('vehicle.serviceDetails')}</h3>
+                      <span className="hint">{t('vehicle.requiredDateMileage')}</span>
                     </div>
                     <div className="field-grid-2">
                       <div className="field" style={{ marginBottom: 0 }}>
-                        <label className="label" htmlFor="ev-date">Date</label>
+                        <label className="label" htmlFor="ev-date">{t('vehicle.date')}</label>
                         <input
                           id="ev-date"
                           className="input input-mono"
@@ -555,7 +558,7 @@ export default function VehicleDetailPage() {
                         />
                       </div>
                       <div className="field" style={{ marginBottom: 0 }}>
-                        <label className="label" htmlFor="ev-mileage">Mileage</label>
+                        <label className="label" htmlFor="ev-mileage">{t('vehicle.mileage')}</label>
                         <div className="input-prefix">
                           <input
                             id="ev-mileage"
@@ -579,7 +582,7 @@ export default function VehicleDetailPage() {
                     </div>
                     <div className="field-grid-2" style={{ marginTop: 12 }}>
                       <div className="field" style={{ marginBottom: 0 }}>
-                        <label className="label" htmlFor="ev-cost">Cost (optional)</label>
+                        <label className="label" htmlFor="ev-cost">{t('vehicle.costOptional')}</label>
                         <div className="input-prefix">
                           <span className="input-prefix-symbol">$</span>
                           <input
@@ -596,7 +599,7 @@ export default function VehicleDetailPage() {
                         </div>
                       </div>
                       <div className="field" style={{ marginBottom: 0 }}>
-                        <label className="label" htmlFor="ev-garage">Garage (optional)</label>
+                        <label className="label" htmlFor="ev-garage">{t('vehicle.garageOptional')}</label>
                         <input
                           id="ev-garage"
                           className="input"
@@ -608,7 +611,7 @@ export default function VehicleDetailPage() {
                       </div>
                     </div>
                     <div className="field" style={{ marginTop: 12, marginBottom: 0 }}>
-                      <label className="label" htmlFor="ev-notes">Notes (optional)</label>
+                      <label className="label" htmlFor="ev-notes">{t('vehicle.notesOptional')}</label>
                       <textarea
                         id="ev-notes"
                         className="textarea"
@@ -623,11 +626,11 @@ export default function VehicleDetailPage() {
 
                   {drawerMode === 'create' && <section className="drawer-section">
                     <div className="drawer-section-head">
-                      <h3>Proof of service</h3>
-                      <span className="hint">Optional but recommended</span>
+                      <h3>{t('vehicle.proofOfService')}</h3>
+                      <span className="hint">{t('vehicle.proofHint')}</span>
                     </div>
                     <p className="muted" style={{ fontSize: 13, marginTop: -4, marginBottom: 10 }}>
-                      Attach a receipt or photo. Buyers and shops can use it to confirm the work.
+                      {t('vehicle.proofDesc')}
                     </p>
                     <label className={`upload-zone-rich ${uploadFile ? 'has-file' : ''}`}>
                       <div className="upload-icon">
@@ -654,9 +657,9 @@ export default function VehicleDetailPage() {
                         ) : (
                           <>
                             <span className="upload-title" style={{ color: 'var(--color-text)' }}>
-                              Drop or browse a receipt
+                              {t('vehicle.dropBrowse')}
                             </span>
-                            <span className="upload-meta">JPG, PNG or PDF · up to 10 MB</span>
+                            <span className="upload-meta">{t('vehicle.fileHint')}</span>
                           </>
                         )}
                       </div>
@@ -668,7 +671,7 @@ export default function VehicleDetailPage() {
                             e.preventDefault();
                             onPickFile(null);
                           }}
-                          aria-label="Remove file"
+                          aria-label={t('vehicle.removeFile')}
                         >
                           <X size={16} />
                         </button>
@@ -694,20 +697,20 @@ export default function VehicleDetailPage() {
                     onClick={closeDrawer}
                     disabled={submitting}
                   >
-                    Cancel
+                    {t('common.cancel')}
                   </button>
                   <button type="submit" className="btn btn-solid" disabled={submitting}>
                     {submitting ? (
                       <>
-                        <Loader2 size={16} className="spinning" /> Saving…
+                        <Loader2 size={16} className="spinning" /> {t('common.saving')}
                       </>
                     ) : drawerMode === 'edit' ? (
                       <>
-                        <Pencil size={16} /> Save changes
+                        <Pencil size={16} /> {t('vehicle.saveChanges')}
                       </>
                     ) : (
                       <>
-                        <Plus size={16} /> Add record
+                        <Plus size={16} /> {t('vehicle.addRecord')}
                       </>
                     )}
                   </button>

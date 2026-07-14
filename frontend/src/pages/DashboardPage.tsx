@@ -11,9 +11,11 @@ import AnimatedNumber from '../components/ui/AnimatedNumber';
 import TrustRing from '../components/ui/TrustRing';
 import PageTransition, { stagger, staggerItem } from '../components/layout/PageTransition';
 import EventTimelineItem from '../components/events/EventTimelineItem';
+import { useLanguage } from '../i18n/LanguageContext';
 import type { Vehicle, VehicleLimits, OwnerAnalytics, MaintenanceEvent } from '../types';
 
 export default function DashboardPage() {
+  const { t } = useLanguage();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [activeId, setActiveId] = useState<string>('');
   const [limits, setLimits] = useState<VehicleLimits | null>(null);
@@ -84,7 +86,7 @@ export default function DashboardPage() {
     );
   }
 
-  const nextStep = computeNextStep({
+  const nextStep = computeNextStep(t, {
     vehiclesCount: vehicles.length,
     totalEvents,
     verifiedCount,
@@ -98,29 +100,29 @@ export default function DashboardPage() {
     <PageTransition>
       <div className="hero-panel page-hero">
         <div className="hero-copy">
-          <p className="section-eyebrow">Overview</p>
-          <h1 className="display page-title">Your vehicles</h1>
+          <p className="section-eyebrow">{t('dashboard.overview')}</p>
+          <h1 className="display page-title">{t('dashboard.yourVehicles')}</h1>
           <p className="muted" style={{ maxWidth: 620, marginTop: 10 }}>
-            Add shop-verified records through a partner, or log your own entries with proof.
+            {t('dashboard.heroLead')}
           </p>
           {limits && (
             <p className="mono muted" style={{ marginTop: 12 }}>
-              {limits.count}/{limits.max} vehicles · {limits.subscriptionType} plan
+              {t('dashboard.vehicleQuota', { count: limits.count, max: limits.max, plan: limits.subscriptionType })}
             </p>
           )}
         </div>
         <div className="hero-actions">
           <Link to="/shops" className="btn btn-primary">
-            <ShieldCheck size={18} /> Find a shop
+            <ShieldCheck size={18} /> {t('dashboard.findShop')}
           </Link>
           <button type="button" className="btn btn-solid" onClick={() => setModalOpen(true)} disabled={!limits?.canAdd}>
-            <Plus size={18} /> Add vehicle
+            <Plus size={18} /> {t('dashboard.addVehicle')}
           </button>
         </div>
       </div>
 
       {vehicles.length > 1 && (
-        <div className="vehicle-switcher" role="tablist" aria-label="Switch active vehicle">
+        <div className="vehicle-switcher" role="tablist" aria-label={t('dashboard.switchVehicle')}>
           {vehicles.map((v) => (
             <button
               key={v.id}
@@ -143,19 +145,19 @@ export default function DashboardPage() {
               className="vehicle-switch-pill add"
               onClick={() => setModalOpen(true)}
             >
-              <Plus size={14} /> Add another
+              <Plus size={14} /> {t('dashboard.addAnother')}
             </button>
           )}
         </div>
       )}
 
       {nextStep && (
-        <div className="next-step-card" role="region" aria-label="Recommended next step">
+        <div className="next-step-card" role="region" aria-label={t('dashboard.recommended')}>
           <div className="next-step-icon">
             <nextStep.Icon size={22} />
           </div>
           <div className="next-step-body">
-            <p className="eyebrow">Recommended next step</p>
+            <p className="eyebrow">{t('dashboard.recommended')}</p>
             <h3>{nextStep.title}</h3>
             <span>{nextStep.desc}</span>
           </div>
@@ -177,9 +179,9 @@ export default function DashboardPage() {
 
       <div className="grid-stats dashboard-stats-grid" style={{ marginTop: 16 }}>
         {[
-          { label: 'Shop verified', value: verifiedCount },
-          { label: 'Self-reported', value: selfCount },
-          { label: 'Total events', value: totalEvents },
+          { label: t('dashboard.shopVerified'), value: verifiedCount },
+          { label: t('dashboard.selfReported'), value: selfCount },
+          { label: t('dashboard.totalEvents'), value: totalEvents },
         ].map((s) => (
           <div key={s.label} className="card-stat">
             <div style={{ fontSize: 28, fontFamily: 'var(--font-mono)' }}>
@@ -194,9 +196,9 @@ export default function DashboardPage() {
 
       {!active ? (
         <div className="card empty-state" style={{ marginTop: 16 }}>
-          <p>No vehicles yet. Add one to begin.</p>
+          <p>{t('dashboard.noVehicles')}</p>
           <button type="button" className="btn btn-primary" style={{ marginTop: 12 }} onClick={() => setModalOpen(true)}>
-            <Plus size={16} /> Add vehicle
+            <Plus size={16} /> {t('dashboard.addVehicle')}
           </button>
         </div>
       ) : (
@@ -206,7 +208,7 @@ export default function DashboardPage() {
               <div>
                 <div className="vehicle-title-row">
                   <div>
-                    <p className="section-eyebrow">Active vehicle</p>
+                    <p className="section-eyebrow">{t('dashboard.activeVehicle')}</p>
                     <h2 className="display dashboard-vehicle-title" style={{ margin: '8px 0' }}>
                       {active.year} {active.make} {active.model}
                     </h2>
@@ -218,14 +220,14 @@ export default function DashboardPage() {
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span className="tag tag-green">
-                      <CarFront size={12} /> {active._count?.events ?? 0} records
+                      <CarFront size={12} /> {t('dashboard.records', { n: active._count?.events ?? 0 })}
                     </span>
                     <button
                       type="button"
                       className="btn btn-ghost btn-sm"
                       onClick={() => setEditVehicle(active)}
-                      aria-label="Edit vehicle"
-                      title="Edit vehicle"
+                      aria-label={t('dashboard.editVehicle')}
+                      title={t('dashboard.editVehicle')}
                     >
                       <Pencil size={14} />
                     </button>
@@ -238,34 +240,34 @@ export default function DashboardPage() {
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <Link to={`/vehicles/${active.id}`} className="btn btn-primary">
-                  <Clock size={16} /> Timeline
+                  <Clock size={16} /> {t('dashboard.timeline')}
                 </Link>
                 <Link to={`/vehicles/${active.id}/share`} className="btn btn-primary">
-                  <Share2 size={16} /> Share
+                  <Share2 size={16} /> {t('dashboard.share')}
                 </Link>
               </div>
               <div className="status-chip-row">
                 <span className="tag tag-verified">
-                  <ShieldCheck size={12} /> {verifiedCount} verified
+                  <ShieldCheck size={12} /> {t('dashboard.verifiedCount', { n: verifiedCount })}
                 </span>
                 <span className="tag tag-self">
-                  <FileText size={12} /> {selfCount} self-reported
+                  <FileText size={12} /> {t('dashboard.selfCount', { n: selfCount })}
                 </span>
               </div>
             </div>
 
             <div className="card trust-score-card" style={{ textAlign: 'center' }}>
               <p className="mono muted" style={{ fontSize: 11, marginBottom: 12 }}>
-                TRUST SCORE
+                {t('dashboard.trustScore')}
               </p>
               <div style={{ display: 'flex', justifyContent: 'center' }}>
                 <TrustRing score={trustPct} />
               </div>
               <p className="muted" style={{ marginTop: 12, fontSize: 13 }}>
-                {verifiedCount} of {totalEvents} events are shop verified
+                {t('dashboard.trustOf', { verified: verifiedCount, total: totalEvents })}
               </p>
               <p className="muted" style={{ marginTop: 6, fontSize: 12 }}>
-                More shop-verified records raise the trust score.
+                {t('dashboard.moreVerified')}
               </p>
             </div>
           </div>
@@ -274,21 +276,21 @@ export default function DashboardPage() {
             <div className="card">
               <div className="section-head">
                 <div>
-                  <p className="section-eyebrow">Latest activity</p>
-                  <h3 className="display" style={{ fontSize: 20 }}>Recent timeline</h3>
+                  <p className="section-eyebrow">{t('dashboard.latestActivity')}</p>
+                  <h3 className="display" style={{ fontSize: 20 }}>{t('dashboard.recentTimeline')}</h3>
                 </div>
                 <Link to={`/vehicles/${active.id}`} className="btn btn-ghost btn-sm">
-                  View timeline
+                  {t('dashboard.viewTimeline')}
                 </Link>
               </div>
               {eventsLoading ? (
                 <div className="skeleton" style={{ height: 80, marginTop: 8 }} />
               ) : recentEvents.length === 0 ? (
                 <div className="timeline-empty">
-                  No service records yet.
+                  {t('dashboard.noRecords')}
                   <div style={{ marginTop: 10 }}>
                     <Link to="/shops" className="btn btn-primary btn-sm">
-                      Find a shop
+                      {t('dashboard.findShop')}
                     </Link>
                   </div>
                 </div>
@@ -306,19 +308,19 @@ export default function DashboardPage() {
             <div>
               <RemindersPanel />
               <div className="card">
-                <p className="section-eyebrow">Marketplace</p>
+                <p className="section-eyebrow">{t('dashboard.marketplace')}</p>
                 <h3 className="display" style={{ fontSize: 20, marginBottom: 8 }}>
-                  Parts &amp; shops
+                  {t('dashboard.partsShops')}
                 </h3>
                 <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>
-                  Shops and parts for {active.year} {active.make} {active.model}.
+                  {t('dashboard.shopsPartsFor', { label: `${active.year} ${active.make} ${active.model}` })}
                 </p>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   <Link to="/shops" className="btn btn-primary btn-sm">
-                    <ShieldCheck size={14} /> View shops
+                    <ShieldCheck size={14} /> {t('dashboard.viewShops')}
                   </Link>
                   <Link to="/marketplace" className="btn btn-ghost btn-sm">
-                    <ShoppingBag size={14} /> Parts
+                    <ShoppingBag size={14} /> {t('dashboard.parts')}
                   </Link>
                 </div>
               </div>
@@ -356,59 +358,62 @@ interface NextStep {
   primary?: NextStepCta;
 }
 
-function computeNextStep({
-  vehiclesCount,
-  totalEvents,
-  verifiedCount,
-  selfCount,
-  trustPct,
-  activeVehicleId,
-  onAddVehicle,
-}: {
-  vehiclesCount: number;
-  totalEvents: number;
-  verifiedCount: number;
-  selfCount: number;
-  trustPct: number;
-  activeVehicleId?: string;
-  onAddVehicle: () => void;
-}): NextStep | null {
+function computeNextStep(
+  t: (key: string, vars?: Record<string, string | number>) => string,
+  {
+    vehiclesCount,
+    totalEvents,
+    verifiedCount,
+    selfCount,
+    trustPct,
+    activeVehicleId,
+    onAddVehicle,
+  }: {
+    vehiclesCount: number;
+    totalEvents: number;
+    verifiedCount: number;
+    selfCount: number;
+    trustPct: number;
+    activeVehicleId?: string;
+    onAddVehicle: () => void;
+  }
+): NextStep | null {
   if (vehiclesCount === 0) {
     return {
       Icon: Plus,
-      title: 'Add a vehicle',
-      desc: 'Start tracking maintenance for a vehicle you own.',
-      primary: { label: 'Add vehicle', onClick: onAddVehicle },
+      title: t('dashboard.nextEmptyTitle'),
+      desc: t('dashboard.nextEmptyDesc'),
+      primary: { label: t('dashboard.addVehicle'), onClick: onAddVehicle },
     };
   }
   if (totalEvents === 0) {
     return {
       Icon: ShieldCheck,
-      title: 'Add a shop-verified record',
-      desc: 'Partner shops create verified entries on your timeline.',
-      primary: { label: 'Find a shop', to: '/shops' },
+      title: t('dashboard.nextEventsTitle'),
+      desc: t('dashboard.nextEventsDesc'),
+      primary: { label: t('dashboard.findShop'), to: '/shops' },
     };
   }
   if (verifiedCount === 0 && selfCount > 0) {
     return {
       Icon: ShieldCheck,
-      title: 'Get a shop-verified record',
-      desc: 'Shop-verified entries carry more weight than owner records alone.',
-      primary: { label: 'Find a shop', to: '/shops' },
+      title: t('dashboard.nextVerifyTitle'),
+      desc: t('dashboard.nextVerifyDesc'),
+      primary: { label: t('dashboard.findShop'), to: '/shops' },
     };
   }
   if (trustPct >= 80 && activeVehicleId) {
     return {
       Icon: Share2,
-      title: 'Share this vehicle’s history',
-      desc: 'Create a link others can open to review the timeline.',
-      primary: { label: 'Share history', to: `/vehicles/${activeVehicleId}/share` },
+      title: t('dashboard.nextShareTitle'),
+      desc: t('dashboard.nextShareDesc'),
+      primary: { label: t('vehicle.shareHistory'), to: `/vehicles/${activeVehicleId}/share` },
     };
   }
   return {
     Icon: Bell,
-    title: 'Browse parts for this vehicle',
-    desc: 'Compatible parts and accessories in the marketplace.',
-    primary: { label: 'View marketplace', to: '/marketplace' },
+    title: t('dashboard.nextPartsTitle'),
+    desc: t('dashboard.nextPartsDesc'),
+    primary: { label: t('dashboard.marketplace'), to: '/marketplace' },
   };
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Ban, CheckCircle2, Eye, Flag, Shield, Store, Users, XCircle } from 'lucide-react';
 import { api } from '../api';
 import PageTransition from '../components/layout/PageTransition';
+import { useLanguage, useEventTypeLabel } from '../i18n/LanguageContext';
 import type {
   AdminStats,
   AdminUser,
@@ -16,14 +17,9 @@ const PARTNER_KEY = import.meta.env.VITE_PARTNER_API_KEY || 'dev-partner-key-cha
 type Tab = 'overview' | 'traffic' | 'users' | 'shops' | 'moderation' | 'partners';
 type VisitRange = '24h' | '7d' | '30d' | '90d';
 
-const RANGES: { id: VisitRange; label: string }[] = [
-  { id: '24h', label: '24 hours' },
-  { id: '7d', label: '7 days' },
-  { id: '30d', label: '30 days' },
-  { id: '90d', label: '90 days' },
-];
-
 export default function AdminPage() {
+  const { t } = useLanguage();
+  const labelEvent = useEventTypeLabel();
   const [tab, setTab] = useState<Tab>('overview');
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -35,6 +31,13 @@ export default function AdminPage() {
   const [visitRange, setVisitRange] = useState<VisitRange>('7d');
   const [loading, setLoading] = useState(true);
   const [actionMsg, setActionMsg] = useState('');
+
+  const RANGES: { id: VisitRange; label: string }[] = [
+    { id: '24h', label: t('admin.range24h') },
+    { id: '7d', label: t('admin.range7d') },
+    { id: '30d', label: t('admin.range30d') },
+    { id: '90d', label: t('admin.range90d') },
+  ];
 
   async function loadOverview() {
     const s = await api.adminStats();
@@ -66,23 +69,25 @@ export default function AdminPage() {
     setFlagged(f.events);
   }
 
-  async function loadTab(t: Tab) {
+  async function loadTab(tTab: Tab) {
     setLoading(true);
     setActionMsg('');
     try {
-      if (t === 'overview') await loadOverview();
-      if (t === 'traffic') await loadTraffic();
-      if (t === 'users') await loadUsers();
-      if (t === 'shops') await loadPendingShops();
-      if (t === 'moderation') await loadModeration();
-      if (t === 'partners') {
+      if (tTab === 'overview') await loadOverview();
+      if (tTab === 'traffic') await loadTraffic();
+      if (tTab === 'users') await loadUsers();
+      if (tTab === 'shops') await loadPendingShops();
+      if (tTab === 'moderation') await loadModeration();
+      if (tTab === 'partners') {
         try {
           setBadgeStats(await api.badgeAnalytics(PARTNER_KEY));
         } catch {
           setBadgeStats(null);
         }
         const ins = await api.insuranceSummary(PARTNER_KEY).catch(() => null);
-        if (ins) setActionMsg(`Insurance feed: ${ins.fleetSize} vehicles, ${ins.platformVerificationRate}% verified`);
+        if (ins) {
+          setActionMsg(t('admin.insuranceFeed', { size: ins.fleetSize, rate: ins.platformVerificationRate }));
+        }
       }
     } finally {
       setLoading(false);
@@ -105,27 +110,27 @@ export default function AdminPage() {
 
   async function toggleBan(u: AdminUser) {
     await api.adminBanUser(u.id, !u.banned);
-    setActionMsg(u.banned ? 'User unbanned' : 'User banned');
+    setActionMsg(u.banned ? t('admin.userUnbanned') : t('admin.userBanned'));
     loadUsers();
   }
 
   async function approveShop(id: string) {
     await api.adminVerifyShop(id, true);
-    setActionMsg('Shop approved — they can verify records now');
+    setActionMsg(t('admin.shopApproved'));
     loadPendingShops();
     if (stats) setStats({ ...stats, pendingShops: Math.max(0, (stats.pendingShops ?? 1) - 1) });
   }
 
   async function rejectShop(id: string) {
     await api.adminVerifyShop(id, false);
-    setActionMsg('Shop request rejected');
+    setActionMsg(t('admin.shopRejected'));
     loadPendingShops();
     if (stats) setStats({ ...stats, pendingShops: Math.max(0, (stats.pendingShops ?? 1) - 1) });
   }
 
   async function resolveReport(id: string, flagTarget: boolean) {
     await api.adminResolveReport(id, 'RESOLVED', flagTarget);
-    setActionMsg('Report resolved');
+    setActionMsg(t('admin.reportResolved'));
     loadModeration();
   }
 
@@ -137,33 +142,33 @@ export default function AdminPage() {
   const maxDay = visitStats ? Math.max(1, ...visitStats.timeline.map((d) => d.count)) : 1;
 
   const tabs: { id: Tab; label: string; icon: typeof Users }[] = [
-    { id: 'overview', label: 'Overview', icon: Shield },
-    { id: 'traffic', label: 'Traffic', icon: Eye },
-    { id: 'users', label: 'Users', icon: Users },
-    { id: 'shops', label: 'Shop approvals', icon: Store },
-    { id: 'moderation', label: 'Moderation', icon: Flag },
-    { id: 'partners', label: 'Partners', icon: Shield },
+    { id: 'overview', label: t('admin.overview'), icon: Shield },
+    { id: 'traffic', label: t('admin.traffic'), icon: Eye },
+    { id: 'users', label: t('admin.users'), icon: Users },
+    { id: 'shops', label: t('admin.shopApprovals'), icon: Store },
+    { id: 'moderation', label: t('admin.moderation'), icon: Flag },
+    { id: 'partners', label: t('admin.partners'), icon: Shield },
   ];
 
   return (
     <PageTransition>
       <h1 className="display" style={{ fontSize: 40, marginBottom: 8 }}>
-        Admin console
+        {t('admin.title')}
       </h1>
       <p className="muted" style={{ marginBottom: 20 }}>
-        Platform users, shop approvals, site traffic, fraud moderation, and partner analytics.
+        {t('admin.lead')}
       </p>
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 24 }}>
-        {tabs.map((t) => (
+        {tabs.map((tTab) => (
           <button
-            key={t.id}
+            key={tTab.id}
             type="button"
-            className={`btn ${tab === t.id ? 'btn-solid' : 'btn-ghost'}`}
-            onClick={() => setTab(t.id)}
+            className={`btn ${tab === tTab.id ? 'btn-solid' : 'btn-ghost'}`}
+            onClick={() => setTab(tTab.id)}
           >
-            <t.icon size={16} /> {t.label}
-            {t.id === 'shops' && (stats?.pendingShops ?? pendingShops.length) > 0
+            <tTab.icon size={16} /> {tTab.label}
+            {tTab.id === 'shops' && (stats?.pendingShops ?? pendingShops.length) > 0
               ? ` (${stats?.pendingShops ?? pendingShops.length})`
               : ''}
           </button>
@@ -183,35 +188,40 @@ export default function AdminPage() {
           {tab === 'overview' && stats && (
             <div className="grid-stats">
               <div className="card-stat">
-                <span className="mono muted">Users</span>
+                <span className="mono muted">{t('admin.usersCount')}</span>
                 <strong style={{ fontSize: 28 }}>{stats.users}</strong>
               </div>
               <div className="card-stat">
-                <span className="mono muted">Shops</span>
+                <span className="mono muted">{t('admin.shops')}</span>
                 <strong style={{ fontSize: 28 }}>{stats.shops}</strong>
               </div>
               <div className="card-stat">
-                <span className="mono muted">Pending shops</span>
+                <span className="mono muted">{t('admin.pendingShops')}</span>
                 <strong style={{ fontSize: 28, color: stats.pendingShops ? 'var(--color-warning)' : undefined }}>
                   {stats.pendingShops ?? 0}
                 </strong>
               </div>
               <div className="card-stat">
-                <span className="mono muted">Vehicles</span>
+                <span className="mono muted">{t('admin.vehicles')}</span>
                 <strong style={{ fontSize: 28 }}>{stats.vehicles}</strong>
               </div>
               <div className="card-stat">
-                <span className="mono muted">Flagged</span>
+                <span className="mono muted">{t('admin.flagged')}</span>
                 <strong style={{ fontSize: 28, color: stats.flaggedEvents ? 'var(--color-danger)' : undefined }}>
                   {stats.flaggedEvents}
                 </strong>
               </div>
               {badgeStats && (
                 <div className="card-stat" style={{ gridColumn: '1 / -1' }}>
-                  <span className="mono muted">Badge ({badgeStats.period})</span>
+                  <span className="mono muted">
+                    {t('admin.badgeLabel')} ({badgeStats.period})
+                  </span>
                   <p style={{ marginTop: 8 }}>
-                    {badgeStats.totalEvents} events · {badgeStats.conversionRate}% click rate ·{' '}
-                    {badgeStats.uniqueBadges} badges
+                    {t('admin.badgeSummary', {
+                      events: badgeStats.totalEvents,
+                      rate: badgeStats.conversionRate,
+                      badges: badgeStats.uniqueBadges,
+                    })}
                   </p>
                 </div>
               )}
@@ -221,16 +231,16 @@ export default function AdminPage() {
           {tab === 'shops' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <p className="muted" style={{ marginBottom: 4 }}>
-                New repair shops cannot verify records until you approve them here.
+                {t('admin.shopPendingLead')}
               </p>
               {pendingShops.length === 0 ? (
-                <p className="muted">No shop accounts waiting for approval.</p>
+                <p className="muted">{t('admin.noPendingShops')}</p>
               ) : (
                 pendingShops.map((s) => (
                   <div key={s.id} className="card" style={{ padding: 16 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
                       <div>
-                        <strong style={{ fontSize: 16 }}>{s.shopName || 'Unnamed shop'}</strong>
+                        <strong style={{ fontSize: 16 }}>{s.shopName || t('admin.unnamedShop')}</strong>
                         <p className="muted" style={{ margin: '4px 0 0', fontSize: 14 }}>
                           {s.fullName} · {s.email}
                           {s.phone ? ` · ${s.phone}` : ''}
@@ -241,15 +251,15 @@ export default function AdminPage() {
                           </p>
                         )}
                         <p className="mono muted" style={{ marginTop: 8, fontSize: 11 }}>
-                          Requested {new Date(s.createdAt).toLocaleString()}
+                          {t('admin.requested', { date: new Date(s.createdAt).toLocaleString() })}
                         </p>
                       </div>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
                         <button type="button" className="btn btn-solid btn-sm" onClick={() => approveShop(s.id)}>
-                          <CheckCircle2 size={14} /> Approve
+                          <CheckCircle2 size={14} /> {t('admin.approve')}
                         </button>
                         <button type="button" className="btn btn-ghost btn-sm" onClick={() => rejectShop(s.id)}>
-                          <XCircle size={14} /> Reject
+                          <XCircle size={14} /> {t('admin.reject')}
                         </button>
                       </div>
                     </div>
@@ -276,15 +286,15 @@ export default function AdminPage() {
 
               <div className="grid-stats">
                 <div className="card-stat">
-                  <span className="mono muted">Page views</span>
+                  <span className="mono muted">{t('admin.pageViews')}</span>
                   <strong style={{ fontSize: 28 }}>{visitStats.totalVisits}</strong>
                 </div>
                 <div className="card-stat">
-                  <span className="mono muted">Unique visitors</span>
+                  <span className="mono muted">{t('admin.uniqueVisitors')}</span>
                   <strong style={{ fontSize: 28 }}>{visitStats.uniqueVisitors}</strong>
                 </div>
                 <div className="card-stat">
-                  <span className="mono muted">Signed-in visitors</span>
+                  <span className="mono muted">{t('admin.signedInVisitors')}</span>
                   <strong style={{ fontSize: 28 }}>{visitStats.signedInVisitors}</strong>
                 </div>
               </div>
@@ -292,7 +302,7 @@ export default function AdminPage() {
               {visitStats.timeline.length > 0 && (
                 <section>
                   <h2 className="display" style={{ fontSize: 22, marginBottom: 12 }}>
-                    Visits by day
+                    {t('admin.visitsByDay')}
                   </h2>
                   <div
                     style={{
@@ -342,17 +352,17 @@ export default function AdminPage() {
 
               <section>
                 <h2 className="display" style={{ fontSize: 22, marginBottom: 12 }}>
-                  Top pages
+                  {t('admin.topPages')}
                 </h2>
                 {visitStats.topPaths.length === 0 ? (
-                  <p className="muted">No visits in this period yet. Open the site in another tab to generate traffic.</p>
+                  <p className="muted">{t('admin.noVisits')}</p>
                 ) : (
                   <div className="card" style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
                       <thead>
                         <tr className="mono muted" style={{ textAlign: 'left' }}>
-                          <th style={{ padding: 8 }}>Path</th>
-                          <th style={{ padding: 8 }}>Views</th>
+                          <th style={{ padding: 8 }}>{t('admin.path')}</th>
+                          <th style={{ padding: 8 }}>{t('admin.views')}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -372,19 +382,19 @@ export default function AdminPage() {
 
               <section>
                 <h2 className="display" style={{ fontSize: 22, marginBottom: 12 }}>
-                  Recent visits
+                  {t('admin.recentVisits')}
                 </h2>
                 {visitStats.recent.length === 0 ? (
-                  <p className="muted">No recent visits.</p>
+                  <p className="muted">{t('admin.noRecentVisits')}</p>
                 ) : (
                   <div className="card" style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                       <thead>
                         <tr className="mono muted" style={{ textAlign: 'left' }}>
-                          <th style={{ padding: 8 }}>When</th>
-                          <th style={{ padding: 8 }}>Path</th>
-                          <th style={{ padding: 8 }}>Session</th>
-                          <th style={{ padding: 8 }}>Auth</th>
+                          <th style={{ padding: 8 }}>{t('admin.when')}</th>
+                          <th style={{ padding: 8 }}>{t('admin.path')}</th>
+                          <th style={{ padding: 8 }}>{t('admin.session')}</th>
+                          <th style={{ padding: 8 }}>{t('admin.auth')}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -400,7 +410,11 @@ export default function AdminPage() {
                               {v.sessionId}…
                             </td>
                             <td style={{ padding: 8 }}>
-                              {v.signedIn ? <span className="tag tag-green">signed in</span> : <span className="muted">guest</span>}
+                              {v.signedIn ? (
+                                <span className="tag tag-green">{t('admin.signedIn')}</span>
+                              ) : (
+                                <span className="muted">{t('admin.guest')}</span>
+                              )}
                             </td>
                           </tr>
                         ))}
@@ -417,11 +431,11 @@ export default function AdminPage() {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
                 <thead>
                   <tr className="mono muted" style={{ textAlign: 'left' }}>
-                    <th style={{ padding: 8 }}>Name</th>
-                    <th style={{ padding: 8 }}>Email</th>
-                    <th style={{ padding: 8 }}>Role</th>
-                    <th style={{ padding: 8 }}>Status</th>
-                    <th style={{ padding: 8 }}>Vehicles</th>
+                    <th style={{ padding: 8 }}>{t('admin.name')}</th>
+                    <th style={{ padding: 8 }}>{t('admin.email')}</th>
+                    <th style={{ padding: 8 }}>{t('admin.role')}</th>
+                    <th style={{ padding: 8 }}>{t('admin.status')}</th>
+                    <th style={{ padding: 8 }}>{t('admin.vehicles')}</th>
                     <th style={{ padding: 8 }} />
                   </tr>
                 </thead>
@@ -438,11 +452,13 @@ export default function AdminPage() {
                       </td>
                       <td style={{ padding: 8 }}>
                         {u.banned ? (
-                          <span className="tag" style={{ color: 'var(--color-danger)' }}>Banned</span>
+                          <span className="tag" style={{ color: 'var(--color-danger)' }}>
+                            {t('admin.banned')}
+                          </span>
                         ) : u.role === 'SHOP' && !u.shopVerified ? (
-                          <span className="tag tag-warning">Pending</span>
+                          <span className="tag tag-warning">{t('admin.pending')}</span>
                         ) : u.role === 'SHOP' ? (
-                          <span className="tag tag-verified">Approved</span>
+                          <span className="tag tag-verified">{t('admin.approved')}</span>
                         ) : (
                           <span className="muted">—</span>
                         )}
@@ -455,7 +471,7 @@ export default function AdminPage() {
                             className={`btn btn-sm ${u.banned ? 'btn-outline' : 'btn-ghost'}`}
                             onClick={() => toggleBan(u)}
                           >
-                            <Ban size={14} /> {u.banned ? 'Unban' : 'Ban'}
+                            <Ban size={14} /> {u.banned ? t('admin.unban') : t('admin.ban')}
                           </button>
                         )}
                       </td>
@@ -471,7 +487,7 @@ export default function AdminPage() {
               <section>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                   <h2 className="display" style={{ fontSize: 22 }}>
-                    Pending reports
+                    {t('admin.pendingReports')}
                   </h2>
                   <button
                     type="button"
@@ -481,11 +497,11 @@ export default function AdminPage() {
                       loadModeration();
                     }}
                   >
-                    Seed demo report
+                    {t('admin.seedDemo')}
                   </button>
                 </div>
                 {reports.length === 0 ? (
-                  <p className="muted">No pending reports.</p>
+                  <p className="muted">{t('admin.noReports')}</p>
                 ) : (
                   reports.map((r) => (
                     <div key={r.id} className="card" style={{ marginBottom: 8 }}>
@@ -501,14 +517,10 @@ export default function AdminPage() {
                           className="btn btn-solid btn-sm"
                           onClick={() => resolveReport(r.id, true)}
                         >
-                          Resolve & flag
+                          {t('admin.resolveFlag')}
                         </button>
-                        <button
-                          type="button"
-                          className="btn btn-ghost btn-sm"
-                          onClick={() => resolveReport(r.id, false)}
-                        >
-                          Dismiss
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => resolveReport(r.id, false)}>
+                          {t('admin.dismiss')}
                         </button>
                       </div>
                     </div>
@@ -518,18 +530,18 @@ export default function AdminPage() {
 
               <section>
                 <h2 className="display" style={{ fontSize: 22, marginBottom: 12 }}>
-                  Flagged events
+                  {t('admin.flaggedEvents')}
                 </h2>
                 {flagged.length === 0 ? (
-                  <p className="muted">No flagged events.</p>
+                  <p className="muted">{t('admin.noFlagged')}</p>
                 ) : (
                   flagged.map((e) => (
                     <div key={e.id} className="card" style={{ marginBottom: 8 }}>
                       <p>
-                        {e.eventType} · {e.vehicle?.year} {e.vehicle?.make} {e.vehicle?.model}
+                        {labelEvent(e.eventType)} · {e.vehicle?.year} {e.vehicle?.make} {e.vehicle?.model}
                       </p>
                       <p className="muted" style={{ fontSize: 13 }}>
-                        Owner: {e.vehicle?.owner?.email}
+                        {t('admin.ownerLabel', { email: e.vehicle?.owner?.email ?? '—' })}
                       </p>
                       <button
                         type="button"
@@ -537,7 +549,7 @@ export default function AdminPage() {
                         style={{ marginTop: 8 }}
                         onClick={() => unflagEvent(e.id)}
                       >
-                        Clear flag
+                        {t('admin.clearFlag')}
                       </button>
                     </div>
                   ))
@@ -549,19 +561,19 @@ export default function AdminPage() {
           {tab === 'partners' && badgeStats && (
             <div className="card">
               <h2 className="display" style={{ fontSize: 22 }}>
-                Badge analytics (30d)
+                {t('admin.badgeAnalytics')}
               </h2>
               <div className="grid-stats" style={{ marginTop: 16 }}>
                 <div className="card-stat">
-                  <span className="mono muted">Total events</span>
+                  <span className="mono muted">{t('analytics.totalEvents')}</span>
                   <strong>{badgeStats.totalEvents}</strong>
                 </div>
                 <div className="card-stat">
-                  <span className="mono muted">Click rate</span>
+                  <span className="mono muted">{t('admin.clickRate')}</span>
                   <strong>{badgeStats.conversionRate}%</strong>
                 </div>
                 <div className="card-stat">
-                  <span className="mono muted">Active badges</span>
+                  <span className="mono muted">{t('admin.activeBadges')}</span>
                   <strong>{badgeStats.uniqueBadges}</strong>
                 </div>
               </div>
@@ -573,8 +585,7 @@ export default function AdminPage() {
                 ))}
               </ul>
               <p className="muted" style={{ marginTop: 16, fontSize: 13 }}>
-                Insurance API: GET /api/insurance/reliability (partner key). Embed tracks via POST
-                /api/partners/badge-events.
+                {t('admin.insuranceApiNote')}
               </p>
             </div>
           )}

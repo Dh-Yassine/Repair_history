@@ -1,9 +1,12 @@
 import { FormEvent, useState } from 'react';
 import { Bell, ExternalLink, FileText, ShieldCheck, UserRound } from 'lucide-react';
 import { api } from '../../api';
+import { useLanguage, useEventTypeLabel } from '../../i18n/LanguageContext';
 import { useToast } from '../ui/Toast';
 import type { MaintenanceEvent } from '../../types';
 import VerificationBadge from '../events/VerificationBadge';
+
+const EVENT_TYPES = ['Oil change', 'Tire rotation', 'Brake service', 'Battery replacement', 'Inspection', 'Repair', 'Other'];
 
 export default function PendingVerificationList({
   events,
@@ -13,12 +16,14 @@ export default function PendingVerificationList({
   onChanged: () => void;
 }) {
   const toast = useToast();
+  const { t } = useLanguage();
+  const labelEvent = useEventTypeLabel();
   const [activeId, setActiveId] = useState('');
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [notes, setNotes] = useState('');
   const [reminderFor, setReminderFor] = useState('');
   const [reminderDate, setReminderDate] = useState('');
-  const [reminderType, setReminderType] = useState('Inspection');
+  const [reminderType, setReminderType] = useState(EVENT_TYPES[4]);
   const [error, setError] = useState('');
 
   async function verify(e: FormEvent, eventId: string) {
@@ -29,10 +34,10 @@ export default function PendingVerificationList({
       setActiveId('');
       setProofFile(null);
       setNotes('');
-      toast.success('Owner report verified.');
+      toast.success(t('shop.toastVerified'));
       onChanged();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Verification failed';
+      const msg = err instanceof Error ? err.message : t('shop.verifyFailed');
       setError(msg);
       toast.error(msg);
     }
@@ -44,9 +49,9 @@ export default function PendingVerificationList({
     try {
       await api.shopCreateReminder({ vehicleId: event.vehicleId, serviceType: reminderType, dueDate: reminderDate });
       setReminderFor('');
-      toast.success('Reminder sent to the owner.');
+      toast.success(t('shop.toastReminder'));
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Reminder failed';
+      const msg = err instanceof Error ? err.message : t('shop.reminderFailed');
       setError(msg);
       toast.error(msg);
     }
@@ -57,17 +62,16 @@ export default function PendingVerificationList({
       const { url } = await api.shopDocumentFile(eventId, documentId);
       window.open(url, '_blank', 'noopener');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not open the proof file');
+      toast.error(err instanceof Error ? err.message : t('shop.couldNotOpen'));
     }
   }
 
   if (events.length === 0) {
     return (
       <div className="card empty-state">
-        <p>No pending reports from your customers.</p>
+        <p>{t('shop.noPending')}</p>
         <p className="muted" style={{ fontSize: 13, marginTop: 6 }}>
-          You only see unverified reports from owners connected to your shop — customers you have
-          looked up or serviced before. New service work is faster to add from the verified record tab.
+          {t('shop.noPendingDesc')}
         </p>
       </div>
     );
@@ -81,9 +85,11 @@ export default function PendingVerificationList({
           <div className="event-card-head">
             <div>
               <p className="mono muted" style={{ fontSize: 11 }}>
-                {event.vehicle ? `${event.vehicle.year} ${event.vehicle.make} ${event.vehicle.model}` : 'Vehicle'}
+                {event.vehicle
+                  ? `${event.vehicle.year} ${event.vehicle.make} ${event.vehicle.model}`
+                  : t('shop.vehicleFallback')}
               </p>
-              <h3>{event.eventType}</h3>
+              <h3>{labelEvent(event.eventType)}</h3>
               {event.vehicle?.owner?.email && (
                 <p className="mono muted" style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}>
                   <UserRound size={12} /> {event.vehicle.owner.email}
@@ -93,7 +99,6 @@ export default function PendingVerificationList({
             <VerificationBadge event={event} />
           </div>
 
-          {/* The owner's claim, laid out for actual review before confirming */}
           <div
             style={{
               display: 'grid',
@@ -106,22 +111,30 @@ export default function PendingVerificationList({
             }}
           >
             <div>
-              <span className="mono muted" style={{ fontSize: 10, display: 'block' }}>CLAIMED DATE</span>
+              <span className="mono muted" style={{ fontSize: 10, display: 'block' }}>
+                {t('shop.claimedDate')}
+              </span>
               <strong style={{ fontSize: 14 }}>{new Date(event.date).toLocaleDateString()}</strong>
             </div>
             <div>
-              <span className="mono muted" style={{ fontSize: 10, display: 'block' }}>CLAIMED MILEAGE</span>
+              <span className="mono muted" style={{ fontSize: 10, display: 'block' }}>
+                {t('shop.claimedMileage')}
+              </span>
               <strong style={{ fontSize: 14 }}>{event.mileage.toLocaleString()} km</strong>
             </div>
             {event.cost != null && (
               <div>
-                <span className="mono muted" style={{ fontSize: 10, display: 'block' }}>CLAIMED COST</span>
+                <span className="mono muted" style={{ fontSize: 10, display: 'block' }}>
+                  {t('shop.claimedCost')}
+                </span>
                 <strong style={{ fontSize: 14 }}>{event.cost.toFixed(2)} €</strong>
               </div>
             )}
             {event.garageName && (
               <div>
-                <span className="mono muted" style={{ fontSize: 10, display: 'block' }}>GARAGE NAMED</span>
+                <span className="mono muted" style={{ fontSize: 10, display: 'block' }}>
+                  {t('shop.garageNamed')}
+                </span>
                 <strong style={{ fontSize: 14 }}>{event.garageName}</strong>
               </div>
             )}
@@ -129,14 +142,18 @@ export default function PendingVerificationList({
 
           {event.notes && (
             <p style={{ fontSize: 13, margin: '4px 0' }}>
-              <span className="mono muted" style={{ fontSize: 10 }}>OWNER NOTES · </span>
+              <span className="mono muted" style={{ fontSize: 10 }}>
+                {t('shop.ownerNotes')} ·{' '}
+              </span>
               {event.notes}
             </p>
           )}
 
           {(event.documents?.length ?? 0) > 0 ? (
             <div style={{ margin: '6px 0' }}>
-              <span className="mono muted" style={{ fontSize: 10 }}>OWNER PROOF</span>
+              <span className="mono muted" style={{ fontSize: 10 }}>
+                {t('shop.ownerProof')}
+              </span>
               {event.documents.map((doc) => (
                 <button
                   key={doc.id}
@@ -151,41 +168,44 @@ export default function PendingVerificationList({
             </div>
           ) : (
             <p className="mono muted" style={{ fontSize: 11, margin: '6px 0' }}>
-              No proof attached by the owner
+              {t('shop.noProof')}
             </p>
           )}
 
           <div className="button-row">
             <button type="button" className="btn btn-solid btn-sm" onClick={() => setActiveId(event.id)}>
-              <ShieldCheck size={14} /> Review &amp; verify
+              <ShieldCheck size={14} /> {t('shop.reviewVerify')}
             </button>
             <button type="button" className="btn btn-ghost btn-sm" onClick={() => setReminderFor(event.id)}>
-              <Bell size={14} /> Remind
+              <Bell size={14} /> {t('shop.remind')}
             </button>
           </div>
 
           {activeId === event.id && (
             <form className="inline-action" onSubmit={(e) => verify(e, event.id)}>
               <p style={{ fontSize: 13, margin: '0 0 10px' }}>
-                By verifying, you confirm this <strong>{event.eventType.toLowerCase()}</strong> was
-                performed around <strong>{new Date(event.date).toLocaleDateString()}</strong> at{' '}
-                <strong>{event.mileage.toLocaleString()} km</strong>. It becomes a permanent
-                shop-verified record under your shop&apos;s name.
+                {t('shop.confirmVerifyDetail', {
+                  type: labelEvent(event.eventType),
+                  date: new Date(event.date).toLocaleDateString(),
+                  mileage: event.mileage.toLocaleString(),
+                })}
               </p>
               <div className="field">
-                <label className="label">Shop proof (optional)</label>
+                <label className="label">
+                  {t('shop.proofFile')} ({t('common.optional')})
+                </label>
                 <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => setProofFile(e.target.files?.[0] ?? null)} />
               </div>
               <div className="field">
-                <label className="label">Verification notes</label>
-                <input className="input" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="e.g. Matches our workshop invoice #1042" />
+                <label className="label">{t('shop.verificationNote')}</label>
+                <input className="input" value={notes} onChange={(e) => setNotes(e.target.value)} />
               </div>
               <div className="button-row">
                 <button type="submit" className="btn btn-solid btn-sm">
-                  <ShieldCheck size={14} /> Confirm verification
+                  <ShieldCheck size={14} /> {t('shop.confirmVerification')}
                 </button>
                 <button type="button" className="btn btn-ghost btn-sm" onClick={() => setActiveId('')}>
-                  Cancel
+                  {t('common.cancel')}
                 </button>
               </div>
             </form>
@@ -195,15 +215,23 @@ export default function PendingVerificationList({
             <form className="inline-action" onSubmit={(e) => remind(e, event)}>
               <div className="grid-form-2">
                 <div className="field">
-                  <label className="label">Service</label>
-                  <input className="input" value={reminderType} onChange={(e) => setReminderType(e.target.value)} />
+                  <label className="label">{t('shop.service')}</label>
+                  <select className="input" value={reminderType} onChange={(e) => setReminderType(e.target.value)}>
+                    {EVENT_TYPES.map((type) => (
+                      <option key={type} value={type}>
+                        {labelEvent(type)}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div className="field">
-                  <label className="label">Due date</label>
+                  <label className="label">{t('shop.dueDate')}</label>
                   <input className="input" type="date" value={reminderDate} onChange={(e) => setReminderDate(e.target.value)} required />
                 </div>
               </div>
-              <button type="submit" className="btn btn-outline btn-sm">Send reminder</button>
+              <button type="submit" className="btn btn-outline btn-sm">
+                {t('shop.sendReminder')}
+              </button>
             </form>
           )}
         </article>

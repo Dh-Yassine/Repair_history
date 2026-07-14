@@ -1,3 +1,4 @@
+import { useLanguage } from '../../i18n/LanguageContext';
 import type { MaintenanceEvent, Verification } from '../../types';
 import EventTimelineItem from '../events/EventTimelineItem';
 
@@ -6,10 +7,12 @@ export default function VerificationHistoryList({
 }: {
   verifications: (Verification & { event?: MaintenanceEvent })[];
 }) {
+  const { t } = useLanguage();
+
   if (verifications.length === 0) {
     return (
       <div className="card empty-state">
-        <p className="muted">No verified service history yet.</p>
+        <p className="muted">{t('shop.noHistory')}</p>
       </div>
     );
   }

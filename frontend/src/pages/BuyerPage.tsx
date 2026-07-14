@@ -2,8 +2,10 @@ import { FormEvent, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, ShieldCheck, FileText, ArrowRight } from 'lucide-react';
 import PageTransition from '../components/layout/PageTransition';
+import { useLanguage } from '../i18n/LanguageContext';
 
 export default function BuyerPage() {
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [link, setLink] = useState('');
   const [error, setError] = useState('');
@@ -14,7 +16,7 @@ export default function BuyerPage() {
     const match = link.trim().match(/\/history\/([a-f0-9]+)/i);
     const token = match?.[1] || link.trim();
     if (!token) {
-      setError('Paste a share link or paste only the token.');
+      setError(t('buyer.pastePrompt'));
       return;
     }
     navigate(`/history/${token}`);
@@ -24,10 +26,10 @@ export default function BuyerPage() {
     <PageTransition>
       <div className="hero-panel page-hero compact">
         <div className="hero-copy">
-          <p className="section-eyebrow">Buyer</p>
-          <h1 className="display page-title">Vehicle history</h1>
+          <p className="section-eyebrow">{t('buyer.title')}</p>
+          <h1 className="display page-title">{t('buyer.history')}</h1>
           <p className="muted" style={{ marginTop: 10, maxWidth: 560 }}>
-            Paste a share link to review the maintenance timeline.
+            {t('buyer.lead')}
           </p>
         </div>
       </div>
@@ -35,7 +37,7 @@ export default function BuyerPage() {
       <div className="card" style={{ maxWidth: 640 }}>
         <form onSubmit={handleSubmit}>
           <div className="field">
-            <label className="label">Share link or token</label>
+            <label className="label">{t('buyer.shareOrToken')}</label>
             <div style={{ position: 'relative' }}>
               <Search
                 size={18}
@@ -51,12 +53,12 @@ export default function BuyerPage() {
               />
             </div>
             <p className="mono subtle" style={{ fontSize: 11, marginTop: 6 }}>
-              Full URL or token only.
+              {t('buyer.hint')}
             </p>
           </div>
           {error && <p className="error-msg">{error}</p>}
           <button type="submit" className="btn btn-solid">
-            View history <ArrowRight size={16} />
+            {t('buyer.viewHistory')} <ArrowRight size={16} />
           </button>
         </form>
       </div>
@@ -67,10 +69,10 @@ export default function BuyerPage() {
             <ShieldCheck size={18} />
           </div>
           <h3 className="display" style={{ fontSize: 20, marginTop: 10 }}>
-            Verified records
+            {t('buyer.verifiedTitle')}
           </h3>
           <p className="muted" style={{ fontSize: 13 }}>
-            These were created or certified by partner shops. Highest trust level.
+            {t('buyer.verifiedBody')}
           </p>
         </div>
         <div className="card">
@@ -78,10 +80,10 @@ export default function BuyerPage() {
             <FileText size={18} />
           </div>
           <h3 className="display" style={{ fontSize: 20, marginTop: 10 }}>
-            Self-reported records
+            {t('buyer.selfTitle')}
           </h3>
           <p className="muted" style={{ fontSize: 13 }}>
-            These come from the owner. Ask for the original receipt or photo if anything looks off.
+            {t('buyer.selfBody')}
           </p>
         </div>
       </div>

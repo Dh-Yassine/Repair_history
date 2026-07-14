@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, ReactNode } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { CheckCircle2, AlertTriangle, Info, X } from 'lucide-react';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 type ToastKind = 'success' | 'error' | 'info';
 
@@ -56,6 +57,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 }
 
 function ToastItemView({ toast, onClose }: { toast: ToastItem; onClose: () => void }) {
+  const { t } = useLanguage();
+
   useEffect(() => {
     const id = setTimeout(onClose, 4200);
     return () => clearTimeout(id);
@@ -78,7 +81,7 @@ function ToastItemView({ toast, onClose }: { toast: ToastItem; onClose: () => vo
         type="button"
         className="toast-dismiss"
         onClick={onClose}
-        aria-label="Dismiss"
+        aria-label={t('common.dismiss')}
       >
         <X size={14} />
       </button>

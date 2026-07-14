@@ -3,10 +3,12 @@ import { CalendarCheck, MapPin, ShieldCheck, Sparkles, Wrench, X } from 'lucide-
 import { api } from '../api';
 import PageTransition from '../components/layout/PageTransition';
 import { useToast } from '../components/ui/Toast';
+import { useLanguage } from '../i18n/LanguageContext';
 import type { FeaturedShopAd } from '../types';
 
 export default function FeaturedShopsPage() {
   const toast = useToast();
+  const { t } = useLanguage();
   const [ads, setAds] = useState<FeaturedShopAd[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -18,7 +20,7 @@ export default function FeaturedShopsPage() {
     api
       .featuredShops()
       .then((d) => setAds(d.ads))
-      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'))
+      .catch((e) => setError(e instanceof Error ? e.message : t('shops.failedLoad')))
       .finally(() => setLoading(false));
   }, []);
 
@@ -32,7 +34,7 @@ export default function FeaturedShopsPage() {
       setContactAd(null);
       setMessage('');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not send request');
+      toast.error(err instanceof Error ? err.message : t('shops.couldNotSend'));
     } finally {
       setSending(false);
     }
@@ -45,15 +47,15 @@ export default function FeaturedShopsPage() {
           <div className="hero-icon" style={{ marginBottom: 14 }}>
             <Wrench size={24} />
           </div>
-          <p className="section-eyebrow">Partner shops</p>
-          <h1 className="display page-title">Shops</h1>
+          <p className="section-eyebrow">{t('shops.partnerShops')}</p>
+          <h1 className="display page-title">{t('shops.title')}</h1>
           <p className="muted" style={{ marginTop: 10 }}>
-            Shops that can add verified records to your timeline.
+            {t('shops.lead')}
           </p>
         </div>
         <div className="hero-actions">
           <span className="tag tag-verified">
-            <Sparkles size={12} /> Verified network
+            <Sparkles size={12} /> {t('shops.verifiedNetwork')}
           </span>
         </div>
       </div>
@@ -67,7 +69,7 @@ export default function FeaturedShopsPage() {
             <div className="feature-card-icon" style={{ margin: '0 auto 12px' }}>
               <Wrench size={20} />
             </div>
-            <p>No featured shops right now.</p>
+            <p>{t('shops.none')}</p>
           </div>
         </div>
       )}
@@ -81,7 +83,7 @@ export default function FeaturedShopsPage() {
               </div>
               {ad.shop.shopVerified && (
                 <span className="tag tag-green">
-                  <ShieldCheck size={12} /> Verified
+                  <ShieldCheck size={12} /> {t('shops.verified')}
                 </span>
               )}
             </div>
@@ -92,7 +94,8 @@ export default function FeaturedShopsPage() {
               </p>
             )}
             <p className="mono muted" style={{ marginTop: 12, fontSize: 12 }}>
-              <CalendarCheck size={12} style={{ verticalAlign: 'middle' }} /> Featured until {new Date(ad.endDate).toLocaleDateString()}
+              <CalendarCheck size={12} style={{ verticalAlign: 'middle' }} />{' '}
+              {t('shops.featuredUntil', { date: new Date(ad.endDate).toLocaleDateString() })}
             </p>
             <button
               type="button"
@@ -100,7 +103,7 @@ export default function FeaturedShopsPage() {
               style={{ marginTop: 16 }}
               onClick={() => setContactAd(ad)}
             >
-              {ad.ctaButton}
+              {ad.ctaButton || t('shops.requestQuote')}
             </button>
           </article>
         ))}
@@ -112,14 +115,14 @@ export default function FeaturedShopsPage() {
             className="modal"
             role="dialog"
             aria-modal="true"
-            aria-label={`Contact ${contactAd.shop.shopName}`}
+            aria-label={t('shops.contact', { shop: contactAd.shop.shopName ?? '' })}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-header">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <h2 className="display" style={{ fontSize: 24 }}>
-                    Request a quote
+                    {t('shops.requestQuote')}
                   </h2>
                   <p className="muted" style={{ fontSize: 13, marginTop: 4 }}>
                     {contactAd.shop.shopName}
@@ -130,7 +133,7 @@ export default function FeaturedShopsPage() {
                   type="button"
                   className="btn btn-ghost btn-sm"
                   onClick={() => setContactAd(null)}
-                  aria-label="Close"
+                  aria-label={t('common.close')}
                 >
                   <X size={16} />
                 </button>
@@ -138,7 +141,9 @@ export default function FeaturedShopsPage() {
             </div>
             <form onSubmit={sendRequest} style={{ padding: 24 }}>
               <div className="field">
-                <label className="label" htmlFor="shop-contact-message">What do you need? (optional)</label>
+                <label className="label" htmlFor="shop-contact-message">
+                  {t('shops.whatNeed')} ({t('common.optional')})
+                </label>
                 <textarea
                   id="shop-contact-message"
                   className="input"
@@ -146,18 +151,17 @@ export default function FeaturedShopsPage() {
                   maxLength={500}
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  placeholder="e.g. Front brake pads for a 2019 Clio, available next week?"
                 />
               </div>
               <p className="muted" style={{ fontSize: 13, marginBottom: 16 }}>
-                The shop receives your name and email and will reply directly.
+                {t('shops.contactHint')}
               </p>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button type="submit" className="btn btn-solid" disabled={sending}>
-                  {sending ? 'Sending…' : 'Send request'}
+                  {sending ? t('common.sending') : t('shops.sendRequest')}
                 </button>
                 <button type="button" className="btn btn-ghost" onClick={() => setContactAd(null)}>
-                  Cancel
+                  {t('common.cancel')}
                 </button>
               </div>
             </form>

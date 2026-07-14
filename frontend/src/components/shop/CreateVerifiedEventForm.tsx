@@ -1,6 +1,7 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useMemo, useState } from 'react';
 import { FileCheck2, ShieldCheck, UserRoundSearch, CheckCircle2, RotateCcw } from 'lucide-react';
 import { api } from '../../api';
+import { useLanguage, useEventTypeLabel } from '../../i18n/LanguageContext';
 import Stepper from '../ui/Stepper';
 import { useToast } from '../ui/Toast';
 import type { Vehicle } from '../../types';
@@ -9,14 +10,10 @@ const EVENT_TYPES = ['Oil change', 'Tire rotation', 'Brake service', 'Battery re
 
 type StepId = 'lookup' | 'create' | 'done';
 
-const STEPS = [
-  { id: 'lookup', label: 'Lookup', hint: 'Email, VIN, or serial' },
-  { id: 'create', label: 'Details', hint: 'Type, mileage, cost' },
-  { id: 'done', label: 'Done', hint: 'Verified on save' },
-];
-
 export default function CreateVerifiedEventForm({ onCreated }: { onCreated: () => void }) {
   const toast = useToast();
+  const { t } = useLanguage();
+  const labelEvent = useEventTypeLabel();
   const [step, setStep] = useState<StepId>('lookup');
   const [query, setQuery] = useState('');
   const [ownerEmail, setOwnerEmail] = useState('');
@@ -33,6 +30,15 @@ export default function CreateVerifiedEventForm({ onCreated }: { onCreated: () =
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [lookupMsg, setLookupMsg] = useState('');
+
+  const STEPS = useMemo(
+    () => [
+      { id: 'lookup', label: t('shop.lookup'), hint: t('shop.hintLookup') },
+      { id: 'create', label: t('shop.details'), hint: t('shop.hintDetails') },
+      { id: 'done', label: t('common.done'), hint: t('shop.hintDone') },
+    ],
+    [t]
+  );
 
   const selectedVehicle = vehicles.find((v) => v.id === selectedVehicleId);
 
@@ -63,13 +69,15 @@ export default function CreateVerifiedEventForm({ onCreated }: { onCreated: () =
       setOwnerEmail(result.owner.email);
       setSelectedVehicleId(result.vehicles[0]?.id || '');
       if (result.vehicles.length === 0) {
-        setLookupMsg(`Owner ${result.owner.fullName} found, but no matching vehicle. Ask the owner to add the vehicle first.`);
+        setLookupMsg(
+          t('shop.ownerFoundNoVehicleFull', { name: result.owner.fullName || result.owner.email })
+        );
       } else {
         setStep('create');
       }
     } catch (err) {
       setVehicles([]);
-      const msg = err instanceof Error ? err.message : 'Vehicle lookup failed';
+      const msg = err instanceof Error ? err.message : t('shop.lookupFailed');
       setError(msg);
       toast.error(msg);
     }
@@ -93,11 +101,11 @@ export default function CreateVerifiedEventForm({ onCreated }: { onCreated: () =
         },
         proof ?? undefined
       );
-      toast.success('Verified record created.');
+      toast.success(t('shop.verifiedCreated'));
       setStep('done');
       onCreated();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to create verified record';
+      const msg = err instanceof Error ? err.message : t('shop.createFailed');
       setError(msg);
       toast.error(msg);
     } finally {
@@ -110,20 +118,16 @@ export default function CreateVerifiedEventForm({ onCreated }: { onCreated: () =
       <Stepper steps={STEPS} current={step} />
 
       <div className="wizard">
-        {/* Step 1: Lookup */}
-        <form
-          className={`wizard-card ${step === 'lookup' ? 'active' : ''}`}
-          onSubmit={lookup}
-        >
+        <form className={`wizard-card ${step === 'lookup' ? 'active' : ''}`} onSubmit={lookup}>
           <div className="wizard-card-head">
             <span className="wizard-card-num">1</span>
             <div>
-              <h3 className="display">Find the customer vehicle</h3>
-              <p>One search box: the customer&apos;s email, or a full/partial VIN or serial number.</p>
+              <h3 className="display">{t('shop.findCustomer')}</h3>
+              <p>{t('shop.findCustomerDesc')}</p>
             </div>
           </div>
           <div className="field">
-            <label className="label">Customer email, VIN, or n° série</label>
+            <label className="label">{t('shop.lookupPlaceholder')}</label>
             <input
               className="input"
               value={query}
@@ -132,17 +136,16 @@ export default function CreateVerifiedEventForm({ onCreated }: { onCreated: () =
               required
             />
             <p className="mono subtle" style={{ fontSize: 11, marginTop: 4 }}>
-              VIN and serial searches match partial input · email must be exact
+              {t('shop.lookupHint')}
             </p>
           </div>
           {lookupMsg && <p className="muted" style={{ fontSize: 13 }}>{lookupMsg}</p>}
           {error && step === 'lookup' && <p className="error-msg">{error}</p>}
           <button type="submit" className="btn btn-solid" style={{ marginTop: 4 }}>
-            <UserRoundSearch size={16} /> Look up vehicle
+            <UserRoundSearch size={16} /> {t('shop.lookUp')}
           </button>
         </form>
 
-        {/* Step 2: Create */}
         <form
           className={`wizard-card ${step === 'create' ? 'active' : step === 'lookup' ? 'locked' : ''}`}
           onSubmit={createRecord}
@@ -150,10 +153,10 @@ export default function CreateVerifiedEventForm({ onCreated }: { onCreated: () =
           <div className="wizard-card-head">
             <span className="wizard-card-num">2</span>
             <div>
-              <h3 className="display">Service details</h3>
+              <h3 className="display">{t('shop.serviceDetails')}</h3>
               <p>
                 <ShieldCheck size={13} style={{ verticalAlign: 'middle', color: 'var(--color-verified)' }} />{' '}
-                Verified immediately on save — no review step. The owner is notified automatically.
+                {t('shop.verifiedOnSaveDesc')}
               </p>
             </div>
           </div>
@@ -166,7 +169,8 @@ export default function CreateVerifiedEventForm({ onCreated }: { onCreated: () =
                   {selectedVehicle.year} {selectedVehicle.make} {selectedVehicle.model}
                 </strong>
                 <span>
-                  {ownerName ? `${ownerName} · ` : ''}{selectedVehicle.vin || 'No VIN on file'}
+                  {ownerName ? `${ownerName} · ` : ''}
+                  {selectedVehicle.vin || t('shop.noVin')}
                 </span>
               </div>
               {vehicles.length > 1 && (
@@ -188,44 +192,43 @@ export default function CreateVerifiedEventForm({ onCreated }: { onCreated: () =
 
           <div className="grid-form-2">
             <div className="field">
-              <label className="label">Service</label>
+              <label className="label">{t('shop.service')}</label>
               <select className="input" value={eventType} onChange={(e) => setEventType(e.target.value)}>
                 {EVENT_TYPES.map((type) => (
-                  <option key={type}>{type}</option>
+                  <option key={type} value={type}>
+                    {labelEvent(type)}
+                  </option>
                 ))}
               </select>
             </div>
             <div className="field">
-              <label className="label">Date</label>
+              <label className="label">{t('shop.date')}</label>
               <input className="input input-mono" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
             </div>
             <div className="field">
-              <label className="label">Mileage (km)</label>
+              <label className="label">{t('shop.mileage')}</label>
               <input className="input input-mono" type="number" value={mileage} onChange={(e) => setMileage(e.target.value)} required />
             </div>
             <div className="field">
-              <label className="label">Cost</label>
+              <label className="label">{t('shop.cost')}</label>
               <input className="input input-mono" type="number" step="0.01" value={cost} onChange={(e) => setCost(e.target.value)} />
             </div>
           </div>
           <div className="field">
-            <label className="label">Service notes</label>
-            <textarea className="textarea" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Parts used, observations…" />
+            <label className="label">{t('shop.serviceNotes')}</label>
+            <textarea className="textarea" value={notes} onChange={(e) => setNotes(e.target.value)} />
           </div>
           <div className="field">
-            <label className="label">Verification note (shown to buyer)</label>
-            <input
-              className="input"
-              value={verificationNotes}
-              onChange={(e) => setVerificationNotes(e.target.value)}
-              placeholder="e.g. Performed at our certified service bay"
-            />
+            <label className="label">{t('shop.verificationNoteFull')}</label>
+            <input className="input" value={verificationNotes} onChange={(e) => setVerificationNotes(e.target.value)} />
           </div>
           <div className="field">
-            <label className="label">Proof file (optional)</label>
+            <label className="label">
+              {t('shop.proofFile')} ({t('common.optional')})
+            </label>
             <label className="upload-zone compact-upload">
               <FileCheck2 size={22} />
-              <span>{proof ? proof.name : 'Attach invoice, photo, or PDF proof'}</span>
+              <span>{proof ? proof.name : t('shop.attachInvoice')}</span>
               <input type="file" accept=".pdf,.jpg,.jpeg,.png" style={{ display: 'none' }} onChange={(e) => setProof(e.target.files?.[0] ?? null)} />
             </label>
           </div>
@@ -235,11 +238,10 @@ export default function CreateVerifiedEventForm({ onCreated }: { onCreated: () =
             className="btn btn-solid"
             disabled={submitting || !ownerEmail || (!selectedVehicleId && vehicles.length > 0)}
           >
-            <ShieldCheck size={16} /> {submitting ? 'Saving…' : 'Create record'}
+            <ShieldCheck size={16} /> {submitting ? t('common.saving') : t('shop.createRecord')}
           </button>
         </form>
 
-        {/* Step 3: Done */}
         {step === 'done' && (
           <div className="wizard-card active" style={{ borderColor: 'rgba(34, 212, 122, 0.45)' }}>
             <div className="wizard-card-head">
@@ -247,13 +249,13 @@ export default function CreateVerifiedEventForm({ onCreated }: { onCreated: () =
                 <CheckCircle2 size={18} color="#0a0b0d" />
               </span>
               <div>
-                <h3 className="display">Verified record created</h3>
-                <p>The owner has been notified and the record is now part of their permanent trust history.</p>
+                <h3 className="display">{t('shop.verifiedCreated')}</h3>
+                <p>{t('shop.verifiedCreatedDesc')}</p>
               </div>
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button type="button" className="btn btn-solid" onClick={resetAll}>
-                <RotateCcw size={16} /> Add another
+                <RotateCcw size={16} /> {t('shop.addAnother')}
               </button>
             </div>
           </div>

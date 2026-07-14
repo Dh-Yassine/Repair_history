@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { X, Camera, Loader2, Trash2 } from 'lucide-react';
 import { api } from '../api';
 import { POPULAR_CAR_MODELS, POPULAR_MAKES } from '../lib/carData';
+import { useLanguage } from '../i18n/LanguageContext';
 import { useToast } from './ui/Toast';
 import { useOverlayPanel } from '../hooks/useOverlayPanel';
 import type { Vehicle } from '../types';
@@ -18,6 +19,7 @@ interface Props {
 
 export default function EditVehicleModal({ vehicle, onClose, onSaved, onDeleted }: Props) {
   const toast = useToast();
+  const { t } = useLanguage();
   const open = vehicle !== null;
 
   const [nickname, setNickname] = useState('');
@@ -69,18 +71,16 @@ export default function EditVehicleModal({ vehicle, onClose, onSaved, onDeleted 
     e.preventDefault();
     if (!vehicle) return;
     if (!make.trim() || !model.trim()) {
-      setError('Make and model are required');
+      setError(t('editVehicle.makeModelRequired'));
       return;
     }
     const parsedMileage = Number(mileage);
     if (!Number.isFinite(parsedMileage) || parsedMileage < vehicle.mileage) {
-      setError(
-        `Mileage cannot be lower than the vehicle's current recorded mileage (${vehicle.mileage.toLocaleString()} km).`
-      );
+      setError(t('editVehicle.mileageFloor', { n: vehicle.mileage.toLocaleString() }));
       return;
     }
     if (vinLocked && !vin.trim()) {
-      setError('VIN cannot be removed once it has been set.');
+      setError(t('editVehicle.vinNoClear'));
       return;
     }
     setSaving(true);
@@ -92,7 +92,6 @@ export default function EditVehicleModal({ vehicle, onClose, onSaved, onDeleted 
       form.append('model', model.trim());
       form.append('year', year);
       form.append('mileage', mileage);
-      // Always send existing VIN when locked; never blank it out
       if (vinLocked) {
         form.append('vin', (vin.trim() || vehicle.vin || '').toUpperCase());
       } else if (vin.trim()) {
@@ -103,10 +102,10 @@ export default function EditVehicleModal({ vehicle, onClose, onSaved, onDeleted 
       if (photo) form.append('photo', photo);
       const { vehicle: updated } = await api.updateVehicle(vehicle.id, form);
       onSaved(updated);
-      toast.success('Vehicle updated');
+      toast.success(t('editVehicle.updated'));
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update vehicle');
+      setError(err instanceof Error ? err.message : t('editVehicle.updateFailed'));
     } finally {
       setSaving(false);
     }
@@ -119,14 +118,10 @@ export default function EditVehicleModal({ vehicle, onClose, onSaved, onDeleted 
       const result = await api.deleteVehicle(vehicle.id);
       onDeleted(vehicle.id);
       const archived = result && typeof result === 'object' && 'archived' in result && result.archived;
-      toast.success(
-        archived
-          ? 'Vehicle archived. Existing share links still work.'
-          : 'Vehicle removed'
-      );
+      toast.success(archived ? t('editVehicle.archivedToast') : t('editVehicle.removedToast'));
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to remove vehicle');
+      setError(err instanceof Error ? err.message : t('editVehicle.removeFailed'));
       setDeleting(false);
     }
   }
@@ -139,7 +134,7 @@ export default function EditVehicleModal({ vehicle, onClose, onSaved, onDeleted 
         className="modal"
         role="dialog"
         aria-modal="true"
-        aria-label="Edit vehicle"
+        aria-label={t('editVehicle.title')}
         initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}
         onClick={(e) => e.stopPropagation()}
@@ -147,12 +142,14 @@ export default function EditVehicleModal({ vehicle, onClose, onSaved, onDeleted 
         <div className="modal-header">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <h2 className="display" style={{ fontSize: 26 }}>Edit vehicle</h2>
+              <h2 className="display" style={{ fontSize: 26 }}>
+                {t('editVehicle.title')}
+              </h2>
               <p className="muted" style={{ fontSize: 13, marginTop: 4 }}>
                 {vehicle.year} {vehicle.make} {vehicle.model}
               </p>
             </div>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={onClose} aria-label="Close">
+            <button type="button" className="btn btn-ghost btn-sm" onClick={onClose} aria-label={t('common.close')}>
               <X size={16} />
             </button>
           </div>
@@ -161,31 +158,37 @@ export default function EditVehicleModal({ vehicle, onClose, onSaved, onDeleted 
         <form onSubmit={handleSave}>
           <div style={{ padding: 24 }}>
             <div className="field">
-              <label className="label">Nickname (optional)</label>
+              <label className="label">
+                {t('editVehicle.nickname')} ({t('common.optional')})
+              </label>
               <input
                 className="input"
                 value={nickname}
                 onChange={(e) => setNickname(e.target.value)}
-                placeholder="Daily Driver"
                 maxLength={40}
               />
             </div>
             <div className="grid-form-2">
               <div className="field">
-                <label className="label">Make</label>
+                <label className="label">{t('editVehicle.make')}</label>
                 <input
                   className="input"
                   list="ev-makes"
                   value={make}
-                  onChange={(e) => { setMake(e.target.value); if (!POPULAR_CAR_MODELS[e.target.value]) setModel(''); }}
+                  onChange={(e) => {
+                    setMake(e.target.value);
+                    if (!POPULAR_CAR_MODELS[e.target.value]) setModel('');
+                  }}
                   required
                 />
                 <datalist id="ev-makes">
-                  {POPULAR_MAKES.map((n) => <option key={n} value={n} />)}
+                  {POPULAR_MAKES.map((n) => (
+                    <option key={n} value={n} />
+                  ))}
                 </datalist>
               </div>
               <div className="field">
-                <label className="label">Model</label>
+                <label className="label">{t('editVehicle.model')}</label>
                 <input
                   className="input"
                   list="ev-models"
@@ -194,18 +197,20 @@ export default function EditVehicleModal({ vehicle, onClose, onSaved, onDeleted 
                   required
                 />
                 <datalist id="ev-models">
-                  {(POPULAR_CAR_MODELS[make] || []).map((n) => <option key={n} value={n} />)}
+                  {(POPULAR_CAR_MODELS[make] || []).map((n) => (
+                    <option key={n} value={n} />
+                  ))}
                 </datalist>
               </div>
             </div>
 
             <div className="grid-form-2">
               <div className="field">
-                <label className="label">Year</label>
+                <label className="label">{t('editVehicle.year')}</label>
                 <input className="input input-mono" type="number" value={year} onChange={(e) => setYear(e.target.value)} required />
               </div>
               <div className="field">
-                <label className="label">Mileage (km)</label>
+                <label className="label">{t('editVehicle.mileage')}</label>
                 <input
                   className="input input-mono"
                   type="number"
@@ -215,14 +220,14 @@ export default function EditVehicleModal({ vehicle, onClose, onSaved, onDeleted 
                   required
                 />
                 <p className="mono muted" style={{ fontSize: 11, marginTop: 4 }}>
-                  Cannot go below {vehicle.mileage.toLocaleString()} km
+                  {t('editVehicle.mileageFloorHint', { n: vehicle.mileage.toLocaleString() })}
                 </p>
               </div>
             </div>
 
             <div className="grid-form-2">
               <div className="field">
-                <label className="label">{vinLocked ? 'VIN (locked)' : 'VIN (optional)'}</label>
+                <label className="label">{vinLocked ? t('editVehicle.vinLocked') : t('editVehicle.vinOptional')}</label>
                 <input
                   className="input input-mono"
                   value={vin}
@@ -233,45 +238,63 @@ export default function EditVehicleModal({ vehicle, onClose, onSaved, onDeleted 
                   readOnly={vinLocked}
                   maxLength={17}
                   style={{ textTransform: 'uppercase', opacity: vinLocked ? 0.85 : 1 }}
-                  title={vinLocked ? 'VIN cannot be removed once set' : undefined}
+                  title={vinLocked ? t('editVehicle.vinNoClear') : undefined}
                 />
                 {vinLocked && (
                   <p className="mono muted" style={{ fontSize: 11, marginTop: 4 }}>
-                    VIN cannot be cleared after it is set
+                    {t('editVehicle.vinNoClear')}
                   </p>
                 )}
               </div>
               <div className="field">
-                <label className="label">N° série (optional)</label>
-                <input className="input input-mono" value={serialNumber} onChange={(e) => setSerialNumber(e.target.value.toUpperCase())} style={{ textTransform: 'uppercase' }} />
+                <label className="label">
+                  {t('editVehicle.serial')} ({t('common.optional')})
+                </label>
+                <input
+                  className="input input-mono"
+                  value={serialNumber}
+                  onChange={(e) => setSerialNumber(e.target.value.toUpperCase())}
+                  style={{ textTransform: 'uppercase' }}
+                />
               </div>
             </div>
 
             <div className="field">
-              <label className="label">Visibility</label>
+              <label className="label">{t('editVehicle.visibility')}</label>
               <select className="input" value={visibility} onChange={(e) => setVisibility(e.target.value as Visibility)}>
-                <option value="PRIVATE">Private (link only)</option>
-                <option value="PUBLIC">Public (VIN visible)</option>
-                <option value="PARTNER_ONLY">Partners only</option>
+                <option value="PRIVATE">{t('editVehicle.private')}</option>
+                <option value="PUBLIC">{t('editVehicle.public')}</option>
+                <option value="PARTNER_ONLY">{t('editVehicle.partners')}</option>
               </select>
             </div>
 
             <div className="field">
-              <label className="label">Update photo (optional)</label>
+              <label className="label">
+                {t('editVehicle.updatePhoto')} ({t('common.optional')})
+              </label>
               <label className="upload-zone compact-upload" style={{ cursor: 'pointer' }}>
                 {photoPreview ? (
-                  <img src={photoPreview} alt="Preview" style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 8 }} />
+                  <img src={photoPreview} alt={t('common.preview')} style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 8 }} />
                 ) : vehicle.photoUrl ? (
-                  <img src={vehicle.photoUrl} alt="Current" style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 8, opacity: 0.6 }} />
+                  <img
+                    src={vehicle.photoUrl}
+                    alt={t('editVehicle.currentPhotoAlt')}
+                    style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 8, opacity: 0.6 }}
+                  />
                 ) : (
                   <Camera size={20} />
                 )}
-                <span style={{ fontSize: 13 }}>{photo ? photo.name : 'Change photo'}</span>
-                <input type="file" accept="image/png,image/jpeg,image/jpg,image/webp" style={{ display: 'none' }} onChange={(e) => onPickPhoto(e.target.files?.[0] ?? null)} />
+                <span style={{ fontSize: 13 }}>{photo ? photo.name : t('editVehicle.changePhoto')}</span>
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg,image/webp"
+                  style={{ display: 'none' }}
+                  onChange={(e) => onPickPhoto(e.target.files?.[0] ?? null)}
+                />
               </label>
               {photo && (
                 <button type="button" className="btn btn-ghost btn-sm" style={{ marginTop: 6 }} onClick={() => onPickPhoto(null)}>
-                  Remove new photo
+                  {t('editVehicle.removeNew')}
                 </button>
               )}
             </div>
@@ -280,29 +303,40 @@ export default function EditVehicleModal({ vehicle, onClose, onSaved, onDeleted 
 
             <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
               <button type="submit" className="btn btn-solid" style={{ flex: 1 }} disabled={saving || deleting}>
-                {saving ? <><Loader2 size={15} className="spinning" /> Saving…</> : 'Save changes'}
+                {saving ? (
+                  <>
+                    <Loader2 size={15} className="spinning" /> {t('common.saving')}
+                  </>
+                ) : (
+                  t('editVehicle.save')
+                )}
               </button>
               <button type="button" className="btn btn-ghost" onClick={onClose} disabled={saving || deleting}>
-                Cancel
+                {t('common.cancel')}
               </button>
             </div>
 
             <div style={{ marginTop: 20, borderTop: '1px solid var(--color-border)', paddingTop: 18 }}>
               {!confirmDelete ? (
                 <button type="button" className="btn btn-danger btn-sm" onClick={() => setConfirmDelete(true)} disabled={deleting}>
-                  <Trash2 size={14} /> Archive
+                  <Trash2 size={14} /> {t('editVehicle.archive')}
                 </button>
               ) : (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                   <p className="muted" style={{ fontSize: 13, margin: 0 }}>
-                    Removes this vehicle from your dashboard. Existing share links stay valid.
-                    Vehicles with no history may be deleted permanently.
+                    {t('editVehicle.archiveHint')}
                   </p>
                   <button type="button" className="btn btn-danger btn-sm" onClick={handleDelete} disabled={deleting}>
-                    {deleting ? <><Loader2 size={14} className="spinning" /> Archiving…</> : 'Confirm archive'}
+                    {deleting ? (
+                      <>
+                        <Loader2 size={14} className="spinning" /> {t('editVehicle.archiving')}
+                      </>
+                    ) : (
+                      t('editVehicle.confirmArchive')
+                    )}
                   </button>
                   <button type="button" className="btn btn-ghost btn-sm" onClick={() => setConfirmDelete(false)}>
-                    Cancel
+                    {t('common.cancel')}
                   </button>
                 </div>
               )}

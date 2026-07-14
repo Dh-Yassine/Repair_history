@@ -3,9 +3,11 @@ import { Bell, X } from 'lucide-react';
 import { api } from '../api';
 import { useOverlayPanel } from '../hooks/useOverlayPanel';
 import { useMediaQuery } from '../hooks/useMediaQuery';
+import { useLanguage } from '../i18n/LanguageContext';
 import type { Notification } from '../types';
 
 export default function NotificationsPanel() {
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -57,7 +59,7 @@ export default function NotificationsPanel() {
         type="button"
         className="btn btn-ghost btn-sm notifications-trigger topbar-icon-btn"
         onClick={() => setOpen((v) => !v)}
-        aria-label="Notifications"
+        aria-label={t('notifications.title')}
         aria-expanded={open}
       >
         <Bell size={18} />
@@ -70,18 +72,18 @@ export default function NotificationsPanel() {
             <button
               type="button"
               className="notifications-backdrop"
-              aria-label="Close notifications"
+              aria-label={t('notifications.close')}
               onClick={() => setOpen(false)}
             />
           )}
           <div className={`notifications-panel ${isMobile ? 'notifications-sheet' : ''}`}>
             <div className="notifications-panel-head">
-              <strong>Notifications</strong>
+              <strong>{t('notifications.title')}</strong>
               <button
                 type="button"
                 className="drawer-close"
                 onClick={() => setOpen(false)}
-                aria-label="Close"
+                aria-label={t('common.close')}
               >
                 <X size={16} />
               </button>
@@ -90,8 +92,7 @@ export default function NotificationsPanel() {
               {notifications.length === 0 ? (
                 <div style={{ padding: '8px 0' }}>
                   <p className="muted" style={{ fontSize: 13, margin: 0 }}>
-                    Nothing yet. You&apos;ll be notified here when a shop verifies a record or a
-                    service reminder comes due.
+                    {t('notifications.empty')}
                   </p>
                 </div>
               ) : (

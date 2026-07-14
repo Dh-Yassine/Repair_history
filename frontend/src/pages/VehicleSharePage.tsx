@@ -1,41 +1,14 @@
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { CheckCircle2, Copy, ExternalLink, Eye, Lock, RotateCcw, ShieldCheck, Users } from 'lucide-react';
 import { api } from '../api';
 import PageTransition from '../components/layout/PageTransition';
 import EventTimelineItem from '../components/events/EventTimelineItem';
 import { useToast } from '../components/ui/Toast';
+import { useLanguage } from '../i18n/LanguageContext';
 import type { PublicHistory, ShareLevel, ShareSettings, VisibilityType } from '../types';
 
 type ListingMode = 'PRIVATE' | 'PUBLIC';
-
-const DETAIL_OPTIONS: Array<{ value: ShareLevel; title: string; desc: string }> = [
-  {
-    value: 'SUMMARY',
-    title: 'Trust summary',
-    desc: 'Dates, mileage, service types, and verification status.',
-  },
-  {
-    value: 'FULL',
-    title: 'Full history',
-    desc: 'Includes garage, costs, notes, and shop verification details.',
-  },
-];
-
-const LISTING_OPTIONS: Array<{ value: ListingMode; title: string; desc: string; icon: typeof Lock }> = [
-  {
-    value: 'PRIVATE',
-    title: 'Private link',
-    desc: 'Send directly to one buyer. VIN shown only with full history.',
-    icon: Lock,
-  },
-  {
-    value: 'PUBLIC',
-    title: 'Public listing',
-    desc: 'For ads and marketplaces. VIN visible even in trust summary.',
-    icon: Users,
-  },
-];
 
 function normalizeVisibility(v: VisibilityType): ListingMode {
   return v === 'PUBLIC' ? 'PUBLIC' : 'PRIVATE';
@@ -44,6 +17,7 @@ function normalizeVisibility(v: VisibilityType): ListingMode {
 export default function VehicleSharePage() {
   const { vehicleId } = useParams<{ vehicleId: string }>();
   const toast = useToast();
+  const { t } = useLanguage();
   const [share, setShare] = useState<ShareSettings | null>(null);
   const [listingMode, setListingMode] = useState<ListingMode>('PRIVATE');
   const [shareLevel, setShareLevel] = useState<ShareLevel>('SUMMARY');
@@ -54,10 +28,27 @@ export default function VehicleSharePage() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const stats = share?.stats;
 
+  const DETAIL_OPTIONS = useMemo(
+    () =>
+      [
+        { value: 'SUMMARY' as ShareLevel, title: t('share.summary'), desc: t('share.summaryDesc') },
+        { value: 'FULL' as ShareLevel, title: t('share.full'), desc: t('share.fullDesc') },
+      ],
+    [t]
+  );
+
+  const LISTING_OPTIONS = useMemo(
+    () =>
+      [
+        { value: 'PRIVATE' as ListingMode, title: t('share.privateLink'), desc: t('share.privateLinkDesc'), icon: Lock },
+        { value: 'PUBLIC' as ListingMode, title: t('share.publicListing'), desc: t('share.publicListingDesc'), icon: Users },
+      ],
+    [t]
+  );
+
   const sharingEnabled = shareLevel !== 'NONE' && Boolean(share?.shareUrl);
   const settingsDirty =
-    share &&
-    (normalizeVisibility(share.visibility) !== listingMode || share.shareLevel !== shareLevel);
+    share && (normalizeVisibility(share.visibility) !== listingMode || share.shareLevel !== shareLevel);
 
   async function load() {
     if (!vehicleId) return;
@@ -72,7 +63,6 @@ export default function VehicleSharePage() {
     load();
   }, [vehicleId]);
 
-  // Live buyer preview: refetch whenever the detail level changes
   useEffect(() => {
     if (!vehicleId || shareLevel === 'NONE') {
       setPreview(null);
@@ -99,9 +89,9 @@ export default function VehicleSharePage() {
       if (share?.shareToken) await api.updateSharing(vehicleId, { shareLevel, visibility });
       else await api.enableSharing(vehicleId, { shareLevel, visibility });
       await load();
-      toast.success(shareLevel === 'NONE' ? 'Sharing turned off' : 'Sharing settings saved');
+      toast.success(shareLevel === 'NONE' ? t('share.toastOff') : t('share.toastSaved'));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not save sharing settings');
+      toast.error(err instanceof Error ? err.message : t('share.couldNotSave'));
     } finally {
       setSaving(false);
     }
@@ -111,32 +101,34 @@ export default function VehicleSharePage() {
     if (!share?.shareUrl) return;
     navigator.clipboard.writeText(share.shareUrl);
     setCopied(true);
-    toast.success('Link copied');
+    toast.success(t('share.toastCopied'));
     setTimeout(() => setCopied(false), 2000);
   }
 
   if (loading) return <div className="skeleton card" style={{ height: 320 }} />;
+
+  const previewModeLabel = shareLevel === 'SUMMARY' ? t('share.previewSummary') : t('share.previewFull');
 
   return (
     <PageTransition>
       <div className="hero-panel page-hero compact">
         <div className="hero-copy">
           <Link to={`/vehicles/${vehicleId}`} className="mono muted" style={{ fontSize: 12 }}>
-            ← Timeline
+            {t('share.backTimeline')}
           </Link>
           <p className="section-eyebrow" style={{ marginTop: 14 }}>
-            Sharing
+            {t('share.sharing')}
           </p>
-          <h1 className="display page-title">Share history</h1>
+          <h1 className="display page-title">{t('share.title')}</h1>
           <p className="muted" style={{ marginTop: 10, maxWidth: 480 }}>
-            Set the detail level, save, then copy the link.
+            {t('share.lead')}
           </p>
         </div>
         <div className="share-score-card">
-          <span className="mono muted">Trust score</span>
+          <span className="mono muted">{t('share.trustScore')}</span>
           <strong>{stats?.trustScore ?? 0}%</strong>
           <p className="muted">
-            {stats?.verifiedCount ?? 0}/{stats?.totalEvents ?? 0} verified
+            {t('share.verifiedOf', { v: stats?.verifiedCount ?? 0, t: stats?.totalEvents ?? 0 })}
           </p>
         </div>
       </div>
@@ -145,9 +137,9 @@ export default function VehicleSharePage() {
         <section className="card share-section">
           <div className="share-section-head">
             <h2 className="display" style={{ fontSize: 22 }}>
-              What viewers see
+              {t('share.whatViewersSee')}
             </h2>
-            <p className="muted">Choose how much detail appears on the shared timeline.</p>
+            <p className="muted">{t('share.viewersSeeDesc')}</p>
           </div>
 
           <div className="share-detail-grid">
@@ -170,7 +162,7 @@ export default function VehicleSharePage() {
             className={`share-off-toggle ${shareLevel === 'NONE' ? 'active' : ''}`}
             onClick={() => setShareLevel(shareLevel === 'NONE' ? 'SUMMARY' : 'NONE')}
           >
-            {shareLevel === 'NONE' ? 'Sharing is off' : 'Turn sharing off'}
+            {shareLevel === 'NONE' ? t('share.sharingOff') : t('share.turnOff')}
           </button>
         </section>
 
@@ -178,12 +170,9 @@ export default function VehicleSharePage() {
           <section className="card share-section">
             <div className="share-section-head">
               <h2 className="display" style={{ fontSize: 22 }}>
-                Buyer preview
+                {t('share.buyerPreview')}
               </h2>
-              <p className="muted">
-                Exactly what someone opening your link sees with the{' '}
-                <strong>{shareLevel === 'SUMMARY' ? 'trust summary' : 'full history'}</strong> setting.
-              </p>
+              <p className="muted">{t('share.previewDescTemplate', { mode: previewModeLabel })}</p>
             </div>
 
             {previewLoading && <div className="skeleton" style={{ height: 120 }} />}
@@ -194,30 +183,43 @@ export default function VehicleSharePage() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <ShieldCheck size={20} style={{ color: 'var(--color-verified)' }} />
                     <strong style={{ fontSize: 22 }}>{preview.trustScore ?? 0}%</strong>
-                    <span className="mono muted" style={{ fontSize: 11 }}>TRUST SCORE</span>
+                    <span className="mono muted" style={{ fontSize: 11 }}>
+                      {t('public.trustScore')}
+                    </span>
                   </div>
                   <span className="mono muted" style={{ fontSize: 12 }}>
                     {preview.vehicle.year} {preview.vehicle.make} {preview.vehicle.model}
                   </span>
                   <span className="mono muted" style={{ fontSize: 12 }}>
-                    VIN {preview.vehicle.vin ? `visible (${preview.vehicle.vin})` : 'hidden'}
+                    VIN{' '}
+                    {preview.vehicle.vin
+                      ? `${t('share.vinVisible')} (${preview.vehicle.vin})`
+                      : t('share.vinHidden')}
                   </span>
                   <span className="mono muted" style={{ fontSize: 12 }}>
-                    {preview.vehicle.verifiedCount}/{preview.vehicle.totalEvents} verified
+                    {t('share.verifiedOf', {
+                      v: preview.vehicle.verifiedCount,
+                      t: preview.vehicle.totalEvents,
+                    })}
                   </span>
                 </div>
                 {preview.events.length === 0 ? (
                   <p className="muted" style={{ fontSize: 13 }}>
-                    No events yet — buyers would see an empty timeline.
+                    {t('share.noEvents')}
                   </p>
                 ) : (
                   <>
                     {preview.events.slice(0, 3).map((ev) => (
-                      <EventTimelineItem key={ev.id} event={ev} publicView detailLevel={shareLevel === 'SUMMARY' ? 'SUMMARY' : 'FULL'} />
+                      <EventTimelineItem
+                        key={ev.id}
+                        event={ev}
+                        publicView
+                        detailLevel={shareLevel === 'SUMMARY' ? 'SUMMARY' : 'FULL'}
+                      />
                     ))}
                     {preview.events.length > 3 && (
                       <p className="mono muted" style={{ fontSize: 12, marginTop: 4 }}>
-                        + {preview.events.length - 3} more event(s) on the shared page
+                        {t('share.moreEvents', { n: preview.events.length - 3 })}
                       </p>
                     )}
                   </>
@@ -231,9 +233,9 @@ export default function VehicleSharePage() {
           <section className="card share-section">
             <div className="share-section-head">
               <h2 className="display" style={{ fontSize: 22 }}>
-                Access
+                {t('share.access')}
               </h2>
-              <p className="muted">How the vehicle is listed when shared.</p>
+              <p className="muted">{t('share.accessDesc')}</p>
             </div>
             <div className="share-listing-grid">
               {LISTING_OPTIONS.map((option) => (
@@ -254,11 +256,11 @@ export default function VehicleSharePage() {
 
         <div className="share-actions-row">
           <button type="submit" className="btn btn-solid" disabled={saving}>
-            <CheckCircle2 size={16} /> {saving ? 'Saving…' : 'Save settings'}
+            <CheckCircle2 size={16} /> {saving ? t('common.saving') : t('share.saveSettings')}
           </button>
-          {settingsDirty && <span className="tag tag-warning">Unsaved changes</span>}
+          {settingsDirty && <span className="tag tag-warning">{t('share.unsaved')}</span>}
           {share && !settingsDirty && share.shareLevel !== 'NONE' && (
-            <span className="tag tag-verified">Saved</span>
+            <span className="tag tag-verified">{t('share.saved')}</span>
           )}
         </div>
 
@@ -266,19 +268,19 @@ export default function VehicleSharePage() {
           <section className="card share-section share-link-section">
             <div className="share-section-head">
               <h2 className="display" style={{ fontSize: 22 }}>
-                Share link
+                {t('share.shareLink')}
               </h2>
-              <p className="muted">Copy and send this link.</p>
+              <p className="muted">{t('share.shareLinkDesc')}</p>
             </div>
             <div className="share-link-box">
               <code>{share!.shareUrl}</code>
             </div>
             <div className="button-row">
               <button type="button" className="btn btn-solid btn-sm" onClick={copyLink}>
-                <Copy size={14} /> {copied ? 'Copied' : 'Copy link'}
+                <Copy size={14} /> {copied ? t('common.copied') : t('share.copyLink')}
               </button>
               <a href={share!.shareUrl!} target="_blank" rel="noreferrer" className="btn btn-primary btn-sm">
-                <ExternalLink size={14} /> Preview
+                <ExternalLink size={14} /> {t('common.preview')}
               </a>
               <button
                 type="button"
@@ -287,11 +289,11 @@ export default function VehicleSharePage() {
                   if (vehicleId) {
                     await api.regenerateShareToken(vehicleId);
                     await load();
-                    toast.info('Link regenerated. Previous links no longer work.');
+                    toast.info(t('share.toastRegen'));
                   }
                 }}
               >
-                <RotateCcw size={14} /> Regenerate
+                <RotateCcw size={14} /> {t('share.regenerate')}
               </button>
             </div>
           </section>
@@ -299,7 +301,7 @@ export default function VehicleSharePage() {
 
         {shareLevel === 'NONE' && (
           <div className="card empty-panel" style={{ minHeight: 100 }}>
-            <p className="muted">Sharing is off. Choose a detail level above to create a link.</p>
+            <p className="muted">{t('share.chooseLevel')}</p>
           </div>
         )}
       </form>

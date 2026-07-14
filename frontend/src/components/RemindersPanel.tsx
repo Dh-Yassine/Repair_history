@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
+import { useLanguage } from '../i18n/LanguageContext';
 import type { ServiceReminder } from '../types';
 
 export default function RemindersPanel() {
+  const { t } = useLanguage();
   const [reminders, setReminders] = useState<ServiceReminder[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -32,11 +34,10 @@ export default function RemindersPanel() {
     return (
       <div className="card" style={{ marginBottom: 16 }}>
         <h3 className="display" style={{ fontSize: 18, marginBottom: 8 }}>
-          Service reminders
+          {t('reminders.title')}
         </h3>
         <p className="muted" style={{ fontSize: 13, margin: 0 }}>
-          No upcoming reminders. They are generated automatically from your logged services —
-          log an oil change and the next one is scheduled for you.
+          {t('reminders.empty')}
         </p>
       </div>
     );
@@ -45,7 +46,7 @@ export default function RemindersPanel() {
   return (
     <div className="card" style={{ marginBottom: 16, borderColor: 'rgba(255, 140, 66, 0.35)' }}>
       <h3 className="display" style={{ fontSize: 18, marginBottom: 12, color: 'var(--color-warning)' }}>
-        Service reminders
+        {t('reminders.title')}
       </h3>
       {reminders.slice(0, 5).map((r) => (
         <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, gap: 8 }}>
@@ -57,21 +58,22 @@ export default function RemindersPanel() {
               </span>
             )}
             <p className="mono subtle" style={{ fontSize: 11, margin: '2px 0 0' }}>
-              {r.dueDate && `Due ${new Date(r.dueDate).toLocaleDateString()}`}
+              {r.dueDate && t('reminders.due', { date: new Date(r.dueDate).toLocaleDateString() })}
               {r.dueMileage != null && ` · ${r.dueMileage.toLocaleString()} km`}
             </p>
             {(r.message || r.sourceDate) && (
               <p className="muted" style={{ fontSize: 12, margin: '4px 0 0' }}>
                 {r.message ||
-                  `Based on your service on ${new Date(r.sourceDate!).toLocaleDateString()}${
-                    r.sourceMileage != null ? ` at ${Math.round(r.sourceMileage).toLocaleString()} km` : ''
-                  }.`}
-                {r.shop?.shopName && ` From ${r.shop.shopName}.`}
+                  t('reminders.basedOn', {
+                    date: new Date(r.sourceDate!).toLocaleDateString(),
+                    km: r.sourceMileage != null ? Math.round(r.sourceMileage).toLocaleString() : '',
+                  })}
+                {r.shop?.shopName && ` ${t('reminders.fromShop', { shop: r.shop.shopName })}`}
               </p>
             )}
           </div>
           <button type="button" className="btn btn-ghost btn-sm" onClick={() => complete(r.id)}>
-            Mark done
+            {t('reminders.markDone')}
           </button>
         </div>
       ))}

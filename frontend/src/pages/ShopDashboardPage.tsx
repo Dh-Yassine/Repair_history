@@ -6,12 +6,14 @@ import PageTransition from '../components/layout/PageTransition';
 import CreateVerifiedEventForm from '../components/shop/CreateVerifiedEventForm';
 import PendingVerificationList from '../components/shop/PendingVerificationList';
 import VerificationHistoryList from '../components/shop/VerificationHistoryList';
+import { useLanguage } from '../i18n/LanguageContext';
 import type { MaintenanceEvent, Verification } from '../types';
 
 type ShopTab = 'create' | 'pending' | 'history';
 
 export default function ShopDashboardPage() {
   const { user, refreshUser } = useAuth();
+  const { t } = useLanguage();
   const [events, setEvents] = useState<MaintenanceEvent[]>([]);
   const [verifications, setVerifications] = useState<(Verification & { event?: MaintenanceEvent })[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,7 +37,7 @@ export default function ShopDashboardPage() {
       setVerifications(history);
       setError('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load');
+      setError(err instanceof Error ? err.message : t('shop.failedLoad'));
     } finally {
       setLoading(false);
     }
@@ -54,9 +56,9 @@ export default function ShopDashboardPage() {
   }, [approved, refreshUser]);
 
   const tabs: { id: ShopTab; label: string; icon: typeof ShieldCheck }[] = [
-    { id: 'create', label: 'New record', icon: ShieldCheck },
-    { id: 'pending', label: `Pending (${events.length})`, icon: ClipboardCheck },
-    { id: 'history', label: `History (${verifications.length})`, icon: History },
+    { id: 'create', label: t('shop.newRecord'), icon: ShieldCheck },
+    { id: 'pending', label: t('shop.pendingTab', { n: events.length }), icon: ClipboardCheck },
+    { id: 'history', label: t('shop.historyTab', { n: verifications.length }), icon: History },
   ];
 
   if (!approved) {
@@ -64,26 +66,24 @@ export default function ShopDashboardPage() {
       <PageTransition>
         <div className="hero-panel shop-hero">
           <div>
-            <span className="tag tag-warning">Pending approval</span>
+            <span className="tag tag-warning">{t('shop.pendingApproval')}</span>
             <h1 className="display page-title" style={{ marginTop: 8 }}>
-              {user?.shopName || 'Shop'}
+              {user?.shopName || t('shop.defaultName')}
             </h1>
             <p className="muted" style={{ maxWidth: 520 }}>
-              Your shop account is waiting for an admin to approve it. You can sign in, but you cannot
-              create or verify service records until then.
+              {t('shop.waitingAdmin')}
             </p>
           </div>
         </div>
         <div className="card" style={{ padding: 28, display: 'flex', gap: 16, alignItems: 'flex-start' }}>
           <Clock size={22} style={{ marginTop: 2, color: 'var(--color-warning)' }} />
           <div>
-            <strong>What happens next</strong>
+            <strong>{t('shop.whatNext')}</strong>
             <p className="muted" style={{ margin: '8px 0 0', fontSize: 14, lineHeight: 1.5 }}>
-              An admin reviews new shop requests in the admin console. Once approved, this page unlocks
-              and your verifications count as shop-confirmed on owner timelines.
+              {t('shop.whatNextBody')}
             </p>
             <button type="button" className="btn btn-outline btn-sm" style={{ marginTop: 16 }} onClick={() => refreshUser?.()}>
-              Check approval status
+              {t('shop.checkStatus')}
             </button>
           </div>
         </div>
@@ -95,21 +95,19 @@ export default function ShopDashboardPage() {
     <PageTransition>
       <div className="hero-panel shop-hero">
         <div>
-          <span className="tag tag-verified">Approved partner</span>
+          <span className="tag tag-verified">{t('shop.approvedPartner')}</span>
           <h1 className="display page-title" style={{ marginTop: 8 }}>
-            {user?.shopName || 'Shop'}
+            {user?.shopName || t('shop.defaultName')}
           </h1>
-          <p className="muted">
-            Create verified service records. Owners are notified when a record is added.
-          </p>
+          <p className="muted">{t('shop.createLead')}</p>
         </div>
         <div className="hero-actions">
           <div className="hero-metric">
-            <span className="mono muted">Verified records</span>
+            <span className="mono muted">{t('shop.verifiedRecords')}</span>
             <strong>{verifications.length}</strong>
           </div>
           <div className="hero-metric">
-            <span className="mono muted">Owner reports</span>
+            <span className="mono muted">{t('shop.ownerReports')}</span>
             <strong>{events.length}</strong>
           </div>
         </div>
@@ -117,7 +115,7 @@ export default function ShopDashboardPage() {
 
       {error && <p className="error-msg">{error}</p>}
 
-      <div className="tab-strip" role="tablist" aria-label="Shop sections">
+      <div className="tab-strip" role="tablist" aria-label={t('shop.sections')}>
         {tabs.map((item) => (
           <button
             key={item.id}
@@ -136,11 +134,8 @@ export default function ShopDashboardPage() {
         <div className="trust-callout" style={{ marginTop: -4 }}>
           <UsersRound size={18} />
           <div>
-            <strong>How it works</strong>
-            <p style={{ margin: '4px 0 0', fontSize: 13 }}>
-              Find the customer by email, VIN, or serial number → fill in service details → the record
-              appears in the owner&apos;s timeline as verified and the owner is notified.
-            </p>
+            <strong>{t('shop.howItWorks')}</strong>
+            <p style={{ margin: '4px 0 0', fontSize: 13 }}>{t('shop.howBody')}</p>
           </div>
         </div>
       )}

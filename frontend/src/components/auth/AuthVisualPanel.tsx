@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { ShieldCheck, FileText, Share2 } from 'lucide-react';
 import authHeroB from '../../assets/hero-car-optionb.png';
 import authHeroA from '../../assets/hero-car-optionA.png';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 const EASE = [0.16, 1, 0.3, 1] as [number, number, number, number];
 
@@ -15,19 +16,19 @@ const fadeUp = {
   }),
 };
 
-const PROOF = [
-  { icon: ShieldCheck, label: 'Shop-verified', className: 'tag tag-verified' },
-  { icon: FileText, label: 'Owner records', className: 'tag tag-self' },
-  { icon: Share2, label: 'Shareable link', className: 'tag tag-green' },
-];
-
 type Props = {
-  /** Which hero photo to use on the left panel */
   variant?: 'login' | 'register';
 };
 
 export default function AuthVisualPanel({ variant = 'login' }: Props) {
+  const { t } = useLanguage();
   const hero = variant === 'register' ? authHeroA : authHeroB;
+
+  const PROOF = [
+    { icon: ShieldCheck, label: t('auth.shopVerified'), className: 'tag tag-verified' },
+    { icon: FileText, label: t('auth.ownerRecords'), className: 'tag tag-self' },
+    { icon: Share2, label: t('auth.shareableLink'), className: 'tag tag-green' },
+  ];
 
   return (
     <div className="auth-visual">
@@ -57,11 +58,11 @@ export default function AuthVisualPanel({ variant = 'login' }: Props) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease: EASE, delay: 0.2 }}
         >
-          VERIFIED
+          {t('auth.verified')}
           <br />
-          MAINTENANCE
+          {t('auth.maintenance')}
           <br />
-          <span className="auth-tagline-accent">HISTORY.</span>
+          <span className="auth-tagline-accent">{t('auth.history')}</span>
         </motion.p>
 
         <motion.p
@@ -70,9 +71,7 @@ export default function AuthVisualPanel({ variant = 'login' }: Props) {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.6, delay: 0.45 }}
         >
-          {variant === 'register'
-            ? 'Sell with proof. Buy with confidence.'
-            : 'One timeline. Shop-verified when it matters.'}
+          {variant === 'register' ? t('auth.taglineRegister') : t('auth.taglineLogin')}
         </motion.p>
 
         <div className="auth-proof-stack">

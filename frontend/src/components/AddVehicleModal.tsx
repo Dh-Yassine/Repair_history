@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Camera, ScanLine, Check, X, Keyboard, Hash } from 'lucide-react';
 import { api } from '../api';
 import { POPULAR_CAR_MODELS, POPULAR_MAKES } from '../lib/carData';
+import { useLanguage } from '../i18n/LanguageContext';
 import { useToast } from './ui/Toast';
 import { useOverlayPanel } from '../hooks/useOverlayPanel';
 
@@ -20,6 +21,7 @@ export default function AddVehicleModal({
   canAdd: boolean;
 }) {
   const toast = useToast();
+  const { t } = useLanguage();
   const [step, setStep] = useState(1);
   const [mode, setMode] = useState<Mode>('vin');
   const [vin, setVin] = useState('');
@@ -58,7 +60,7 @@ export default function AddVehicleModal({
 
   async function decodeVin() {
     if (vin.length < 11) {
-      setError('Enter at least 11 characters of the VIN');
+      setError(t('addVehicle.vinShort'));
       return;
     }
     setDecoding(true);
@@ -73,7 +75,7 @@ export default function AddVehicleModal({
       setStep(2);
     } catch {
       setDecodeFailed(true);
-      setError("Couldn't find that VIN — enter the details manually below.");
+      setError(t('addVehicle.vinFail'));
     } finally {
       setDecoding(false);
     }
@@ -82,15 +84,15 @@ export default function AddVehicleModal({
   function continueWithIdentifier() {
     if (mode === 'serial') {
       if (!serialNumber.trim()) {
-        setError('Enter the numéro de série from your carte grise');
+        setError(t('addVehicle.needSerial'));
         return;
       }
       if (!make.trim() || !model.trim()) {
-        setError('Enter make and model — the serial number cannot be decoded automatically');
+        setError(t('addVehicle.needMakeModelSerial'));
         return;
       }
     } else if (!make.trim() || !model.trim()) {
-      setError('Enter both make and model to continue');
+      setError(t('addVehicle.needBoth'));
       return;
     }
     setError('');
@@ -113,16 +115,20 @@ export default function AddVehicleModal({
       await api.createVehicle(form);
       setStep(3);
       onSuccess();
-      toast.success('Vehicle added');
+      toast.success(t('addVehicle.added'));
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to add vehicle';
+      const msg = err instanceof Error ? err.message : t('addVehicle.failed');
       setError(msg);
       toast.error(msg);
     }
   }
 
   const identifierLabel =
-    mode === 'vin' ? 'Scan a VIN or enter details manually' : mode === 'serial' ? 'French numéro de série + vehicle details' : 'Enter vehicle details manually';
+    mode === 'vin'
+      ? t('addVehicle.scanVinOrManual')
+      : mode === 'serial'
+        ? t('addVehicle.frenchSerialDetails')
+        : t('addVehicle.manual');
 
   if (!open) return null;
 
@@ -132,7 +138,7 @@ export default function AddVehicleModal({
         className="modal"
         role="dialog"
         aria-modal="true"
-        aria-label="Add vehicle"
+        aria-label={t('addVehicle.title')}
         initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}
         onClick={(e) => e.stopPropagation()}
@@ -146,15 +152,15 @@ export default function AddVehicleModal({
                 ))}
               </div>
               <h2 className="display" style={{ fontSize: 28 }}>
-                Add vehicle
+                {t('addVehicle.title')}
               </h2>
               <p className="muted" style={{ fontSize: 13, marginTop: 4 }}>
                 {step === 1 && identifierLabel}
-                {step === 2 && 'Photo and details'}
-                {step === 3 && 'Vehicle added'}
+                {step === 2 && t('addVehicle.photoDetails')}
+                {step === 3 && t('addVehicle.added')}
               </p>
             </div>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={handleClose} aria-label="Close">
+            <button type="button" className="btn btn-ghost btn-sm" onClick={handleClose} aria-label={t('common.close')}>
               <X size={16} />
             </button>
           </div>
@@ -163,9 +169,9 @@ export default function AddVehicleModal({
         <div style={{ padding: 24 }}>
           {!canAdd ? (
             <div>
-              <p className="error-msg">Free plan limit reached (3 vehicles).</p>
+              <p className="error-msg">{t('addVehicle.freeLimitShort')}</p>
               <p className="muted" style={{ fontSize: 13, marginTop: 8 }}>
-                Upgrade your plan to add more vehicles and unlock advanced sharing features.
+                {t('addVehicle.upgradeDesc')}
               </p>
             </div>
           ) : (
@@ -175,7 +181,7 @@ export default function AddVehicleModal({
                   {mode === 'vin' ? (
                     <>
                       <div className="field">
-                        <label className="label">VIN (17 characters)</label>
+                        <label className="label">{t('addVehicle.vin')}</label>
                         <div style={{ position: 'relative' }}>
                           <input
                             className={`input input-mono ${decoding ? 'skeleton' : ''}`}
@@ -191,44 +197,63 @@ export default function AddVehicleModal({
                           />
                         </div>
                         <p className="mono subtle" style={{ fontSize: 11, marginTop: 4 }}>
-                          {vin.length} / 17 · Make, model, and year are filled in automatically
+                          {t('addVehicle.vinHint', { n: vin.length })}
                         </p>
                       </div>
                       {error && <p className="error-msg">{error}</p>}
                       <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
                         <button type="button" className="btn btn-solid" onClick={decodeVin} disabled={decoding}>
-                          {decoding ? 'Decoding…' : 'Decode VIN'}
+                          {decoding ? t('addVehicle.decoding') : t('addVehicle.decode')}
                         </button>
                         {decodeFailed && (
                           <button
                             type="button"
                             className="btn btn-outline"
-                            onClick={() => { setMode('manual'); setError(''); setDecodeFailed(false); }}
+                            onClick={() => {
+                              setMode('manual');
+                              setError('');
+                              setDecodeFailed(false);
+                            }}
                           >
                             <Keyboard size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />
-                            Enter details manually
+                            {t('addVehicle.enterManually')}
                           </button>
                         )}
                         <button type="button" className="btn btn-ghost" onClick={handleClose}>
-                          Cancel
+                          {t('common.cancel')}
                         </button>
                       </div>
-                      <div style={{ marginTop: 20, paddingTop: 14, borderTop: '1px solid var(--color-border)', display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                      <div
+                        style={{
+                          marginTop: 20,
+                          paddingTop: 14,
+                          borderTop: '1px solid var(--color-border)',
+                          display: 'flex',
+                          gap: 16,
+                          flexWrap: 'wrap',
+                        }}
+                      >
                         <button
                           type="button"
                           className="btn btn-ghost btn-sm"
-                          onClick={() => { setMode('serial'); setError(''); }}
+                          onClick={() => {
+                            setMode('serial');
+                            setError('');
+                          }}
                         >
                           <Hash size={13} style={{ verticalAlign: 'middle', marginRight: 5 }} />
-                          No VIN? Use the French n° série
+                          {t('addVehicle.noVin')}
                         </button>
                         <button
                           type="button"
                           className="btn btn-ghost btn-sm"
-                          onClick={() => { setMode('manual'); setError(''); }}
+                          onClick={() => {
+                            setMode('manual');
+                            setError('');
+                          }}
                         >
                           <Keyboard size={13} style={{ verticalAlign: 'middle', marginRight: 5 }} />
-                          Enter details manually
+                          {t('addVehicle.enterManually')}
                         </button>
                       </div>
                     </>
@@ -238,28 +263,31 @@ export default function AddVehicleModal({
                         type="button"
                         className="btn btn-ghost btn-sm"
                         style={{ marginBottom: 14 }}
-                        onClick={() => { setMode('vin'); setError(''); }}
+                        onClick={() => {
+                          setMode('vin');
+                          setError('');
+                        }}
                       >
                         <ScanLine size={13} style={{ verticalAlign: 'middle', marginRight: 5 }} />
-                        Back to VIN decode
+                        {t('addVehicle.backVin')}
                       </button>
                       {mode === 'serial' && (
                         <div className="field">
-                          <label className="label">Numéro de série (carte grise)</label>
+                          <label className="label">{t('addVehicle.serial')}</label>
                           <input
                             className="input input-mono"
                             value={serialNumber}
                             onChange={(e) => setSerialNumber(e.target.value.toUpperCase())}
-                            placeholder="e.g. VF1… or chassis number"
+                            placeholder="e.g. VF1…"
                             style={{ textTransform: 'uppercase' }}
                           />
                           <p className="mono subtle" style={{ fontSize: 11, marginTop: 4 }}>
-                            French registration serial — use this when you don&apos;t have a 17-char VIN
+                            {t('addVehicle.serialHint')}
                           </p>
                         </div>
                       )}
                       <div className="field">
-                        <label className="label">Make</label>
+                        <label className="label">{t('addVehicle.make')}</label>
                         <input
                           className="input"
                           list="popular-car-makes"
@@ -278,7 +306,7 @@ export default function AddVehicleModal({
                       </div>
                       <div className="grid-form-2">
                         <div className="field">
-                          <label className="label">Model</label>
+                          <label className="label">{t('addVehicle.model')}</label>
                           <input
                             className="input"
                             list="popular-car-models"
@@ -293,17 +321,17 @@ export default function AddVehicleModal({
                           </datalist>
                         </div>
                         <div className="field">
-                          <label className="label">Year</label>
+                          <label className="label">{t('addVehicle.year')}</label>
                           <input className="input input-mono" type="number" value={year} onChange={(e) => setYear(e.target.value)} />
                         </div>
                       </div>
                       {error && <p className="error-msg">{error}</p>}
                       <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
                         <button type="button" className="btn btn-solid" onClick={continueWithIdentifier}>
-                          Continue
+                          {t('common.continue')}
                         </button>
                         <button type="button" className="btn btn-ghost" onClick={handleClose}>
-                          Cancel
+                          {t('common.cancel')}
                         </button>
                       </div>
                     </>
@@ -323,27 +351,31 @@ export default function AddVehicleModal({
                   )}
                   {serialNumber && (
                     <p className="mono muted" style={{ marginBottom: 18, fontSize: 12 }}>
-                      N° série · {serialNumber}
+                      {t('editVehicle.serial')} · {serialNumber}
                     </p>
                   )}
                   {!vin && !serialNumber && <div style={{ marginBottom: 18 }} />}
                   <div className="field">
-                    <label className="label">Nickname (optional)</label>
-                    <input className="input" value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder="Daily Driver" />
+                    <label className="label">
+                      {t('addVehicle.nickname')} ({t('common.optional')})
+                    </label>
+                    <input className="input" value={nickname} onChange={(e) => setNickname(e.target.value)} />
                   </div>
                   <div className="field">
-                    <label className="label">Current mileage (km)</label>
+                    <label className="label">{t('addVehicle.mileage')}</label>
                     <input className="input input-mono" type="number" value={mileage} onChange={(e) => setMileage(e.target.value)} required />
                   </div>
                   <div className="field">
-                    <label className="label">Vehicle photo (optional)</label>
+                    <label className="label">
+                      {t('addVehicle.photo')} ({t('common.optional')})
+                    </label>
                     <label className="upload-zone compact-upload vehicle-upload-preview">
                       {photo ? (
-                        <img src={URL.createObjectURL(photo)} alt="Vehicle preview" />
+                        <img src={URL.createObjectURL(photo)} alt={t('addVehicle.preview')} />
                       ) : (
                         <>
                           <Camera size={22} />
-                          <span>Optional photo</span>
+                          <span>{t('addVehicle.optionalPhoto')}</span>
                         </>
                       )}
                       <input
@@ -355,36 +387,41 @@ export default function AddVehicleModal({
                     </label>
                     {photo && (
                       <button type="button" className="btn btn-ghost btn-sm" style={{ marginTop: 8 }} onClick={() => setPhoto(null)}>
-                        Remove photo
+                        {t('addVehicle.removePhoto')}
                       </button>
                     )}
                   </div>
                   {error && <p className="error-msg">{error}</p>}
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button type="button" className="btn btn-ghost" onClick={() => setStep(1)}>
-                      Back
+                      {t('common.back')}
                     </button>
                     <button type="submit" className="btn btn-solid" style={{ flex: 1 }}>
-                      Add vehicle
+                      {t('addVehicle.title')}
                     </button>
                   </div>
                 </motion.form>
               )}
 
               {step === 3 && (
-                <motion.div key="s3" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} style={{ textAlign: 'center' }}>
+                <motion.div
+                  key="s3"
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  style={{ textAlign: 'center' }}
+                >
                   <div style={{ color: 'var(--color-verified)', marginBottom: 16, display: 'flex', justifyContent: 'center' }}>
                     <Check size={48} />
                   </div>
                   <h3 className="display" style={{ fontSize: 24 }}>
-                    Vehicle added
+                    {t('addVehicle.added')}
                   </h3>
                   <p className="muted" style={{ margin: '12px 0 24px' }}>
-                    Add a shop-verified record later, or log a service on the timeline.
+                    {t('addVehicle.addedDesc')}
                   </p>
                   <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
                     <button type="button" className="btn btn-solid" onClick={handleClose}>
-                      Done
+                      {t('common.done')}
                     </button>
                   </div>
                 </motion.div>

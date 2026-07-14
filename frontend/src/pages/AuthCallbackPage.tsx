@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api, setToken } from '../api';
 import { supabase } from '../lib/supabase';
+import { useLanguage } from '../i18n/LanguageContext';
 import type { UserRole } from '../types';
 
 function homeForRole(role?: UserRole) {
@@ -51,12 +52,14 @@ async function resolveSession() {
 }
 
 export default function AuthCallbackPage() {
+  const { t } = useLanguage();
   const navigate = useNavigate();
-  const [message, setMessage] = useState('Confirming your email…');
+  const [message, setMessage] = useState(t('auth.confirmingEmail'));
+  const [showLoginLink, setShowLoginLink] = useState(false);
 
   useEffect(() => {
     if (!supabase) {
-      setMessage('Auth is not configured.');
+      setMessage(t('auth.authNotConfigured'));
       return;
     }
 
@@ -68,7 +71,8 @@ export default function AuthCallbackPage() {
         if (cancelled) return;
 
         if (!session) {
-          setMessage('Email link expired or already used. Sign in with your password instead.');
+          setMessage(t('auth.emailLinkExpired'));
+          setShowLoginLink(true);
           return;
         }
 
@@ -78,7 +82,8 @@ export default function AuthCallbackPage() {
         navigate(homeForRole(user.role), { replace: true });
       } catch (err) {
         if (!cancelled) {
-          setMessage(err instanceof Error ? err.message : 'Account setup failed. Try signing in.');
+          setMessage(err instanceof Error ? err.message : t('auth.accountSetupFailed'));
+          setShowLoginLink(true);
         }
       }
     })();
@@ -86,7 +91,7 @@ export default function AuthCallbackPage() {
     return () => {
       cancelled = true;
     };
-  }, [navigate]);
+  }, [navigate, t]);
 
   return (
     <div
@@ -101,9 +106,9 @@ export default function AuthCallbackPage() {
     >
       <div className="card" style={{ maxWidth: 420, textAlign: 'center', padding: '2rem' }}>
         <p className="mono muted">{message}</p>
-        {message.includes('Sign in') && (
+        {showLoginLink && (
           <p style={{ marginTop: '1rem' }}>
-            <Link to="/login">Go to login</Link>
+            <Link to="/login">{t('auth.goToLogin')}</Link>
           </p>
         )}
       </div>

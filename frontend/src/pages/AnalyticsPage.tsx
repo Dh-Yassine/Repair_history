@@ -13,6 +13,7 @@ import { api } from '../api';
 import { useAuth } from '../context/AuthContext';
 import PageTransition from '../components/layout/PageTransition';
 import AnimatedNumber from '../components/ui/AnimatedNumber';
+import { useLanguage, useEventTypeLabel } from '../i18n/LanguageContext';
 import type { OwnerAnalytics, ShopAnalytics } from '../types';
 
 const chartTooltipStyle = {
@@ -25,6 +26,8 @@ const chartTooltipStyle = {
 
 export default function AnalyticsPage() {
   const { user } = useAuth();
+  const { t } = useLanguage();
+  const labelEvent = useEventTypeLabel();
   const [owner, setOwner] = useState<OwnerAnalytics | null>(null);
   const [shop, setShop] = useState<ShopAnalytics | null>(null);
   const [monthly, setMonthly] = useState<Array<{ month: string; count: number }>>([]);
@@ -64,10 +67,10 @@ export default function AnalyticsPage() {
       <PageTransition>
         <div className="hero-panel page-hero compact">
           <div className="hero-copy">
-            <p className="section-eyebrow">Shop performance</p>
-            <h1 className="display page-title">Shop analytics</h1>
+            <p className="section-eyebrow">{t('analytics.shopPerf')}</p>
+            <h1 className="display page-title">{t('analytics.shopAnalytics')}</h1>
             <p className="muted" style={{ marginTop: 10, maxWidth: 540 }}>
-              Track verifications, throughput, and the customer trust you create.
+              {t('analytics.shopLead')}
             </p>
           </div>
         </div>
@@ -76,27 +79,27 @@ export default function AnalyticsPage() {
             <div style={{ fontSize: 28 }}>
               <AnimatedNumber value={shop.totalVerifications} />
             </div>
-            <p className="muted">Total verifications</p>
+            <p className="muted">{t('analytics.totalVerifications')}</p>
           </div>
           <div className="card-stat">
             <div style={{ fontSize: 28 }}>
               <AnimatedNumber value={shop.verificationsLast30Days} />
             </div>
-            <p className="muted">Last 30 days</p>
+            <p className="muted">{t('analytics.last30')}</p>
           </div>
           <div className="card-stat">
             <div style={{ fontSize: 28 }}>
               <AnimatedNumber value={shop.pendingEvents} />
             </div>
-            <p className="muted">Pending</p>
+            <p className="muted">{t('analytics.pending')}</p>
           </div>
         </div>
         <div className="card" style={{ marginTop: 16 }}>
           <h2 className="display" style={{ fontSize: 22, marginBottom: 4 }}>
-            Verified records per month
+            {t('analytics.verifiedPerMonth')}
           </h2>
           <p className="muted" style={{ fontSize: 13, marginBottom: 16 }}>
-            Last 12 months of verified work created or confirmed by your shop.
+            {t('analytics.verifiedPerMonthDesc')}
           </p>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={monthly}>
@@ -109,14 +112,14 @@ export default function AnalyticsPage() {
         </div>
         <div className="card" style={{ marginTop: 16 }}>
           <h2 className="display" style={{ fontSize: 22, marginBottom: 12 }}>
-            Recent verified work
+            {t('analytics.recentWork')}
           </h2>
           {shop.recentVerifications.length === 0 ? (
-            <p className="muted">Create verified service records to build your activity feed.</p>
+            <p className="muted">{t('analytics.createVerified')}</p>
           ) : (
             shop.recentVerifications.map((item) => (
               <div key={`${item.eventType}-${item.verifiedAt}`} className="history-row">
-                <span>{item.eventType}</span>
+                <span>{labelEvent(item.eventType)}</span>
                 <span className="mono muted">{item.vehicle}</span>
                 <span className="tag tag-verified">{new Date(item.verifiedAt).toLocaleDateString()}</span>
               </div>
@@ -130,16 +133,19 @@ export default function AnalyticsPage() {
   if (!owner) return null;
 
   const costData = Object.entries(owner.costByMonth).map(([month, cost]) => ({ month, cost }));
-  const typeData = Object.entries(owner.eventsByType).map(([name, count]) => ({ name, count }));
+  const typeData = Object.entries(owner.eventsByType).map(([name, count]) => ({
+    name: labelEvent(name),
+    count,
+  }));
 
   return (
     <PageTransition>
       <div className="hero-panel page-hero compact">
         <div className="hero-copy">
-          <p className="section-eyebrow">Trust insights</p>
-          <h1 className="display page-title">Analytics</h1>
+          <p className="section-eyebrow">{t('analytics.trustInsights')}</p>
+          <h1 className="display page-title">{t('analytics.analytics')}</h1>
           <p className="muted" style={{ marginTop: 10, maxWidth: 540 }}>
-            See how your trust score is built — verified versus self-reported records, average spend, and service mix.
+            {t('analytics.ownerLead')}
           </p>
         </div>
       </div>
@@ -148,35 +154,35 @@ export default function AnalyticsPage() {
           <div style={{ fontSize: 28 }}>
             $<AnimatedNumber value={owner.averageServiceCost} decimals={2} />
           </div>
-          <p className="muted">Avg service cost</p>
+          <p className="muted">{t('analytics.avgCost')}</p>
         </div>
         <div className="card-stat">
           <div style={{ fontSize: 28 }}>
             <AnimatedNumber value={owner.serviceFrequency} />
           </div>
-          <p className="muted">Total events</p>
+          <p className="muted">{t('analytics.totalEvents')}</p>
         </div>
         <div className="card-stat">
           <div style={{ fontSize: 28 }}>
             <AnimatedNumber value={Math.round(owner.conversionRate * 100)} />%
           </div>
-          <p className="muted">Verified rate</p>
+          <p className="muted">{t('analytics.verifiedRate')}</p>
         </div>
         <div className="card-stat">
           <div style={{ fontSize: 28 }}>
             <AnimatedNumber value={owner.vehicleCount} />
           </div>
-          <p className="muted">Vehicles</p>
+          <p className="muted">{t('analytics.vehicles')}</p>
         </div>
       </div>
 
       <div className="trust-summary-row" style={{ marginTop: 16 }}>
         <div className="card trust-mini">
-          <span className="mono muted">Shop-created verified</span>
+          <span className="mono muted">{t('analytics.shopCreated')}</span>
           <strong>{owner.shopVerifiedCount ?? owner.verifiedCount}</strong>
         </div>
         <div className="card trust-mini">
-          <span className="mono muted">Self-reported records</span>
+          <span className="mono muted">{t('analytics.selfReported')}</span>
           <strong>{owner.selfReportedCount ?? 0}</strong>
         </div>
       </div>
@@ -184,7 +190,7 @@ export default function AnalyticsPage() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 16 }}>
         <div className="card">
           <h3 className="display" style={{ fontSize: 18, marginBottom: 16 }}>
-            Monthly spend
+            {t('analytics.monthlySpend')}
           </h3>
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={costData}>
@@ -197,7 +203,7 @@ export default function AnalyticsPage() {
         </div>
         <div className="card">
           <h3 className="display" style={{ fontSize: 18, marginBottom: 16 }}>
-            By service type
+            {t('analytics.byType')}
           </h3>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={typeData}>

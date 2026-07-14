@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react';
 import { ExternalLink, PackageCheck, Search, ShoppingBag, Wrench } from 'lucide-react';
 import { api } from '../api';
 import PageTransition from '../components/layout/PageTransition';
+import { useLanguage } from '../i18n/LanguageContext';
 import type { Vehicle, SparePart } from '../types';
 
 export default function MarketplacePage() {
+  const { t } = useLanguage();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedId, setSelectedId] = useState('');
   const [parts, setParts] = useState<SparePart[]>([]);
@@ -50,15 +52,15 @@ export default function MarketplacePage() {
           <div className="hero-icon" style={{ marginBottom: 14 }}>
             <ShoppingBag size={24} />
           </div>
-          <p className="section-eyebrow">Marketplace</p>
-          <h1 className="display page-title">Parts for your vehicle</h1>
+          <p className="section-eyebrow">{t('marketplace.title')}</p>
+          <h1 className="display page-title">{t('marketplace.partsFor')}</h1>
           <p className="muted" style={{ marginTop: 10 }}>
-            Pick a vehicle and AutoHistory filters compatible parts, supplier links, and universal accessories.
+            {t('marketplace.pickVehicle')}
           </p>
         </div>
         <div className="hero-actions">
           <span className="tag tag-green">
-            <PackageCheck size={12} /> Partner catalog
+            <PackageCheck size={12} /> {t('marketplace.partnerCatalog')}
           </span>
         </div>
       </div>
@@ -69,7 +71,7 @@ export default function MarketplacePage() {
             <div className="feature-card-icon" style={{ margin: '0 auto 12px' }}>
               <Wrench size={20} />
             </div>
-            <p>Add a vehicle on the dashboard to see recommended parts.</p>
+            <p>{t('marketplace.addVehicleFirst')}</p>
           </div>
         </div>
       ) : (
@@ -78,7 +80,7 @@ export default function MarketplacePage() {
             <div className="control-group">
               <Search size={18} style={{ color: 'var(--color-accent)' }} />
               <label className="mono muted" htmlFor="vehicle-select">
-                Select vehicle
+                {t('marketplace.selectVehicle')}
               </label>
               <select
                 id="vehicle-select"
@@ -95,7 +97,7 @@ export default function MarketplacePage() {
               </select>
             </div>
             {vehicleLabel && (
-              <span className="tag tag-green">{parts.length} parts for {vehicleLabel}</span>
+              <span className="tag tag-green">{t('marketplace.partsCount', { n: parts.length, label: vehicleLabel })}</span>
             )}
           </div>
 
@@ -107,7 +109,7 @@ export default function MarketplacePage() {
             </div>
           ) : parts.length === 0 ? (
             <div className="card">
-              <p>No parts matched this vehicle yet. Universal accessories may appear after catalog updates.</p>
+              <p>{t('marketplace.noMatch')}</p>
             </div>
           ) : (
             <div className="grid-cards">
@@ -124,8 +126,8 @@ export default function MarketplacePage() {
                     ${p.price.toFixed(2)}
                   </p>
                   <p className="muted" style={{ fontSize: 13 }}>
-                    via {p.supplier}
-                    {p.fitsVehicle === false && ' · may need fit check'}
+                    {t('marketplace.via', { supplier: p.supplier })}
+                    {p.fitsVehicle === false && ` · ${t('marketplace.fitCheck')}`}
                   </p>
                   <a
                     href={p.buyUrl}
@@ -134,7 +136,7 @@ export default function MarketplacePage() {
                     className="btn btn-outline btn-sm"
                     style={{ marginTop: 'auto', alignSelf: 'flex-start' }}
                   >
-                    View listing <ExternalLink size={14} />
+                    {t('marketplace.viewListing')} <ExternalLink size={14} />
                   </a>
                 </article>
               ))}

@@ -1,5 +1,6 @@
 import { FileText, Trash2, Pencil } from 'lucide-react';
 import { api } from '../../api';
+import { useLanguage, useEventTypeLabel } from '../../i18n/LanguageContext';
 import type { MaintenanceEvent } from '../../types';
 import VerificationBadge from './VerificationBadge';
 
@@ -29,6 +30,8 @@ export default function EventTimelineItem({
   onDelete?: () => void;
   onEdit?: (event: MaintenanceEvent) => void;
 }) {
+  const { t } = useLanguage();
+  const labelEvent = useEventTypeLabel();
   const showDetails = !publicView || detailLevel === 'FULL';
   const certifier = showDetails ? shopName(event) : null;
   const isOwnerEditable = Boolean(!publicView && event.source !== 'SHOP' && !event.verified);
@@ -44,7 +47,7 @@ export default function EventTimelineItem({
             <span className="mono muted" style={{ fontSize: 11 }}>
               {new Date(event.date).toLocaleDateString()} · {event.mileage.toLocaleString()} km
             </span>
-            <h3 className="event-card-title">{event.eventType}</h3>
+            <h3 className="event-card-title">{labelEvent(event.eventType)}</h3>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <VerificationBadge event={event} />
@@ -53,8 +56,8 @@ export default function EventTimelineItem({
                 type="button"
                 className="btn btn-ghost btn-sm event-action-btn"
                 onClick={() => onEdit!(event)}
-                aria-label="Edit event"
-                title="Edit"
+                aria-label={t('events.editEvent')}
+                title={t('common.edit')}
               >
                 <Pencil size={13} />
               </button>
@@ -64,7 +67,7 @@ export default function EventTimelineItem({
 
         {certifier && (
           <p className="event-card-certifier">
-            {event.verified ? 'Certified by ' : 'Reported at '}
+            {event.verified ? t('events.certifiedBy') + ' ' : t('events.reportedAt') + ' '}
             <strong>{certifier}</strong>
             {event.verification?.verifiedAt && (
               <span className="mono muted"> · {new Date(event.verification.verifiedAt).toLocaleDateString()}</span>
@@ -78,11 +81,15 @@ export default function EventTimelineItem({
           </p>
         )}
         {showDetails && event.notes && <p style={{ fontSize: 14 }}>{event.notes}</p>}
-        {showDetails && event.verification?.notes && <p className="muted">Shop note: {event.verification.notes}</p>}
+        {showDetails && event.verification?.notes && (
+          <p className="muted">
+            {t('events.shopNote')} {event.verification.notes}
+          </p>
+        )}
         {showDetails && publicView && (event.documentCount ?? 0) > 0 && (
           <p className="event-proof-link">
             <FileText size={14} />
-            <span className="mono muted">{event.documentCount} proof file(s) on record</span>
+            <span className="mono muted">{t('events.proofFiles', { n: event.documentCount ?? 0 })}</span>
           </p>
         )}
 
@@ -100,14 +107,14 @@ export default function EventTimelineItem({
           <p className="event-proof-link">
             <FileText size={14} />
             <a href={api.shopProofUrl(event.verification.proofPath)} target="_blank" rel="noreferrer">
-              Shop proof
+              {t('events.shopProof')}
             </a>
           </p>
         )}
 
         {canDelete && (
           <button type="button" className="btn btn-danger btn-sm event-delete" onClick={onDelete}>
-            <Trash2 size={14} /> Delete record
+            <Trash2 size={14} /> {t('events.deleteRecord')}
           </button>
         )}
       </article>

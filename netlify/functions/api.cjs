@@ -41,6 +41,17 @@ async function getHandler() {
 exports.handler = async (event, context) => {
   context.callbackWaitsForEmptyEventLoop = false;
   try {
+    // Ensure JSON bodies are plain strings for serverless-http → Express
+    if (event.isBase64Encoded && typeof event.body === 'string') {
+      event = {
+        ...event,
+        body: Buffer.from(event.body, 'base64').toString('utf8'),
+        isBase64Encoded: false,
+      };
+    }
+    if (event.body == null) {
+      event = { ...event, body: '' };
+    }
     const fn = await getHandler();
     return await fn(normalizeEvent(event), context);
   } catch (err) {

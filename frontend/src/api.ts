@@ -218,11 +218,18 @@ export const api = {
     make?: string;
     model?: string;
     year?: string | number;
-  }) =>
-    request<import('./types').ShopVehicleLookup>('/api/shop/vehicles/lookup', {
+  }) => {
+    const q = (body.q || body.ownerEmail || '').trim();
+    const qs = q ? `?q=${encodeURIComponent(q)}` : '';
+    return request<import('./types').ShopVehicleLookup>(`/api/shop/vehicles/lookup${qs}`, {
       method: 'POST',
-      body: JSON.stringify(body),
-    }),
+      body: JSON.stringify({
+        ...body,
+        q: body.q || body.ownerEmail || undefined,
+        ownerEmail: body.ownerEmail || (body.q?.includes('@') ? body.q : undefined),
+      }),
+    });
+  },
 
   shopMonthlyAnalytics: () =>
     request<{ monthly: Array<{ month: string; count: number }> }>('/api/shop/analytics/monthly'),

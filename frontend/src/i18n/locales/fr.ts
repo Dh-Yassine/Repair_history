@@ -457,6 +457,7 @@ export const fr = {
     hintDone: 'Vérifié à l’enregistrement',
     findCustomerDesc: 'Un seul champ de recherche : e-mail du client, ou VIN/n° série complet ou partiel.',
     lookupHint: 'Les recherches VIN et n° série acceptent une saisie partielle · l’e-mail doit être exact',
+    lookupEmpty: 'Saisissez un e-mail, un VIN ou un n° de série',
     ownerFoundNoVehicleFull:
       'Propriétaire {name} trouvé, mais aucun véhicule correspondant. Demandez au propriétaire d’ajouter le véhicule.',
     verifiedOnSaveDesc:

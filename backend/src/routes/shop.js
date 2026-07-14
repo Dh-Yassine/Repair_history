@@ -117,20 +117,44 @@ router.get('/events', async (req, res) => {
   res.json({ events, shopName, connectedOwners: ownerIds.length });
 });
 
+function readJsonBody(req) {
+  let body = req.body;
+  if (typeof body === 'string') {
+    try {
+      body = JSON.parse(body || '{}');
+    } catch {
+      body = {};
+    }
+  }
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return {};
+  return body;
+}
+
+function readLookupQuery(req) {
+  const body = readJsonBody(req);
+  const fromQs = typeof req.query?.q === 'string' ? req.query.q : '';
+  const fromEmailQs = typeof req.query?.email === 'string' ? req.query.email : '';
+  return String(body.q || body.ownerEmail || body.email || fromQs || fromEmailQs || '')
+    .trim()
+    .replace(/\u00a0/g, ' ');
+}
+
 /**
  * Owner/vehicle lookup with a single query: email, VIN, or serial.
- * Legacy per-field body still accepted.
+ * Accepts JSON body fields q / ownerEmail / email, or ?q= / ?email= query params.
  */
 router.post('/vehicles/lookup', async (req, res) => {
   try {
-    const body = req.body && typeof req.body === 'object' ? req.body : {};
+    const body = readJsonBody(req);
     const { vin, serialNumber, make, model, year } = body;
-    const query = String(body.q || body.ownerEmail || body.email || '')
-      .trim()
-      .replace(/\u00a0/g, ' ');
+    const query = readLookupQuery(req);
 
     if (!query) {
-      return res.status(400).json({ error: 'Enter an email, VIN, or serial number to search' });
+      console.warn('[shop/lookup] empty query — body keys:', Object.keys(body), 'query:', req.query);
+      return res.status(400).json({
+        error: 'Enter an email, VIN, or serial number to search',
+        debug: { bodyKeys: Object.keys(body), hasAuth: Boolean(req.user?.id) },
+      });
     }
 
     let owner = null;
@@ -178,7 +202,6 @@ router.post('/vehicles/lookup', async (req, res) => {
       owner = valid[0].owner;
       vehicles = valid.filter((v) => v.owner.id === owner.id).map(({ owner: _o, ...v }) => v);
 
-      // Optional extra filters when legacy fields are sent with a VIN/serial query
       const normalizedVin = vin?.trim().toUpperCase();
       const normalizedSerial = serialNumber?.trim().toUpperCase();
       if (normalizedVin || normalizedSerial || make?.trim() || model?.trim() || year) {

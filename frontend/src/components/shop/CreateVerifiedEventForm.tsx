@@ -58,15 +58,18 @@ export default function CreateVerifiedEventForm({ onCreated }: { onCreated: () =
     setLookupMsg('');
   }
 
-  async function lookup(e: FormEvent) {
+  async function lookup(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError('');
     setLookupMsg('');
-    const q = query.trim().replace(/\u00a0/g, ' ');
+    const formData = new FormData(e.currentTarget);
+    const fromForm = String(formData.get('q') || '');
+    const q = (fromForm || query).trim().replace(/\u00a0/g, ' ');
     if (!q) {
-      setError(t('shop.lookupFailed'));
+      setError(t('shop.lookupEmpty'));
       return;
     }
+    setQuery(q);
     try {
       const result = await api.shopLookupVehicle(
         q.includes('@') ? { q, ownerEmail: q.toLowerCase() } : { q }
@@ -137,9 +140,11 @@ export default function CreateVerifiedEventForm({ onCreated }: { onCreated: () =
             <label className="label">{t('shop.lookupPlaceholder')}</label>
             <input
               className="input"
+              name="q"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="customer@email.com or VF1RFB00…"
+              autoComplete="email"
               required
             />
             <p className="mono subtle" style={{ fontSize: 11, marginTop: 4 }}>

@@ -449,6 +449,7 @@ export const en = {
     hintDone: 'Verified on save',
     findCustomerDesc: "One search box: the customer's email, or a full/partial VIN or serial number.",
     lookupHint: 'VIN and serial searches match partial input · email must be exact',
+    lookupEmpty: 'Enter an email, VIN, or serial number to search',
     ownerFoundNoVehicleFull: 'Owner {name} found, but no matching vehicle. Ask the owner to add the vehicle first.',
     verifiedOnSaveDesc: 'Verified immediately on save — no review step. The owner is notified automatically.',
     verificationNoteFull: 'Verification note (shown to buyer)',

@@ -3341,8 +3341,130 @@ button,
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-shrink: 0;
 }
 
+.landing-label-short {
+  display: none;
+}
+
+.landing-hero-ctas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.landing-cta-primary {
+  font-size: 15px;
+  padding: 13px 24px;
+  letter-spacing: 0.01em;
+}
+
+/* Phone: keep Sign in + Join as one compact row (connected pill), not stacked blocks */
+@media (max-width: 640px) {
+  .landing-nav-inner {
+    padding: 10px 16px;
+    gap: 10px;
+  }
+
+  .landing-nav .sidebar-logo-text {
+    font-size: 12px;
+    letter-spacing: 0.06em;
+  }
+
+  .landing-nav-links {
+    gap: 0;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 999px;
+    overflow: hidden;
+    background: rgba(26, 29, 36, 0.85);
+  }
+
+  .landing-nav-links .btn {
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 8px 12px;
+    font-size: 12px;
+    white-space: nowrap;
+    min-height: 36px;
+  }
+
+  .landing-nav-links .btn-ghost {
+    background: transparent;
+    color: var(--color-text);
+  }
+
+  .landing-nav-links .btn-solid {
+    background: var(--color-accent);
+    color: #0a0b0d;
+  }
+
+  .landing-nav-links .btn-solid:hover,
+  .landing-nav-links a.btn-solid:hover {
+    background: var(--color-accent-dim);
+    color: #0a0b0d;
+  }
+
+  .landing-label-full {
+    display: none;
+  }
+
+  .landing-label-short {
+    display: inline;
+  }
+
+  .landing-cta-arrow {
+    display: none;
+  }
+
+  .landing-hero-content {
+    padding: 24px 16px 48px;
+    gap: 16px;
+  }
+
+  .landing-hero-ctas {
+    flex-wrap: nowrap;
+    width: 100%;
+    max-width: 320px;
+    margin-inline: auto;
+    gap: 0;
+    border-radius: 999px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(26, 29, 36, 0.9);
+  }
+
+  .landing-hero-ctas .btn,
+  .landing-hero-ctas .landing-cta-primary {
+    flex: 1 1 0;
+    min-width: 0;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    white-space: nowrap;
+    font-size: 13px;
+    padding: 12px 10px;
+    justify-content: center;
+  }
+
+  .landing-hero-ctas .btn-ghost {
+    background: transparent;
+    color: var(--color-text);
+  }
+
+  .landing-hero-ctas .btn-solid,
+  .landing-hero-ctas .landing-cta-primary {
+    background: var(--color-accent);
+    color: #0a0b0d;
+  }
+
+  .landing-hero-ctas .btn-solid:hover,
+  .landing-hero-ctas a.btn-solid:hover {
+    background: var(--color-accent-dim);
+    color: #0a0b0d;
+  }
+}
 /* ── Dot grid background ── */
 .landing-dotgrid {
   position: absolute;
@@ -3562,18 +3684,6 @@ button,
   line-height: 1.65;
   max-width: 520px;
   margin: 0;
-}
-
-.landing-hero-ctas {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.landing-cta-primary {
-  font-size: 15px;
-  padding: 13px 24px;
-  letter-spacing: 0.01em;
 }
 
 .landing-hero-badges {

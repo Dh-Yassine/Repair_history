@@ -51,7 +51,9 @@ export default function LandingPage() {
           <div className="landing-nav-links">
             <Link to="/login" className="btn btn-ghost btn-sm">Sign in</Link>
             <Link to="/register" className="btn btn-solid btn-sm">
-              Create account <ArrowRight size={14} />
+              <span className="landing-label-full">Create account</span>
+              <span className="landing-label-short">Join</span>
+              <ArrowRight size={14} className="landing-cta-arrow" />
             </Link>
           </div>
         </div>
@@ -86,7 +88,9 @@ export default function LandingPage() {
           </motion.p>
           <motion.div variants={fadeUp} className="landing-hero-ctas">
             <Link to="/register" className="btn btn-solid landing-cta-primary">
-              Create account <ArrowRight size={16} />
+              <span className="landing-label-full">Create account</span>
+              <span className="landing-label-short">Join</span>
+              <ArrowRight size={16} className="landing-cta-arrow" />
             </Link>
             <Link to="/login" className="btn btn-ghost">
               Sign in
@@ -273,7 +277,9 @@ export default function LandingPage() {
           </p>
           <div className="landing-hero-ctas" style={{ marginTop: 28, justifyContent: 'center' }}>
             <Link to="/register" className="btn btn-solid landing-cta-primary">
-              Create account <ArrowRight size={16} />
+              <span className="landing-label-full">Create account</span>
+              <span className="landing-label-short">Join</span>
+              <ArrowRight size={16} className="landing-cta-arrow" />
             </Link>
             <Link to="/login" className="btn btn-ghost">Sign in</Link>
           </div>

@@ -26,6 +26,7 @@ interface AuthContextValue {
     shopName: string;
     address?: string;
   }) => Promise<void>;
+  requestPasswordReset: (email: string) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
 }
@@ -292,6 +293,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [useSupabase]
   );
 
+  const requestPasswordReset = useCallback(
+    async (email: string) => {
+      if (!useSupabase || !supabase) {
+        throw new Error('PASSWORD_RESET_UNAVAILABLE');
+      }
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: authCallbackUrl(),
+      });
+      if (error) throw new Error(formatAuthError(error));
+    },
+    [useSupabase]
+  );
+
   const logout = useCallback(() => {
     if (useSupabase && supabase) supabase.auth.signOut().catch(() => {});
     setToken(null);
@@ -299,8 +313,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [useSupabase]);
 
   const value = useMemo(
-    () => ({ user, loading, login, register, registerBuyer, registerShop, logout, refreshUser }),
-    [user, loading, login, register, registerBuyer, registerShop, logout, refreshUser]
+    () => ({
+      user,
+      loading,
+      login,
+      register,
+      registerBuyer,
+      registerShop,
+      requestPasswordReset,
+      logout,
+      refreshUser,
+    }),
+    [user, loading, login, register, registerBuyer, registerShop, requestPasswordReset, logout, refreshUser]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

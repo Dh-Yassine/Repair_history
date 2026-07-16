@@ -13,7 +13,10 @@ function authOptions() {
       detectSessionInUrl: true,
       persistSession: true,
       autoRefreshToken: true,
-      flowType: 'pkce' as const,
+      // Implicit works for email recovery links opened from mail apps / other devices.
+      // PKCE stores a code verifier in localStorage and fails when the link is opened elsewhere
+      // (or when the callback also exchanges the code a second time).
+      flowType: 'implicit' as const,
     },
   } as const;
 }
@@ -34,6 +37,25 @@ export const supabase = isSupabaseAuthEnabled() ? createClient(url!, anonKey!, a
 export function authCallbackUrl() {
   if (typeof window === 'undefined') return undefined;
   return `${window.location.origin}/auth/callback`;
+}
+
+/** Read hash / query auth params before Supabase clears them. */
+export function getAuthRedirectHints() {
+  if (typeof window === 'undefined') {
+    return { isRecovery: false, errorDescription: null as string | null };
+  }
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  const query = new URLSearchParams(window.location.search);
+  const type = hash.get('type') || query.get('type');
+  const errorDescription =
+    hash.get('error_description') ||
+    query.get('error_description') ||
+    hash.get('error') ||
+    query.get('error');
+  return {
+    isRecovery: type === 'recovery',
+    errorDescription: errorDescription ? decodeURIComponent(errorDescription.replace(/\+/g, ' ')) : null,
+  };
 }
 
 /** Turn Supabase auth errors into user-friendly messages */

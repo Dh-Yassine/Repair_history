@@ -1,32 +1,24 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { CheckCircle2, Copy, ExternalLink, Eye, Lock, RotateCcw, ShieldCheck, Users } from 'lucide-react';
+import { CheckCircle2, Copy, ExternalLink, Eye, RotateCcw, ShieldCheck } from 'lucide-react';
 import { api } from '../api';
 import PageTransition from '../components/layout/PageTransition';
 import EventTimelineItem from '../components/events/EventTimelineItem';
 import { useToast } from '../components/ui/Toast';
 import { useLanguage } from '../i18n/LanguageContext';
-import type { PublicHistory, ShareLevel, ShareSettings, VisibilityType } from '../types';
-
-type ListingMode = 'PRIVATE' | 'PUBLIC';
-
-function normalizeVisibility(v: VisibilityType): ListingMode {
-  return v === 'PUBLIC' ? 'PUBLIC' : 'PRIVATE';
-}
+import type { PublicHistory, ShareLevel, ShareSettings } from '../types';
 
 export default function VehicleSharePage() {
   const { vehicleId } = useParams<{ vehicleId: string }>();
   const toast = useToast();
   const { t } = useLanguage();
   const [share, setShare] = useState<ShareSettings | null>(null);
-  const [listingMode, setListingMode] = useState<ListingMode>('PRIVATE');
   const [shareLevel, setShareLevel] = useState<ShareLevel>('SUMMARY');
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [preview, setPreview] = useState<PublicHistory | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
-  const stats = share?.stats;
 
   const DETAIL_OPTIONS = useMemo(
     () =>
@@ -37,24 +29,13 @@ export default function VehicleSharePage() {
     [t]
   );
 
-  const LISTING_OPTIONS = useMemo(
-    () =>
-      [
-        { value: 'PRIVATE' as ListingMode, title: t('share.privateLink'), desc: t('share.privateLinkDesc'), icon: Lock },
-        { value: 'PUBLIC' as ListingMode, title: t('share.publicListing'), desc: t('share.publicListingDesc'), icon: Users },
-      ],
-    [t]
-  );
-
   const sharingEnabled = shareLevel !== 'NONE' && Boolean(share?.shareUrl);
-  const settingsDirty =
-    share && (normalizeVisibility(share.visibility) !== listingMode || share.shareLevel !== shareLevel);
+  const settingsDirty = share && share.shareLevel !== shareLevel;
 
   async function load() {
     if (!vehicleId) return;
     const { share: s } = await api.getShareSettings(vehicleId);
     setShare(s);
-    setListingMode(normalizeVisibility(s.visibility));
     setShareLevel(s.shareLevel);
     setLoading(false);
   }
@@ -84,7 +65,8 @@ export default function VehicleSharePage() {
     e.preventDefault();
     if (!vehicleId) return;
     setSaving(true);
-    const visibility = listingMode;
+    // Link sharing only — anyone with the link can view (no public listing mode).
+    const visibility = 'PRIVATE' as const;
     try {
       if (share?.shareToken) await api.updateSharing(vehicleId, { shareLevel, visibility });
       else await api.enableSharing(vehicleId, { shareLevel, visibility });
@@ -122,13 +104,6 @@ export default function VehicleSharePage() {
           <h1 className="display page-title">{t('share.title')}</h1>
           <p className="muted" style={{ marginTop: 10, maxWidth: 480 }}>
             {t('share.lead')}
-          </p>
-        </div>
-        <div className="share-score-card">
-          <span className="mono muted">{t('share.trustScore')}</span>
-          <strong>{stats?.trustScore ?? 0}%</strong>
-          <p className="muted">
-            {t('share.verifiedOf', { v: stats?.verifiedCount ?? 0, t: stats?.totalEvents ?? 0 })}
           </p>
         </div>
       </div>
@@ -226,31 +201,6 @@ export default function VehicleSharePage() {
                 )}
               </div>
             )}
-          </section>
-        )}
-
-        {shareLevel !== 'NONE' && (
-          <section className="card share-section">
-            <div className="share-section-head">
-              <h2 className="display" style={{ fontSize: 22 }}>
-                {t('share.access')}
-              </h2>
-              <p className="muted">{t('share.accessDesc')}</p>
-            </div>
-            <div className="share-listing-grid">
-              {LISTING_OPTIONS.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  className={`share-choice-card ${listingMode === option.value ? 'active' : ''}`}
-                  onClick={() => setListingMode(option.value)}
-                >
-                  <option.icon size={20} />
-                  <strong>{option.title}</strong>
-                  <span>{option.desc}</span>
-                </button>
-              ))}
-            </div>
           </section>
         )}
 

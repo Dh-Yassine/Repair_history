@@ -260,6 +260,15 @@ export default function VehicleDetailPage() {
         garageName: garageName || undefined,
         notes: notes || undefined,
       });
+      if (uploadFile) {
+        try {
+          await api.uploadDocument(vehicleId, editEventTarget.id, uploadFile);
+          toast.info(t('vehicle.receiptAttached'));
+        } catch (uploadErr) {
+          const uploadMsg = uploadErr instanceof Error ? uploadErr.message : t('common.failed');
+          toast.error(uploadMsg);
+        }
+      }
       setDrawerOpen(false);
       resetForm();
       await load();
@@ -274,14 +283,6 @@ export default function VehicleDetailPage() {
   }
 
   const headerMileage = events[0]?.mileage ?? 0;
-  const currentMileage = vehicle?.mileage ?? headerMileage;
-  const parsedMileageInput = Number(mileage);
-  // For edits of the record that set the current odometer, lowering is still blocked server-side;
-  // warn inline before submit instead of failing on Save.
-  const mileageWarning =
-    mileage !== '' && Number.isFinite(parsedMileageInput) && parsedMileageInput < currentMileage
-      ? t('vehicle.mileageWarn', { current: currentMileage.toLocaleString() })
-      : '';
   const verifiedCount = events.filter((event) => event.verified).length;
   const selfReportedCount = events.filter((event) => !event.verified).length;
 
@@ -573,11 +574,6 @@ export default function VehicleDetailPage() {
                           />
                           <span className="input-prefix-suffix">km</span>
                         </div>
-                        {mileageWarning && (
-                          <p className="error-msg" style={{ marginTop: 6, fontSize: 12 }}>
-                            {mileageWarning}
-                          </p>
-                        )}
                       </div>
                     </div>
                     <div className="field-grid-2" style={{ marginTop: 12 }}>
@@ -624,7 +620,7 @@ export default function VehicleDetailPage() {
                     </div>
                   </section>
 
-                  {drawerMode === 'create' && <section className="drawer-section">
+                  <section className="drawer-section">
                     <div className="drawer-section-head">
                       <h3>{t('vehicle.proofOfService')}</h3>
                       <span className="hint">{t('vehicle.proofHint')}</span>
@@ -685,7 +681,7 @@ export default function VehicleDetailPage() {
                         onChange={(e) => onPickFile(e.target.files?.[0] ?? null)}
                       />
                     </label>
-                  </section>}
+                  </section>
 
                   {error && <p className="error-msg" style={{ marginTop: 8 }}>{error}</p>}
                 </div>

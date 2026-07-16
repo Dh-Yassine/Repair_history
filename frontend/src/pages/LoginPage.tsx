@@ -11,17 +11,20 @@ import { useLanguage } from '../i18n/LanguageContext';
 const EASE = [0.16, 1, 0.3, 1] as [number, number, number, number];
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, requestPasswordReset } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError('');
+    setInfo('');
     setLoading(true);
     try {
       const u = await login(email, password);
@@ -32,6 +35,25 @@ export default function LoginPage() {
       setError(err instanceof Error ? err.message : t('auth.couldNotSignIn'));
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleForgotPassword() {
+    setError('');
+    setInfo('');
+    if (!email.trim()) {
+      setError(t('auth.forgotNeedEmail'));
+      return;
+    }
+    setResetting(true);
+    try {
+      await requestPasswordReset(email);
+      setInfo(t('auth.forgotSent'));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '';
+      setError(msg === 'PASSWORD_RESET_UNAVAILABLE' ? t('auth.forgotUnavailable') : msg || t('auth.forgotFailed'));
+    } finally {
+      setResetting(false);
     }
   }
 
@@ -75,9 +97,20 @@ export default function LoginPage() {
               />
             </div>
             <div className="field">
-              <label className="label" htmlFor="password">
-                {t('auth.password')}
-              </label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
+                <label className="label" htmlFor="password">
+                  {t('auth.password')}
+                </label>
+                <button
+                  type="button"
+                  className="btn-link mono"
+                  style={{ fontSize: 12, padding: 0, border: 0, background: 'none', cursor: 'pointer', color: 'var(--color-accent)' }}
+                  onClick={handleForgotPassword}
+                  disabled={resetting || loading}
+                >
+                  {resetting ? t('auth.forgotSending') : t('auth.forgotPassword')}
+                </button>
+              </div>
               <input
                 id="password"
                 className="input"
@@ -90,7 +123,12 @@ export default function LoginPage() {
               />
             </div>
             {error && <p className="error-msg">{error}</p>}
-            <button type="submit" className="btn btn-solid auth-submit" disabled={loading}>
+            {info && (
+              <p className="muted" style={{ fontSize: 13, color: 'var(--color-verified, #2d6a4f)' }}>
+                {info}
+              </p>
+            )}
+            <button type="submit" className="btn btn-solid auth-submit" disabled={loading || resetting}>
               {loading ? (
                 t('auth.signingIn')
               ) : (

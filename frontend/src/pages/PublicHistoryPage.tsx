@@ -140,7 +140,7 @@ export default function PublicHistoryPage() {
                 </p>
               ) : vehicle.serialNumber ? (
                 <p className="mono subtle" style={{ marginTop: 8, fontSize: 12 }}>
-                  N° série · {vehicle.serialNumber}
+                  {t('editVehicle.serial')} · {vehicle.serialNumber}
                 </p>
               ) : (
                 <p className="mono subtle" style={{ marginTop: 8, fontSize: 12 }}>

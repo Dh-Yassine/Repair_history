@@ -40,34 +40,18 @@ export async function seedIfEmpty() {
     console.log('Seeded spare parts catalog');
   }
 
-  const adsCount = await prisma.featuredShopAd.count();
-  if (adsCount === 0) {
-    let shops = await prisma.user.findMany({ where: { role: 'SHOP' }, take: 3 });
-    if (shops.length === 0) {
-      const hash = await bcrypt.hash('shop123', 10);
-      const s1 = await prisma.user.create({
-        data: { fullName: 'Mike Chen', email: 'premier@autohistory.local', passwordHash: hash, role: 'SHOP', shopName: 'Premier Auto Care', address: '123 Main St', shopVerified: true },
-      });
-      const s2 = await prisma.user.create({
-        data: { fullName: 'Sarah Lopez', email: 'quickfix@autohistory.local', passwordHash: hash, role: 'SHOP', shopName: 'QuickFix Garage', address: '456 Oak Ave', shopVerified: true },
-      });
-      shops = [s1, s2];
-    }
-    const now = new Date();
-    const in90 = new Date(now);
-    in90.setDate(in90.getDate() + 90);
-    for (let i = 0; i < shops.length; i++) {
-      await prisma.featuredShopAd.create({
-        data: {
-          shopId: shops[i].id,
-          ctaButton: i === 0 ? 'Book Now' : 'Get Quote',
-          startDate: now,
-          endDate: in90,
-          active: true,
-          priority: shops.length - i,
-        },
-      });
-    }
-    console.log('Seeded featured shop ads');
-  }
+  await removeDemoFeaturedShops();
+}
+
+/** Remove US demo workshops seeded in early versions (wrong locale / fake addresses). */
+async function removeDemoFeaturedShops() {
+  const demoEmails = ['premier@autohistory.local', 'quickfix@autohistory.local'];
+  const demoShops = await prisma.user.findMany({
+    where: { email: { in: demoEmails } },
+    select: { id: true },
+  });
+  if (demoShops.length === 0) return;
+  const ids = demoShops.map((s) => s.id);
+  const { count } = await prisma.featuredShopAd.deleteMany({ where: { shopId: { in: ids } } });
+  if (count > 0) console.log(`Removed ${count} demo featured shop ad(s)`);
 }

@@ -8,17 +8,11 @@ export function formatKm(n) {
   return Number(n).toLocaleString('en-US', { maximumFractionDigits: 0 });
 }
 
-/** Vehicle or event mileage must never go below the vehicle's stored odometer. */
-export function assertMileageNotBelowVehicle(proposedMileage, vehicleMileage) {
+/** Mileage must be a valid non-negative number (no “must be ≥ current odometer” rule). */
+export function assertMileageNotBelowVehicle(proposedMileage, _vehicleMileage) {
   const proposed = Number(proposedMileage);
-  const current = Number(vehicleMileage);
   if (Number.isNaN(proposed) || proposed < 0) {
     return { error: 'Mileage must be a valid number of kilometres.' };
-  }
-  if (proposed < current) {
-    return {
-      error: `Mileage cannot be lower than the vehicle's current recorded mileage (${formatKm(current)} km).`,
-    };
   }
   return null;
 }

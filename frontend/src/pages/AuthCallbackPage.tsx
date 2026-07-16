@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api, setToken } from '../api';
-import { supabase } from '../lib/supabase';
+import { getAuthRedirectHints, supabase } from '../lib/supabase';
 import { useLanguage } from '../i18n/LanguageContext';
 import type { UserRole } from '../types';
 
@@ -12,7 +12,11 @@ function homeForRole(role?: UserRole) {
   return '/';
 }
 
-async function ensureAppProfile(session: NonNullable<Awaited<ReturnType<NonNullable<typeof supabase>['auth']['getSession']>>['data']['session']>) {
+async function ensureAppProfile(
+  session: NonNullable<
+    Awaited<ReturnType<NonNullable<typeof supabase>['auth']['getSession']>>['data']['session']
+  >
+) {
   const token = session.access_token;
   setToken(token);
 
@@ -36,19 +40,68 @@ async function ensureAppProfile(session: NonNullable<Awaited<ReturnType<NonNulla
   }
 }
 
-async function resolveSession() {
-  if (!supabase) return null;
+/**
+ * Wait for detectSessionInUrl to finish — do NOT call exchangeCodeForSession here.
+ * A second exchange clears/consumes the PKCE verifier and causes the "code verifier not found" error.
+ */
+function waitForAuthSession(timeoutMs = 8000): Promise<{
+  session: NonNullable<
+    Awaited<ReturnType<NonNullable<typeof supabase>['auth']['getSession']>>['data']['session']
+  > | null;
+  isRecovery: boolean;
+}> {
+  return new Promise((resolve) => {
+    const client = supabase;
+    if (!client) {
+      resolve({ session: null, isRecovery: false });
+      return;
+    }
 
-  const code = new URLSearchParams(window.location.search).get('code');
-  if (code) {
-    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-    if (error) throw new Error(error.message);
-    if (data.session) return data.session;
-  }
+    const hasAuthParams =
+      window.location.search.includes('code=') ||
+      window.location.hash.includes('access_token') ||
+      window.location.hash.includes('type=recovery') ||
+      window.location.search.includes('type=recovery');
+    const waitMs = hasAuthParams ? timeoutMs : 1200;
 
-  const { data, error } = await supabase.auth.getSession();
-  if (error) throw new Error(error.message);
-  return data.session;
+    let settled = false;
+    let isRecovery = false;
+
+    const finish = (
+      session: NonNullable<
+        Awaited<ReturnType<NonNullable<typeof supabase>['auth']['getSession']>>['data']['session']
+      > | null
+    ) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      subscription.unsubscribe();
+      resolve({ session, isRecovery });
+    };
+
+    const { data } = client.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') isRecovery = true;
+      if (
+        session &&
+        (event === 'INITIAL_SESSION' ||
+          event === 'SIGNED_IN' ||
+          event === 'PASSWORD_RECOVERY' ||
+          event === 'TOKEN_REFRESHED')
+      ) {
+        finish(session);
+      }
+    });
+    const subscription = data.subscription;
+
+    const timer = setTimeout(async () => {
+      const { data: current } = await client.auth.getSession();
+      finish(current.session);
+    }, waitMs);
+
+    void client.auth.getSession().then(({ data: current }) => {
+      if (current.session) finish(current.session);
+    });
+  });
 }
 
 export default function AuthCallbackPage() {
@@ -64,10 +117,20 @@ export default function AuthCallbackPage() {
     }
 
     let cancelled = false;
+    // Capture before Supabase strips the hash
+    const hints = getAuthRedirectHints();
 
     (async () => {
       try {
-        const session = await resolveSession();
+        if (hints.errorDescription) {
+          if (!cancelled) {
+            setMessage(hints.errorDescription);
+            setShowLoginLink(true);
+          }
+          return;
+        }
+
+        const { session, isRecovery: recoveryEvent } = await waitForAuthSession();
         if (cancelled) return;
 
         if (!session) {
@@ -79,10 +142,19 @@ export default function AuthCallbackPage() {
         await ensureAppProfile(session);
         const { user } = await api.me();
         window.history.replaceState({}, document.title, '/auth/callback');
+
+        if (hints.isRecovery || recoveryEvent) {
+          navigate('/settings?reset=1', { replace: true });
+          return;
+        }
+
         navigate(homeForRole(user.role), { replace: true });
       } catch (err) {
         if (!cancelled) {
-          setMessage(err instanceof Error ? err.message : t('auth.accountSetupFailed'));
+          const raw = err instanceof Error ? err.message : '';
+          const isPkce =
+            raw.toLowerCase().includes('pkce') || raw.toLowerCase().includes('code verifier');
+          setMessage(isPkce ? t('auth.pkceRecoveryFailed') : raw || t('auth.accountSetupFailed'));
           setShowLoginLink(true);
         }
       }

@@ -8,8 +8,6 @@ import { useToast } from './ui/Toast';
 import { useOverlayPanel } from '../hooks/useOverlayPanel';
 import type { Vehicle } from '../types';
 
-type Visibility = 'PUBLIC' | 'PRIVATE' | 'PARTNER_ONLY';
-
 interface Props {
   vehicle: Vehicle | null;
   onClose: () => void;
@@ -29,7 +27,6 @@ export default function EditVehicleModal({ vehicle, onClose, onSaved, onDeleted 
   const [mileage, setMileage] = useState('');
   const [vin, setVin] = useState('');
   const [serialNumber, setSerialNumber] = useState('');
-  const [visibility, setVisibility] = useState<Visibility>('PRIVATE');
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -46,7 +43,6 @@ export default function EditVehicleModal({ vehicle, onClose, onSaved, onDeleted 
     setMileage(String(vehicle.mileage));
     setVin(vehicle.vin ?? '');
     setSerialNumber(vehicle.serialNumber ?? '');
-    setVisibility((vehicle.visibility as Visibility) ?? 'PRIVATE');
     setPhoto(null);
     setPhotoPreview(null);
     setError('');
@@ -75,8 +71,8 @@ export default function EditVehicleModal({ vehicle, onClose, onSaved, onDeleted 
       return;
     }
     const parsedMileage = Number(mileage);
-    if (!Number.isFinite(parsedMileage) || parsedMileage < vehicle.mileage) {
-      setError(t('editVehicle.mileageFloor', { n: vehicle.mileage.toLocaleString() }));
+    if (!Number.isFinite(parsedMileage) || parsedMileage < 0) {
+      setError(t('editVehicle.mileageInvalid'));
       return;
     }
     if (vinLocked && !vin.trim()) {
@@ -98,7 +94,6 @@ export default function EditVehicleModal({ vehicle, onClose, onSaved, onDeleted 
         form.append('vin', vin.trim().toUpperCase());
       }
       if (serialNumber.trim()) form.append('serialNumber', serialNumber.trim().toUpperCase());
-      form.append('visibility', visibility);
       if (photo) form.append('photo', photo);
       const { vehicle: updated } = await api.updateVehicle(vehicle.id, form);
       onSaved(updated);
@@ -214,14 +209,11 @@ export default function EditVehicleModal({ vehicle, onClose, onSaved, onDeleted 
                 <input
                   className="input input-mono"
                   type="number"
-                  min={vehicle.mileage}
+                  min={0}
                   value={mileage}
                   onChange={(e) => setMileage(e.target.value)}
                   required
                 />
-                <p className="mono muted" style={{ fontSize: 11, marginTop: 4 }}>
-                  {t('editVehicle.mileageFloorHint', { n: vehicle.mileage.toLocaleString() })}
-                </p>
               </div>
             </div>
 
@@ -257,15 +249,6 @@ export default function EditVehicleModal({ vehicle, onClose, onSaved, onDeleted 
                   style={{ textTransform: 'uppercase' }}
                 />
               </div>
-            </div>
-
-            <div className="field">
-              <label className="label">{t('editVehicle.visibility')}</label>
-              <select className="input" value={visibility} onChange={(e) => setVisibility(e.target.value as Visibility)}>
-                <option value="PRIVATE">{t('editVehicle.private')}</option>
-                <option value="PUBLIC">{t('editVehicle.public')}</option>
-                <option value="PARTNER_ONLY">{t('editVehicle.partners')}</option>
-              </select>
             </div>
 
             <div className="field">

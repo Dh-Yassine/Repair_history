@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AlertTriangle, Bell, CreditCard, KeyRound, UserRound } from 'lucide-react';
 import { api } from '../api';
 import { useAuth } from '../context/AuthContext';
@@ -14,6 +14,8 @@ export default function SettingsPage() {
   const { t } = useLanguage();
   const toast = useToast();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const passwordResetMode = searchParams.get('reset') === '1';
 
   const [fullName, setFullName] = useState(user?.fullName ?? '');
   const [phone, setPhone] = useState(user?.phone ?? '');
@@ -92,6 +94,7 @@ export default function SettingsPage() {
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
+      if (passwordResetMode) setSearchParams({}, { replace: true });
       toast.success(t('settings.passwordUpdated'));
     } catch (err) {
       setPasswordError(err instanceof Error ? err.message : t('settings.passwordChangeFailed'));
@@ -213,10 +216,15 @@ export default function SettingsPage() {
           </form>
         </section>
 
-        <section className="card">
+        <section className="card" id="settings-password">
           <h2 className="display" style={{ fontSize: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
             <KeyRound size={18} /> {t('settings.password')}
           </h2>
+          {passwordResetMode && (
+            <p className="tag tag-verified" style={{ marginTop: 12, display: 'inline-flex' }}>
+              {t('settings.resetFromEmail')}
+            </p>
+          )}
           <form onSubmit={savePassword} style={{ marginTop: 16 }}>
             {!supabaseAuth && (
               <div className="field">

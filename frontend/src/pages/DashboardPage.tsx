@@ -1,14 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Plus, Share2, Clock, ShieldCheck, FileText, CarFront, ShoppingBag, Bell, ArrowRight, Pencil } from 'lucide-react';
+import { Plus, Share2, Clock, ShieldCheck, FileText, CarFront, Bell, ArrowRight, Pencil } from 'lucide-react';
 import { api } from '../api';
 import AddVehicleModal from '../components/AddVehicleModal';
 import EditVehicleModal from '../components/EditVehicleModal';
 import RemindersPanel from '../components/RemindersPanel';
 import VehiclePhoto from '../components/VehiclePhoto';
 import AnimatedNumber from '../components/ui/AnimatedNumber';
-import TrustRing from '../components/ui/TrustRing';
 import PageTransition, { stagger, staggerItem } from '../components/layout/PageTransition';
 import EventTimelineItem from '../components/events/EventTimelineItem';
 import { useLanguage } from '../i18n/LanguageContext';
@@ -203,72 +202,55 @@ export default function DashboardPage() {
         </div>
       ) : (
         <>
-          <div className="grid-2-1" style={{ marginTop: 16 }}>
-            <div className="card card-hover dashboard-vehicle-card">
-              <div>
-                <div className="vehicle-title-row">
-                  <div>
-                    <p className="section-eyebrow">{t('dashboard.activeVehicle')}</p>
-                    <h2 className="display dashboard-vehicle-title" style={{ margin: '8px 0' }}>
-                      {active.year} {active.make} {active.model}
-                    </h2>
-                    {(active.vin || active.serialNumber) && (
-                      <p className="mono subtle" style={{ marginBottom: 12 }}>
-                        {active.vin ? `VIN · ${active.vin}` : `N° série · ${active.serialNumber}`}
-                      </p>
-                    )}
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span className="tag tag-green">
-                      <CarFront size={12} /> {t('dashboard.records', { n: active._count?.events ?? 0 })}
-                    </span>
-                    <button
-                      type="button"
-                      className="btn btn-ghost btn-sm"
-                      onClick={() => setEditVehicle(active)}
-                      aria-label={t('dashboard.editVehicle')}
-                      title={t('dashboard.editVehicle')}
-                    >
-                      <Pencil size={14} />
-                    </button>
-                  </div>
+          <div className="card card-hover dashboard-vehicle-card" style={{ marginTop: 16 }}>
+            <div>
+              <div className="vehicle-title-row">
+                <div>
+                  <p className="section-eyebrow">{t('dashboard.activeVehicle')}</p>
+                  <h2 className="display dashboard-vehicle-title" style={{ margin: '8px 0' }}>
+                    {active.year} {active.make} {active.model}
+                  </h2>
+                  {(active.vin || active.serialNumber) && (
+                    <p className="mono subtle" style={{ marginBottom: 12 }}>
+                      {active.vin ? `VIN · ${active.vin}` : `${t('editVehicle.serial')} · ${active.serialNumber}`}
+                    </p>
+                  )}
                 </div>
-                <VehiclePhoto vehicle={active} className="vehicle-photo-hero" />
-                <p className="mono" style={{ color: 'var(--color-accent)', fontSize: 24, marginBottom: 12 }}>
-                  {active.mileage.toLocaleString()} km
-                </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span className="tag tag-green">
+                    <CarFront size={12} /> {t('dashboard.records', { n: active._count?.events ?? 0 })}
+                  </span>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => setEditVehicle(active)}
+                    aria-label={t('dashboard.editVehicle')}
+                    title={t('dashboard.editVehicle')}
+                  >
+                    <Pencil size={14} />
+                  </button>
+                </div>
               </div>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <Link to={`/vehicles/${active.id}`} className="btn btn-primary">
-                  <Clock size={16} /> {t('dashboard.timeline')}
-                </Link>
-                <Link to={`/vehicles/${active.id}/share`} className="btn btn-primary">
-                  <Share2 size={16} /> {t('dashboard.share')}
-                </Link>
-              </div>
-              <div className="status-chip-row">
-                <span className="tag tag-verified">
-                  <ShieldCheck size={12} /> {t('dashboard.verifiedCount', { n: verifiedCount })}
-                </span>
-                <span className="tag tag-self">
-                  <FileText size={12} /> {t('dashboard.selfCount', { n: selfCount })}
-                </span>
-              </div>
+              <VehiclePhoto vehicle={active} className="vehicle-photo-hero" />
+              <p className="mono" style={{ color: 'var(--color-accent)', fontSize: 24, marginBottom: 12 }}>
+                {active.mileage.toLocaleString()} km
+              </p>
             </div>
-
-            <div className="card trust-score-card" style={{ textAlign: 'center' }}>
-              <p className="mono muted" style={{ fontSize: 11, marginBottom: 12 }}>
-                {t('dashboard.trustScore')}
-              </p>
-              <div style={{ display: 'flex', justifyContent: 'center' }}>
-                <TrustRing score={trustPct} />
-              </div>
-              <p className="muted" style={{ marginTop: 12, fontSize: 13 }}>
-                {t('dashboard.trustOf', { verified: verifiedCount, total: totalEvents })}
-              </p>
-              <p className="muted" style={{ marginTop: 6, fontSize: 12 }}>
-                {t('dashboard.moreVerified')}
-              </p>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <Link to={`/vehicles/${active.id}`} className="btn btn-primary">
+                <Clock size={16} /> {t('dashboard.timeline')}
+              </Link>
+              <Link to={`/vehicles/${active.id}/share`} className="btn btn-primary">
+                <Share2 size={16} /> {t('dashboard.share')}
+              </Link>
+            </div>
+            <div className="status-chip-row">
+              <span className="tag tag-verified">
+                <ShieldCheck size={12} /> {t('dashboard.verifiedCount', { n: verifiedCount })}
+              </span>
+              <span className="tag tag-self">
+                <FileText size={12} /> {t('dashboard.selfCount', { n: selfCount })}
+              </span>
             </div>
           </div>
 
@@ -308,21 +290,16 @@ export default function DashboardPage() {
             <div>
               <RemindersPanel />
               <div className="card">
-                <p className="section-eyebrow">{t('dashboard.marketplace')}</p>
+                <p className="section-eyebrow">{t('nav.shops')}</p>
                 <h3 className="display" style={{ fontSize: 20, marginBottom: 8 }}>
                   {t('dashboard.partsShops')}
                 </h3>
                 <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>
                   {t('dashboard.shopsPartsFor', { label: `${active.year} ${active.make} ${active.model}` })}
                 </p>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <Link to="/shops" className="btn btn-primary btn-sm">
-                    <ShieldCheck size={14} /> {t('dashboard.viewShops')}
-                  </Link>
-                  <Link to="/marketplace" className="btn btn-ghost btn-sm">
-                    <ShoppingBag size={14} /> {t('dashboard.parts')}
-                  </Link>
-                </div>
+                <Link to="/shops" className="btn btn-primary btn-sm">
+                  <ShieldCheck size={14} /> {t('dashboard.viewShops')}
+                </Link>
               </div>
             </div>
           </div>
@@ -414,6 +391,6 @@ function computeNextStep(
     Icon: Bell,
     title: t('dashboard.nextPartsTitle'),
     desc: t('dashboard.nextPartsDesc'),
-    primary: { label: t('dashboard.marketplace'), to: '/marketplace' },
+    primary: { label: t('dashboard.findShop'), to: '/shops' },
   };
 }

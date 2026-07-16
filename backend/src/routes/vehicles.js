@@ -5,7 +5,6 @@ import { requireAuth, requireRole } from '../middleware/auth.js';
 import { memoryUpload } from '../lib/upload.js';
 import { BUCKETS, deleteUpload, resolveFileUrl, saveUpload, vehiclePhotoKey } from '../lib/storage.js';
 import {
-  assertMileageNotBelowVehicle,
   assertVinNotCleared,
   assertVinUnique,
   canHardDeleteVehicle,
@@ -168,8 +167,9 @@ router.patch('/:id', (req, res, next) => {
 
     if (mileage !== undefined && mileage !== '') {
       const parsedMileage = parseFloat(mileage);
-      const mileageErr = assertMileageNotBelowVehicle(parsedMileage, existing.mileage);
-      if (mileageErr) return res.status(400).json(mileageErr);
+      if (Number.isNaN(parsedMileage) || parsedMileage < 0) {
+        return res.status(400).json({ error: 'Mileage must be a valid number of kilometres.' });
+      }
     }
 
     const nextVin =

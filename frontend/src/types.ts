@@ -115,7 +115,7 @@ export interface ServiceReminder {
   sourceDate?: string | null;
   sourceMileage?: number | null;
   completed: boolean;
-  vehicle?: { make: string; model: string; year: number };
+  vehicle?: { make: string; model: string; year: number; nickname?: string | null };
   shop?: { shopName: string | null };
 }
 

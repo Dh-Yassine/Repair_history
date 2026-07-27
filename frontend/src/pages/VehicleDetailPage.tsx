@@ -20,6 +20,7 @@ import {
   Loader2,
   Pencil,
 } from 'lucide-react';
+import { formatKm } from '../lib/format';
 import { api } from '../api';
 import PageTransition, { stagger, staggerItem } from '../components/layout/PageTransition';
 import EventTimelineItem from '../components/events/EventTimelineItem';
@@ -288,46 +289,54 @@ export default function VehicleDetailPage() {
 
   return (
     <PageTransition>
-      <div className="hero-panel page-hero compact">
-        <div className="hero-copy">
-          <Link to="/" className="mono muted" style={{ fontSize: 12 }}>
-            {t('vehicle.backDashboard')}
-          </Link>
-          <h1 className="display page-title" style={{ marginTop: 8 }}>
-            {vehicle ? vehicle.nickname || `${vehicle.year} ${vehicle.make} ${vehicle.model}` : t('vehicle.serviceHistory')}
-          </h1>
-          {vehicle?.nickname && (
-            <p className="mono muted" style={{ fontSize: 13 }}>
-              {vehicle.year} {vehicle.make} {vehicle.model}
-            </p>
+      <header className="masthead">
+        <Link to="/" className="masthead__back">
+          {t('vehicle.backDashboard')}
+        </Link>
+        <div className="masthead__row">
+          <div className="masthead__identity">
+            <h1 className="masthead__title">
+              {vehicle
+                ? vehicle.nickname || `${vehicle.year} ${vehicle.make} ${vehicle.model}`
+                : t('vehicle.serviceHistory')}
+            </h1>
+            {vehicle?.nickname && (
+              <p className="masthead__sub">
+                {vehicle.year} {vehicle.make} {vehicle.model}
+              </p>
+            )}
+          </div>
+          <div className="masthead__actions">
+            <Link to={`/vehicles/${vehicleId}/share`} className="btn btn-outline btn-sm">
+              {t('vehicle.shareHistory')}
+            </Link>
+            <button type="button" className="btn btn-primary btn-sm" onClick={openAddDrawer}>
+              <Plus size={16} /> {t('vehicle.addRecord')}
+            </button>
+          </div>
+        </div>
+        <div className="masthead__meta mono">
+          <span>{formatKm(vehicle?.mileage ?? headerMileage)}</span>
+          {(vehicle?.serialNumber || vehicle?.vin) && (
+            <span className="masthead__vin" title={vehicle.serialNumber || vehicle.vin || undefined}>
+              {vehicle.serialNumber || vehicle.vin}
+            </span>
           )}
-          <p className="mono" style={{ color: 'var(--color-accent)', fontSize: 24 }}>
-            {(vehicle?.mileage ?? headerMileage).toLocaleString()} km
-          </p>
-          <p className="muted">{t('vehicle.serviceLead')}</p>
         </div>
-        <div className="hero-actions">
-          <Link to={`/vehicles/${vehicleId}/share`} className="btn btn-primary">
-            {t('vehicle.shareHistory')}
-          </Link>
-          <button type="button" className="btn btn-solid" onClick={openAddDrawer}>
-            <Plus size={16} /> {t('vehicle.addRecord')}
-          </button>
-        </div>
-      </div>
+      </header>
 
-      <div className="metric-strip">
-        <div className="metric-pill-card">
-          <span className="mono muted">{t('events.shopVerified')}</span>
-          <strong>{verifiedCount}</strong>
+      <div className="record-summary">
+        <div className="record-summary__cell">
+          <span className="record-summary__value mono tone-verified">{verifiedCount}</span>
+          <span className="record-summary__label">{t('events.shopVerified')}</span>
         </div>
-        <div className="metric-pill-card">
-          <span className="mono muted">{t('auth.ownerRecords')}</span>
-          <strong>{selfReportedCount}</strong>
+        <div className="record-summary__cell">
+          <span className="record-summary__value mono tone-declared">{selfReportedCount}</span>
+          <span className="record-summary__label">{t('auth.ownerRecords')}</span>
         </div>
-        <div className="metric-pill-card">
-          <span className="mono muted">{t('public.totalRecords')}</span>
-          <strong>{events.length}</strong>
+        <div className="record-summary__cell">
+          <span className="record-summary__value mono">{events.length}</span>
+          <span className="record-summary__label">{t('public.totalRecords')}</span>
         </div>
       </div>
 
@@ -434,7 +443,13 @@ export default function VehicleDetailPage() {
           )}
         </div>
       ) : (
-        <motion.ol className="timeline-rail" variants={stagger} initial="initial" animate="animate" style={{ listStyle: 'none', margin: 0, padding: '0 0 0 28px' }}>
+        <>
+        <div className="ledger-head" aria-hidden="true">
+          <span />
+          <span>{t('vehicle.colEntry')}</span>
+          <span>{t('vehicle.colAmount')}</span>
+        </div>
+        <motion.ol className="ledger" variants={stagger} initial="initial" animate="animate">
           {events.map((ev) => (
             <motion.li key={ev.id} variants={staggerItem} style={{ listStyle: 'none' }}>
               <EventTimelineItem
@@ -455,6 +470,7 @@ export default function VehicleDetailPage() {
             </motion.li>
           ))}
         </motion.ol>
+        </>
       )}
 
       <AnimatePresence>

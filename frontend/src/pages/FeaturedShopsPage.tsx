@@ -7,10 +7,9 @@ import {
   Navigation,
   Search,
   ShieldCheck,
-  Sparkles,
-  Wrench,
   X,
 } from 'lucide-react';
+import { formatDate } from '../lib/format';
 import { api } from '../api';
 import PageTransition from '../components/layout/PageTransition';
 import { useToast } from '../components/ui/Toast';
@@ -126,23 +125,7 @@ export default function FeaturedShopsPage() {
 
   return (
     <PageTransition>
-      <div className="hero-panel page-hero compact">
-        <div className="hero-copy">
-          <div className="hero-icon" style={{ marginBottom: 14 }}>
-            <Wrench size={24} />
-          </div>
-          <p className="section-eyebrow">{t('shops.partnerShops')}</p>
-          <h1 className="display page-title">{t('shops.title')}</h1>
-          <p className="muted" style={{ marginTop: 10 }}>
-            {t('shops.leadMaps')}
-          </p>
-        </div>
-        <div className="hero-actions">
-          <span className="tag tag-verified">
-            <Sparkles size={12} /> {t('shops.verifiedNetwork')}
-          </span>
-        </div>
-      </div>
+      <p className="page-note">{t('shops.leadMaps')}</p>
 
       <div className="card" style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'flex-end' }}>
@@ -184,9 +167,11 @@ export default function FeaturedShopsPage() {
         </p>
       </div>
 
-      {locationLoading && <div className="skeleton" style={{ height: 280, marginBottom: 16 }} />}
+      {locationLoading && !addressQuery.trim() && (
+        <div className="skeleton" style={{ height: 280, marginBottom: 16 }} />
+      )}
 
-      {!locationLoading && locationError && (
+      {!locationLoading && locationError && !addressQuery.trim() && (
         <div className="card empty-panel" style={{ marginBottom: 16 }}>
           <p>{locationError}</p>
           <button type="button" className="btn btn-primary btn-sm" style={{ marginTop: 12 }} onClick={refreshLocation}>
@@ -195,7 +180,7 @@ export default function FeaturedShopsPage() {
         </div>
       )}
 
-      {!locationLoading && userLocation && (
+      {(userLocation || addressQuery.trim()) && (
         <div className="card" style={{ marginBottom: 16, overflow: 'hidden', padding: 0 }}>
           <div
             style={{
@@ -215,17 +200,23 @@ export default function FeaturedShopsPage() {
               <p style={{ fontSize: 14, margin: 0 }}>{mapsQuery}</p>
             </div>
             <a
-              href={mapsNearbyRepairsUrl(userLocation, mapsQuery)}
+              href={mapsNearbyRepairsUrl(addressQuery.trim() ? null : userLocation, mapsQuery)}
               target="_blank"
               rel="noreferrer"
-              className="btn btn-solid btn-sm"
+              className="btn btn-outline btn-sm"
             >
               <ExternalLink size={14} /> {t('shops.openFullMaps')}
             </a>
           </div>
           <iframe
+            key={mapsQuery}
             title={t('shops.mapPreview')}
-            src={mapsNearbyRepairsEmbedUrl(userLocation, mapsQuery)}
+            src={mapsNearbyRepairsEmbedUrl(
+              mapsQuery,
+              userLocation,
+              !addressQuery.trim() && Boolean(userLocation)
+            )}
+            className="maps-embed"
             style={{ width: '100%', height: 360, border: 0, display: 'block' }}
             loading="lazy"
             referrerPolicy="no-referrer-when-downgrade"
@@ -276,7 +267,7 @@ export default function FeaturedShopsPage() {
                   )}
                   <p className="mono muted" style={{ marginTop: 10, fontSize: 12 }}>
                     <CalendarCheck size={12} style={{ verticalAlign: 'middle' }} />{' '}
-                    {t('shops.featuredUntil', { date: new Date(ad.endDate).toLocaleDateString() })}
+                    {t('shops.featuredUntil', { date: formatDate(ad.endDate) })}
                   </p>
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>

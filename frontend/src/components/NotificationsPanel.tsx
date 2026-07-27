@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Bell, X } from 'lucide-react';
+import { formatDateTime } from '../lib/format';
 import { api } from '../api';
 import { useOverlayPanel } from '../hooks/useOverlayPanel';
 import { useMediaQuery } from '../hooks/useMediaQuery';
@@ -105,7 +106,7 @@ export default function NotificationsPanel() {
                     disabled={n.read}
                   >
                     <p>{n.message}</p>
-                    <span className="mono subtle">{new Date(n.createdAt).toLocaleString()}</span>
+                    <span className="mono subtle">{formatDateTime(n.createdAt)}</span>
                   </button>
                 ))
               )}

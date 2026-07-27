@@ -186,11 +186,11 @@ export default function PublicHistoryPage() {
             </div>
           ) : (
             <motion.ol
-              className="timeline-rail"
+              className="ledger"
               variants={stagger}
               initial="initial"
               animate="animate"
-              style={{ listStyle: 'none', padding: '24px 0 0 28px', margin: 0 }}
+              style={{ marginTop: 24 }}
             >
               {events.map((ev) => (
                 <motion.li key={ev.id} variants={staggerItem} style={{ listStyle: 'none' }}>

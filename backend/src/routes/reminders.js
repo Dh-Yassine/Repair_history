@@ -16,7 +16,7 @@ ownerRouter.get('/', async (req, res) => {
     where: { vehicleId: { in: vehicles.map((v) => v.id) }, completed: false },
     orderBy: { dueDate: 'asc' },
     include: {
-      vehicle: { select: { make: true, model: true, year: true } },
+      vehicle: { select: { make: true, model: true, year: true, nickname: true } },
       shop: { select: { shopName: true } },
     },
   });

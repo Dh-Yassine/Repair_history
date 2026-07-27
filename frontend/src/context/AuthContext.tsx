@@ -96,22 +96,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session?.access_token) setToken(data.session.access_token);
-    });
-
-    const { data: sub } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.access_token) setToken(session.access_token);
-
+    // Supabase restores the session asynchronously, so it — not a mount-time read of the
+    // stored token — is the source of truth. It always emits INITIAL_SESSION on load.
+    const { data: sub } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (!session?.access_token) {
+        // A sign-in/sign-up in flight briefly reports no session; don't clobber it.
+        if (syncingRef.current) return;
         setToken(null);
         setUser(null);
         setLoading(false);
         return;
       }
 
+      setToken(session.access_token);
+
       // Register/login flows call sync themselves — avoid racing /me before profile exists
-      if (syncingRef.current || event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+      if (syncingRef.current) {
         setLoading(false);
         return;
       }
@@ -123,12 +123,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       setLoading(false);
     });
-
-    refreshUser()
-      .catch(() => {
-        setUser(null);
-      })
-      .finally(() => setLoading(false));
 
     return () => sub.subscription.unsubscribe();
   }, [refreshUser, useSupabase]);
@@ -293,18 +287,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [useSupabase]
   );
 
-  const requestPasswordReset = useCallback(
-    async (email: string) => {
-      if (!useSupabase || !supabase) {
-        throw new Error('PASSWORD_RESET_UNAVAILABLE');
-      }
-      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: authCallbackUrl(),
-      });
-      if (error) throw new Error(formatAuthError(error));
-    },
-    [useSupabase]
-  );
+  const requestPasswordReset = useCallback(async (email: string) => {
+    // Supabase Auth mailer (customize subject/from in Supabase → Authentication → Email Templates).
+    if (!useSupabase || !supabase) {
+      throw new Error('PASSWORD_RESET_UNAVAILABLE');
+    }
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: authCallbackUrl(),
+    });
+    if (error) throw new Error(formatAuthError(error));
+  }, [useSupabase]);
 
   const logout = useCallback(() => {
     if (useSupabase && supabase) supabase.auth.signOut().catch(() => {});

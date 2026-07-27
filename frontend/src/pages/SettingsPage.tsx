@@ -145,14 +145,11 @@ export default function SettingsPage() {
 
   return (
     <PageTransition>
-      <h1 className="display" style={{ fontSize: 40, marginBottom: 8 }}>
-        {t('settings.title')}
-      </h1>
-      <p className="muted" style={{ marginBottom: 24 }}>
-        {t('settings.lead')} · {user?.email}
+      <p className="page-note">
+        {t('settings.lead')} · <span className="mono">{user?.email}</span>
       </p>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 640 }}>
+      <div className="settings-grid">
         <section className="card">
           <h2 className="display" style={{ fontSize: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
             <UserRound size={18} /> {t('settings.profile')}
@@ -334,7 +331,7 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        <section className="card" style={{ borderColor: 'var(--color-danger, #b3261e)' }}>
+        <section className="card settings-grid__wide" style={{ borderColor: 'var(--color-danger, #b3261e)' }}>
           <h2
             className="display"
             style={{ fontSize: 20, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-danger, #b3261e)' }}

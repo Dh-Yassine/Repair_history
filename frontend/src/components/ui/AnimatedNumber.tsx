@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion, animate } from 'framer-motion';
+import { formatNumber } from '../../lib/format';
 
 export default function AnimatedNumber({ value, decimals = 0 }: { value: number; decimals?: number }) {
   const [display, setDisplay] = useState(0);
@@ -13,6 +14,9 @@ export default function AnimatedNumber({ value, decimals = 0 }: { value: number;
     return controls.stop;
   }, [value]);
 
-  const text = decimals > 0 ? display.toFixed(decimals) : Math.round(display).toLocaleString();
+  const text =
+    decimals > 0
+      ? formatNumber(display, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
+      : formatNumber(Math.round(display));
   return <motion.span className="mono">{text}</motion.span>;
 }

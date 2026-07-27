@@ -1,6 +1,6 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Camera, ScanLine, Check, X, Keyboard, Hash } from 'lucide-react';
+import { Camera, ScanLine, Check, X, Keyboard, Hash, Loader2 } from 'lucide-react';
 import { api } from '../api';
 import { POPULAR_CAR_MODELS, POPULAR_MAKES } from '../lib/carData';
 import { useLanguage } from '../i18n/LanguageContext';
@@ -8,6 +8,9 @@ import { useToast } from './ui/Toast';
 import { useOverlayPanel } from '../hooks/useOverlayPanel';
 
 type Mode = 'vin' | 'serial' | 'manual';
+
+/** Allow longer than ISO 17 so pastes / atypical IDs are not cut off mid-typing */
+const VIN_MAX_LENGTH = 32;
 
 export default function AddVehicleModal({
   open,
@@ -33,7 +36,9 @@ export default function AddVehicleModal({
   const [nickname, setNickname] = useState('');
   const [photo, setPhoto] = useState<File | null>(null);
   const [decoding, setDecoding] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const submittingRef = useRef(false);
 
   function reset() {
     setStep(1);
@@ -46,6 +51,8 @@ export default function AddVehicleModal({
     setMileage('0');
     setNickname('');
     setPhoto(null);
+    setSaving(false);
+    submittingRef.current = false;
     setError('');
   }
 
@@ -101,6 +108,9 @@ export default function AddVehicleModal({
 
   async function submit(e: FormEvent) {
     e.preventDefault();
+    if (saving || submittingRef.current) return;
+    submittingRef.current = true;
+    setSaving(true);
     setError('');
     try {
       const form = new FormData();
@@ -120,6 +130,8 @@ export default function AddVehicleModal({
       const msg = err instanceof Error ? err.message : t('addVehicle.failed');
       setError(msg);
       toast.error(msg);
+      submittingRef.current = false;
+      setSaving(false);
     }
   }
 
@@ -135,7 +147,7 @@ export default function AddVehicleModal({
   return (
     <div className="overlay" onClick={handleClose}>
       <motion.div
-        className="modal"
+        className="modal modal-vehicle"
         role="dialog"
         aria-modal="true"
         aria-label={t('addVehicle.title')}
@@ -184,12 +196,16 @@ export default function AddVehicleModal({
                         <label className="label">{t('addVehicle.vin')}</label>
                         <div style={{ position: 'relative' }}>
                           <input
-                            className={`input input-mono ${decoding ? 'skeleton' : ''}`}
+                            className={`input input-vin ${decoding ? 'skeleton' : ''}`}
                             value={vin}
-                            maxLength={17}
-                            onChange={(e) => setVin(e.target.value.toUpperCase())}
+                            maxLength={VIN_MAX_LENGTH}
+                            size={VIN_MAX_LENGTH}
+                            onChange={(e) => setVin(e.target.value.toUpperCase().replace(/[^A-HJ-NPR-Z0-9]/g, ''))}
                             placeholder="1HGBH41JXMN109186"
-                            style={{ paddingRight: 40, textTransform: 'uppercase' }}
+                            style={{ paddingRight: 44 }}
+                            autoComplete="off"
+                            spellCheck={false}
+                            inputMode="text"
                           />
                           <ScanLine
                             size={18}
@@ -197,7 +213,7 @@ export default function AddVehicleModal({
                           />
                         </div>
                         <p className="mono subtle" style={{ fontSize: 11, marginTop: 4 }}>
-                          {t('addVehicle.vinHint', { n: vin.length })}
+                          {t('addVehicle.vinHint', { n: vin.length, max: VIN_MAX_LENGTH })}
                         </p>
                       </div>
                       {error && <p className="error-msg">{error}</p>}
@@ -396,8 +412,14 @@ export default function AddVehicleModal({
                     <button type="button" className="btn btn-ghost" onClick={() => setStep(1)}>
                       {t('common.back')}
                     </button>
-                    <button type="submit" className="btn btn-solid" style={{ flex: 1 }}>
-                      {t('addVehicle.title')}
+                    <button type="submit" className="btn btn-solid" style={{ flex: 1 }} disabled={saving}>
+                      {saving ? (
+                        <>
+                          <Loader2 size={15} className="spinning" /> {t('common.saving')}
+                        </>
+                      ) : (
+                        t('addVehicle.title')
+                      )}
                     </button>
                   </div>
                 </motion.form>

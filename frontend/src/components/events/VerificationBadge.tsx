@@ -1,5 +1,5 @@
-import { ShieldCheck, FileText } from 'lucide-react';
 import { useLanguage } from '../../i18n/LanguageContext';
+import StampBadge from '../ui/StampBadge';
 import type { MaintenanceEvent } from '../../types';
 
 export function verificationLabel(event: MaintenanceEvent, t: (key: string) => string) {
@@ -11,16 +11,12 @@ export function verificationLabel(event: MaintenanceEvent, t: (key: string) => s
 
 export default function VerificationBadge({ event }: { event: MaintenanceEvent }) {
   const { t } = useLanguage();
-  if (event.verified) {
-    return (
-      <span className="tag tag-verified verification-chip">
-        <ShieldCheck size={12} /> {verificationLabel(event, t)}
-      </span>
-    );
-  }
+  const verified = Boolean(event.verified || event.source === 'SHOP');
   return (
-    <span className={`tag tag-warning verification-chip`}>
-      <FileText size={12} /> {verificationLabel(event, t)}
-    </span>
+    <StampBadge
+      variant={verified ? 'verified' : 'declared'}
+      label={verificationLabel(event, t)}
+      size="sm"
+    />
   );
 }

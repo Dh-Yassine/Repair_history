@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Ban, CheckCircle2, Eye, Flag, Shield, Store, Users, XCircle } from 'lucide-react';
+import { formatDateTime } from '../lib/format';
 import { api } from '../api';
 import PageTransition from '../components/layout/PageTransition';
 import { useLanguage, useEventTypeLabel } from '../i18n/LanguageContext';
@@ -261,7 +262,7 @@ export default function AdminPage() {
                           </p>
                         )}
                         <p className="mono muted" style={{ marginTop: 8, fontSize: 11 }}>
-                          {t('admin.requested', { date: new Date(s.createdAt).toLocaleString() })}
+                          {t('admin.requested', { date: formatDateTime(s.createdAt) })}
                         </p>
                       </div>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
@@ -411,7 +412,7 @@ export default function AdminPage() {
                         {visitStats.recent.map((v, i) => (
                           <tr key={`${v.createdAt}-${i}`} style={{ borderTop: '1px solid var(--color-border)' }}>
                             <td style={{ padding: 8 }} className="mono muted">
-                              {new Date(v.createdAt).toLocaleString()}
+                              {formatDateTime(v.createdAt)}
                             </td>
                             <td style={{ padding: 8 }} className="mono">
                               {v.path}
@@ -519,7 +520,7 @@ export default function AdminPage() {
                         <strong>{r.targetType}</strong> · {r.reason}
                       </p>
                       <p className="mono muted" style={{ fontSize: 12 }}>
-                        {new Date(r.createdAt).toLocaleString()}
+                        {formatDateTime(r.createdAt)}
                       </p>
                       <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
                         <button

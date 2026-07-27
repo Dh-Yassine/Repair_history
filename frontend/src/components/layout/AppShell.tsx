@@ -108,7 +108,7 @@ export default function AppShell({
       <aside className="sidebar">
         <div className="sidebar-logo">
           <div className="sidebar-logo-mark">A</div>
-          <span className="sidebar-logo-text">AUTOHISTORY</span>
+          <span className="sidebar-logo-text">AutoHistory</span>
         </div>
         <nav className="sidebar-nav">
           {nav.map((item) => (
@@ -143,7 +143,7 @@ export default function AppShell({
         <header className="topbar">
           <div className="topbar-copy">
             <h2 className="display topbar-title">{topbar.title}</h2>
-            {topbar.subtitle && <span className="mono muted topbar-subtitle">{topbar.subtitle}</span>}
+            {topbar.subtitle && <span className="muted topbar-subtitle">{topbar.subtitle}</span>}
           </div>
           <div className="topbar-actions">
             <LanguageToggle compact />

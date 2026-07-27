@@ -8,6 +8,8 @@ import { useToast } from './ui/Toast';
 import { useOverlayPanel } from '../hooks/useOverlayPanel';
 import type { Vehicle } from '../types';
 
+const VIN_MAX_LENGTH = 32;
+
 interface Props {
   vehicle: Vehicle | null;
   onClose: () => void;
@@ -47,6 +49,8 @@ export default function EditVehicleModal({ vehicle, onClose, onSaved, onDeleted 
     setPhotoPreview(null);
     setError('');
     setConfirmDelete(false);
+    setDeleting(false);
+    setSaving(false);
   }, [vehicle]);
 
   useOverlayPanel(open, onClose);
@@ -107,16 +111,17 @@ export default function EditVehicleModal({ vehicle, onClose, onSaved, onDeleted 
   }
 
   async function handleDelete() {
-    if (!vehicle) return;
+    if (!vehicle || deleting) return;
     setDeleting(true);
     try {
       const result = await api.deleteVehicle(vehicle.id);
       onDeleted(vehicle.id);
       const archived = result && typeof result === 'object' && 'archived' in result && result.archived;
-      toast.success(archived ? t('editVehicle.archivedToast') : t('editVehicle.removedToast'));
+      toast.success(archived ? t('editVehicle.deletedToast') : t('editVehicle.removedToast'));
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : t('editVehicle.removeFailed'));
+    } finally {
       setDeleting(false);
     }
   }
@@ -126,7 +131,7 @@ export default function EditVehicleModal({ vehicle, onClose, onSaved, onDeleted 
   return (
     <div className="overlay" onClick={onClose}>
       <motion.div
-        className="modal"
+        className="modal modal-vehicle"
         role="dialog"
         aria-modal="true"
         aria-label={t('editVehicle.title')}
@@ -217,38 +222,40 @@ export default function EditVehicleModal({ vehicle, onClose, onSaved, onDeleted 
               </div>
             </div>
 
-            <div className="grid-form-2">
-              <div className="field">
-                <label className="label">{vinLocked ? t('editVehicle.vinLocked') : t('editVehicle.vinOptional')}</label>
-                <input
-                  className="input input-mono"
-                  value={vin}
-                  onChange={(e) => {
-                    if (vinLocked) return;
-                    setVin(e.target.value.toUpperCase());
-                  }}
-                  readOnly={vinLocked}
-                  maxLength={17}
-                  style={{ textTransform: 'uppercase', opacity: vinLocked ? 0.85 : 1 }}
-                  title={vinLocked ? t('editVehicle.vinNoClear') : undefined}
-                />
-                {vinLocked && (
-                  <p className="mono muted" style={{ fontSize: 11, marginTop: 4 }}>
-                    {t('editVehicle.vinNoClear')}
-                  </p>
-                )}
-              </div>
-              <div className="field">
-                <label className="label">
-                  {t('editVehicle.serial')} ({t('common.optional')})
-                </label>
-                <input
-                  className="input input-mono"
-                  value={serialNumber}
-                  onChange={(e) => setSerialNumber(e.target.value.toUpperCase())}
-                  style={{ textTransform: 'uppercase' }}
-                />
-              </div>
+            <div className="field">
+              <label className="label">{vinLocked ? t('editVehicle.vinLocked') : t('editVehicle.vinOptional')}</label>
+              <input
+                className="input input-vin"
+                value={vin}
+                onChange={(e) => {
+                  if (vinLocked) return;
+                  setVin(e.target.value.toUpperCase().replace(/[^A-HJ-NPR-Z0-9]/g, ''));
+                }}
+                readOnly={vinLocked}
+                maxLength={VIN_MAX_LENGTH}
+                size={VIN_MAX_LENGTH}
+                style={{ opacity: vinLocked ? 0.85 : 1 }}
+                title={vinLocked ? t('editVehicle.vinNoClear') : undefined}
+                autoComplete="off"
+                spellCheck={false}
+                inputMode="text"
+              />
+              {vinLocked && (
+                <p className="mono muted" style={{ fontSize: 11, marginTop: 4 }}>
+                  {t('editVehicle.vinNoClear')}
+                </p>
+              )}
+            </div>
+            <div className="field">
+              <label className="label">
+                {t('editVehicle.serial')} ({t('common.optional')})
+              </label>
+              <input
+                className="input input-mono"
+                value={serialNumber}
+                onChange={(e) => setSerialNumber(e.target.value.toUpperCase())}
+                style={{ textTransform: 'uppercase' }}
+              />
             </div>
 
             <div className="field">
@@ -302,20 +309,20 @@ export default function EditVehicleModal({ vehicle, onClose, onSaved, onDeleted 
             <div style={{ marginTop: 20, borderTop: '1px solid var(--color-border)', paddingTop: 18 }}>
               {!confirmDelete ? (
                 <button type="button" className="btn btn-danger btn-sm" onClick={() => setConfirmDelete(true)} disabled={deleting}>
-                  <Trash2 size={14} /> {t('editVehicle.archive')}
+                  <Trash2 size={14} /> {t('editVehicle.delete')}
                 </button>
               ) : (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                   <p className="muted" style={{ fontSize: 13, margin: 0 }}>
-                    {t('editVehicle.archiveHint')}
+                    {t('editVehicle.deleteHint')}
                   </p>
                   <button type="button" className="btn btn-danger btn-sm" onClick={handleDelete} disabled={deleting}>
                     {deleting ? (
                       <>
-                        <Loader2 size={14} className="spinning" /> {t('editVehicle.archiving')}
+                        <Loader2 size={14} className="spinning" /> {t('editVehicle.deleting')}
                       </>
                     ) : (
-                      t('editVehicle.confirmArchive')
+                      t('editVehicle.confirmDelete')
                     )}
                   </button>
                   <button type="button" className="btn btn-ghost btn-sm" onClick={() => setConfirmDelete(false)}>

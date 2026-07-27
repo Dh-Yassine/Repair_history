@@ -71,15 +71,29 @@ export function mapsDirectionsUrl(origin: LatLng, destination: string | LatLng) 
   return `https://www.google.com/maps/dir/?api=1&origin=${o}&destination=${dest}`;
 }
 
-export function mapsNearbyRepairsUrl(origin: LatLng, query = 'car repair') {
+export function mapsNearbyRepairsUrl(origin: LatLng | null, query = 'car repair') {
   const q = encodeURIComponent(query);
-  return `https://www.google.com/maps/search/${q}/@${origin.lat},${origin.lng},14z`;
+  if (origin) {
+    return `https://www.google.com/maps/search/${q}/@${origin.lat},${origin.lng},14z`;
+  }
+  return `https://www.google.com/maps/search/?api=1&query=${q}`;
 }
 
-/** Embed map: user location + nearby repair search (no API key). */
-export function mapsNearbyRepairsEmbedUrl(origin: LatLng, query = 'car repair') {
+/**
+ * Embed map for a repair search (no API key).
+ * When `pinToOrigin` is true, center on the user; otherwise let Google center on the query
+ * (needed when the user typed a city — otherwise `ll` keeps the map on the old GPS area).
+ */
+export function mapsNearbyRepairsEmbedUrl(
+  query = 'car repair',
+  origin?: LatLng | null,
+  pinToOrigin = false
+) {
   const q = encodeURIComponent(query);
-  return `https://maps.google.com/maps?q=${q}&ll=${origin.lat},${origin.lng}&z=14&output=embed`;
+  if (pinToOrigin && origin) {
+    return `https://maps.google.com/maps?q=${q}&ll=${origin.lat},${origin.lng}&z=14&output=embed`;
+  }
+  return `https://maps.google.com/maps?q=${q}&z=13&output=embed`;
 }
 
 /** Lightweight map preview for a single address (no API key). */

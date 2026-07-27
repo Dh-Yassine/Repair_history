@@ -130,14 +130,14 @@ export default function LandingPage() {
             </Link>
           </motion.div>
           <motion.div variants={fadeUp} className="landing-hero-badges">
-            <span className="tag tag-verified">
-              <ShieldCheck size={12} /> {t('auth.shopVerified')}
+            <span className="landing-proof landing-proof--primary">
+              <ShieldCheck size={14} aria-hidden /> {t('auth.shopVerified')}
             </span>
-            <span className="tag tag-self">
-              <FileText size={12} /> {t('auth.ownerRecords')}
+            <span className="landing-proof landing-proof--secondary">
+              <FileText size={13} aria-hidden /> {t('auth.ownerRecords')}
             </span>
-            <span className="tag tag-green">
-              <Share2 size={12} /> {t('auth.shareableLink')}
+            <span className="landing-proof landing-proof--secondary">
+              <Share2 size={13} aria-hidden /> {t('auth.shareableLink')}
             </span>
           </motion.div>
         </motion.div>

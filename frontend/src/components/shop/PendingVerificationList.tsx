@@ -1,5 +1,6 @@
 import { FormEvent, useState } from 'react';
 import { Bell, ExternalLink, FileText, ShieldCheck, UserRound } from 'lucide-react';
+import { formatCurrency, formatDate, formatKm, formatNumber } from '../../lib/format';
 import { api } from '../../api';
 import { useLanguage, useEventTypeLabel } from '../../i18n/LanguageContext';
 import { useToast } from '../ui/Toast';
@@ -82,7 +83,7 @@ export default function PendingVerificationList({
       {error && <p className="error-msg">{error}</p>}
       {events.map((event) => (
         <article key={event.id} className="card shop-work-card">
-          <div className="event-card-head">
+          <div className="shop-work-card__head">
             <div>
               <p className="mono muted" style={{ fontSize: 11 }}>
                 {event.vehicle
@@ -114,20 +115,20 @@ export default function PendingVerificationList({
               <span className="mono muted" style={{ fontSize: 10, display: 'block' }}>
                 {t('shop.claimedDate')}
               </span>
-              <strong style={{ fontSize: 14 }}>{new Date(event.date).toLocaleDateString()}</strong>
+              <strong style={{ fontSize: 14 }}>{formatDate(event.date)}</strong>
             </div>
             <div>
               <span className="mono muted" style={{ fontSize: 10, display: 'block' }}>
                 {t('shop.claimedMileage')}
               </span>
-              <strong style={{ fontSize: 14 }}>{event.mileage.toLocaleString()} km</strong>
+              <strong style={{ fontSize: 14 }}>{formatKm(event.mileage)}</strong>
             </div>
             {event.cost != null && (
               <div>
                 <span className="mono muted" style={{ fontSize: 10, display: 'block' }}>
                   {t('shop.claimedCost')}
                 </span>
-                <strong style={{ fontSize: 14 }}>{event.cost.toFixed(2)} €</strong>
+                <strong style={{ fontSize: 14 }}>{formatCurrency(event.cost)}</strong>
               </div>
             )}
             {event.garageName && (
@@ -186,8 +187,8 @@ export default function PendingVerificationList({
               <p style={{ fontSize: 13, margin: '0 0 10px' }}>
                 {t('shop.confirmVerifyDetail', {
                   type: labelEvent(event.eventType),
-                  date: new Date(event.date).toLocaleDateString(),
-                  mileage: event.mileage.toLocaleString(),
+                  date: formatDate(event.date),
+                  mileage: formatNumber(event.mileage),
                 })}
               </p>
               <div className="field">

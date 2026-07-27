@@ -95,6 +95,15 @@ This creates:
 - Site URL: `https://your-app.vercel.app` (update after first deploy if needed)
 - Redirect URLs: `https://your-app.vercel.app/**` and `http://localhost:5173/**` for local dev
 
+**Brand password-reset emails as AutoHistory (no SMTP needed)**
+
+Password reset uses Supabase’s built-in mailer. To stop emails showing as “Supabase Auth”:
+
+1. Open **Authentication → Email Templates → Reset password**
+2. Change the **Subject** to e.g. `AutoHistory — Reset your password`
+3. Edit the body so it says AutoHistory (keep the `{{ .ConfirmationURL }}` link)
+4. Optional (Pro / custom SMTP in Supabase): **Project Settings → Authentication → SMTP** — set sender name to `AutoHistory` and your own from-address
+
 ---
 
 ## Part 2 — Local environment (optional but recommended)
@@ -177,7 +186,7 @@ In Vercel → **Project → Settings → Environment Variables**, add:
 
 **Important:** `VITE_*` variables are baked in at **build time**. Redeploy after changing them.
 
-Optional email (reminders/notifications):
+Optional email (app reminders/notifications only — password reset stays on Supabase Auth):
 
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` |
 

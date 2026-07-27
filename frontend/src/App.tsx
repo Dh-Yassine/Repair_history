@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { LanguageProvider } from './i18n/LanguageContext';
 import { ToastProvider } from './components/ui/Toast';
 import AppShell from './components/layout/AppShell';
 import DashboardPage from './pages/DashboardPage';
@@ -185,11 +186,13 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <ToastProvider>
-        <VisitTracker />
-        <AppRoutes />
-      </ToastProvider>
-    </AuthProvider>
+    <LanguageProvider>
+      <AuthProvider>
+        <ToastProvider>
+          <VisitTracker />
+          <AppRoutes />
+        </ToastProvider>
+      </AuthProvider>
+    </LanguageProvider>
   );
 }

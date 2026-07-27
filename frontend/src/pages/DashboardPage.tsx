@@ -1,42 +1,59 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Plus, Share2, Clock, ShieldCheck, FileText, CarFront, Bell, ArrowRight, Pencil } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Plus, Share2, Clock, ShieldCheck, FileText, Bell, ArrowRight, Pencil, Gauge } from 'lucide-react';
+import { formatKm } from '../lib/format';
 import { api } from '../api';
 import AddVehicleModal from '../components/AddVehicleModal';
 import EditVehicleModal from '../components/EditVehicleModal';
 import RemindersPanel from '../components/RemindersPanel';
+import VehicleSwitcher from '../components/VehicleSwitcher';
 import VehiclePhoto from '../components/VehiclePhoto';
 import AnimatedNumber from '../components/ui/AnimatedNumber';
+import Card from '../components/ui/Card';
+import TrustRing from '../components/ui/TrustRing';
 import PageTransition, { stagger, staggerItem } from '../components/layout/PageTransition';
 import EventTimelineItem from '../components/events/EventTimelineItem';
 import { useLanguage } from '../i18n/LanguageContext';
-import type { Vehicle, VehicleLimits, OwnerAnalytics, MaintenanceEvent } from '../types';
+import type { Vehicle, VehicleLimits, MaintenanceEvent } from '../types';
+
+const EASE = [0.16, 1, 0.3, 1] as [number, number, number, number];
+
+const statList = {
+  initial: {},
+  animate: { transition: { staggerChildren: 0.07, delayChildren: 0.12 } },
+};
+
+const statRow = {
+  initial: { opacity: 0, y: 8 },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.35, ease: EASE } },
+};
 
 export default function DashboardPage() {
   const { t } = useLanguage();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [activeId, setActiveId] = useState<string>('');
+  const [slideDir, setSlideDir] = useState(0);
   const [limits, setLimits] = useState<VehicleLimits | null>(null);
-  const [analytics, setAnalytics] = useState<OwnerAnalytics | null>(null);
-  const [recentEvents, setRecentEvents] = useState<MaintenanceEvent[]>([]);
+  const [vehicleEvents, setVehicleEvents] = useState<MaintenanceEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [eventsLoading, setEventsLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editVehicle, setEditVehicle] = useState<Vehicle | null>(null);
+
+  const selectVehicle = useCallback((id: string, direction: number) => {
+    setSlideDir(direction);
+    setActiveId(id);
+  }, []);
 
   const active = useMemo(() => vehicles.find((v) => v.id === activeId) ?? vehicles[0], [vehicles, activeId]);
 
   async function load() {
     setLoading(true);
     try {
-      const [vData, aData] = await Promise.all([
-        api.vehicles(),
-        api.ownerAnalytics().catch(() => ({ analytics: null })),
-      ]);
+      const vData = await api.vehicles();
       setVehicles(vData.vehicles);
       setLimits(vData.limits);
-      if (aData.analytics) setAnalytics(aData.analytics);
       if (!activeId && vData.vehicles[0]) setActiveId(vData.vehicles[0].id);
     } finally {
       setLoading(false);
@@ -45,12 +62,11 @@ export default function DashboardPage() {
 
   useEffect(() => {
     load();
-    
   }, []);
 
   useEffect(() => {
     if (!active) {
-      setRecentEvents([]);
+      setVehicleEvents([]);
       return;
     }
     let cancelled = false;
@@ -58,28 +74,32 @@ export default function DashboardPage() {
     api
       .events(active.id)
       .then(({ events }) => {
-        if (!cancelled) setRecentEvents(events.slice(0, 4));
+        if (!cancelled) setVehicleEvents(events);
       })
-      .catch(() => !cancelled && setRecentEvents([]))
+      .catch(() => !cancelled && setVehicleEvents([]))
       .finally(() => !cancelled && setEventsLoading(false));
     return () => {
       cancelled = true;
     };
   }, [active]);
 
-  const verifiedCount = analytics?.shopVerifiedCount ?? analytics?.verifiedCount ?? 0;
-  const selfCount = analytics?.selfReportedCount ?? 0;
-  const totalEvents = analytics?.totalEvents ?? 0;
-  const trustPct = analytics ? analytics.trustScore ?? Math.round(analytics.conversionRate * 100) : 0;
+  /** All counts below are scoped to the selected vehicle, not the whole garage. */
+  const recentEvents = useMemo(() => vehicleEvents.slice(0, 4), [vehicleEvents]);
+  const verifiedCount = useMemo(
+    () => vehicleEvents.filter((e) => e.verified || e.source === 'SHOP').length,
+    [vehicleEvents]
+  );
+  const totalEvents = vehicleEvents.length;
+  const selfCount = totalEvents - verifiedCount;
+  const trustPct = totalEvents > 0 ? Math.round((verifiedCount / totalEvents) * 100) : 0;
 
   if (loading) {
     return (
       <PageTransition>
-        <div className="skeleton card" style={{ height: 160, marginBottom: 16 }} />
-        <div className="grid-stats">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="card-stat skeleton" style={{ height: 80 }} />
-          ))}
+        <div className="skeleton" style={{ height: 64, borderRadius: 12, marginBottom: 16 }} />
+        <div className="dash-bento">
+          <div className="skeleton" style={{ height: 340, borderRadius: 12 }} />
+          <div className="skeleton" style={{ height: 340, borderRadius: 12 }} />
         </div>
       </PageTransition>
     );
@@ -95,172 +115,155 @@ export default function DashboardPage() {
     onAddVehicle: () => setModalOpen(true),
   });
 
+  const displayName = active ? active.nickname || `${active.year} ${active.make} ${active.model}` : '';
+  const modelLine = active ? `${active.year} ${active.make} ${active.model}` : '';
+  const plate = active?.serialNumber || active?.vin || null;
+
   return (
     <PageTransition>
-      <div className="hero-panel page-hero">
-        <div className="hero-copy">
-          <p className="section-eyebrow">{t('dashboard.overview')}</p>
-          <h1 className="display page-title">{t('dashboard.yourVehicles')}</h1>
-          <p className="muted" style={{ maxWidth: 620, marginTop: 10 }}>
-            {t('dashboard.heroLead')}
-          </p>
-          {limits && (
-            <p className="mono muted" style={{ marginTop: 12 }}>
-              {t('dashboard.vehicleQuota', { count: limits.count, max: limits.max, plan: limits.subscriptionType })}
-            </p>
-          )}
-        </div>
-        <div className="hero-actions">
-          <Link to="/shops" className="btn btn-primary">
-            <ShieldCheck size={18} /> {t('dashboard.findShop')}
-          </Link>
-          <button type="button" className="btn btn-solid" onClick={() => setModalOpen(true)} disabled={!limits?.canAdd}>
-            <Plus size={18} /> {t('dashboard.addVehicle')}
-          </button>
-        </div>
-      </div>
-
-      {vehicles.length > 1 && (
-        <div className="vehicle-switcher" role="tablist" aria-label={t('dashboard.switchVehicle')}>
-          {vehicles.map((v) => (
-            <button
-              key={v.id}
-              type="button"
-              role="tab"
-              aria-selected={v.id === active?.id}
-              className={`vehicle-switch-pill ${v.id === active?.id ? 'active' : ''}`}
-              onClick={() => setActiveId(v.id)}
-            >
-              <VehiclePhoto vehicle={v} className="vehicle-photo-thumb" />
-              <span>
-                {v.nickname || `${v.year} ${v.make} ${v.model}`}
-              </span>
-              <span className="pill-count">{v._count?.events ?? 0}</span>
-            </button>
-          ))}
-          {limits?.canAdd && (
-            <button
-              type="button"
-              className="vehicle-switch-pill add"
-              onClick={() => setModalOpen(true)}
-            >
-              <Plus size={14} /> {t('dashboard.addAnother')}
-            </button>
-          )}
-        </div>
-      )}
-
-      {nextStep && (
-        <div className="next-step-card" role="region" aria-label={t('dashboard.recommended')}>
-          <div className="next-step-icon">
-            <nextStep.Icon size={22} />
-          </div>
-          <div className="next-step-body">
-            <p className="eyebrow">{t('dashboard.recommended')}</p>
-            <h3>{nextStep.title}</h3>
-            <span>{nextStep.desc}</span>
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {nextStep.primary && (
-              nextStep.primary.to ? (
-                <Link to={nextStep.primary.to} className="btn btn-solid">
-                  {nextStep.primary.label} <ArrowRight size={16} />
-                </Link>
-              ) : (
-                <button type="button" className="btn btn-solid" onClick={() => nextStep.primary?.onClick?.()}>
-                  {nextStep.primary.label} <ArrowRight size={16} />
-                </button>
-              )
-            )}
-          </div>
-        </div>
-      )}
-
-      <div className="grid-stats dashboard-stats-grid" style={{ marginTop: 16 }}>
-        {[
-          { label: t('dashboard.shopVerified'), value: verifiedCount },
-          { label: t('dashboard.selfReported'), value: selfCount },
-          { label: t('dashboard.totalEvents'), value: totalEvents },
-        ].map((s) => (
-          <div key={s.label} className="card-stat">
-            <div style={{ fontSize: 28, fontFamily: 'var(--font-mono)' }}>
-              <AnimatedNumber value={s.value} />
-            </div>
-            <p className="muted" style={{ fontSize: 12, marginTop: 4 }}>
-              {s.label}
-            </p>
-          </div>
-        ))}
-      </div>
-
       {!active ? (
-        <div className="card empty-state" style={{ marginTop: 16 }}>
-          <p>{t('dashboard.noVehicles')}</p>
-          <button type="button" className="btn btn-primary" style={{ marginTop: 12 }} onClick={() => setModalOpen(true)}>
-            <Plus size={16} /> {t('dashboard.addVehicle')}
-          </button>
-        </div>
+        <>
+          <Card className="empty-state">
+            <p>{t('dashboard.noVehicles')}</p>
+            <button type="button" className="btn btn-primary" style={{ marginTop: 12 }} onClick={() => setModalOpen(true)}>
+              <Plus size={16} /> {t('dashboard.addVehicle')}
+            </button>
+          </Card>
+          {nextStep && <NextStepBanner step={nextStep} recommendedLabel={t('dashboard.recommended')} />}
+        </>
       ) : (
         <>
-          <div className="card card-hover dashboard-vehicle-card" style={{ marginTop: 16 }}>
-            <div>
-              <div className="vehicle-title-row">
-                <div>
-                  <p className="section-eyebrow">{t('dashboard.activeVehicle')}</p>
-                  <h2 className="display dashboard-vehicle-title" style={{ margin: '8px 0' }}>
-                    {active.year} {active.make} {active.model}
-                  </h2>
-                  {(active.vin || active.serialNumber) && (
-                    <p className="mono subtle" style={{ marginBottom: 12 }}>
-                      {active.vin ? `VIN · ${active.vin}` : `${t('editVehicle.serial')} · ${active.serialNumber}`}
-                    </p>
-                  )}
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span className="tag tag-green">
-                    <CarFront size={12} /> {t('dashboard.records', { n: active._count?.events ?? 0 })}
-                  </span>
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-sm"
-                    onClick={() => setEditVehicle(active)}
-                    aria-label={t('dashboard.editVehicle')}
-                    title={t('dashboard.editVehicle')}
-                  >
-                    <Pencil size={14} />
-                  </button>
-                </div>
-              </div>
-              <VehiclePhoto vehicle={active} className="vehicle-photo-hero" />
-              <p className="mono" style={{ color: 'var(--color-accent)', fontSize: 24, marginBottom: 12 }}>
-                {active.mileage.toLocaleString()} km
-              </p>
-            </div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <Link to={`/vehicles/${active.id}`} className="btn btn-primary">
-                <Clock size={16} /> {t('dashboard.timeline')}
+          <div className="dash-bar">
+            <VehicleSwitcher
+              vehicles={vehicles}
+              activeId={active.id}
+              canAdd={limits?.canAdd}
+              onSelect={selectVehicle}
+              onAdd={() => setModalOpen(true)}
+            />
+            <div className="dash-bar__actions">
+              <Link to={`/vehicles/${active.id}`} className="btn btn-outline btn-sm">
+                <Clock size={14} /> {t('dashboard.timeline')}
               </Link>
-              <Link to={`/vehicles/${active.id}/share`} className="btn btn-primary">
-                <Share2 size={16} /> {t('dashboard.share')}
+              <Link to={`/vehicles/${active.id}/share`} className="btn btn-outline btn-sm">
+                <Share2 size={14} /> {t('dashboard.share')}
               </Link>
-            </div>
-            <div className="status-chip-row">
-              <span className="tag tag-verified">
-                <ShieldCheck size={12} /> {t('dashboard.verifiedCount', { n: verifiedCount })}
-              </span>
-              <span className="tag tag-self">
-                <FileText size={12} /> {t('dashboard.selfCount', { n: selfCount })}
-              </span>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={() => setModalOpen(true)}
+                disabled={!limits?.canAdd}
+              >
+                <Plus size={14} /> {t('dashboard.addVehicle')}
+              </button>
             </div>
           </div>
 
-          <div className="grid-bottom">
-            <div className="card">
-              <div className="section-head">
-                <div>
-                  <p className="section-eyebrow">{t('dashboard.latestActivity')}</p>
-                  <h3 className="display" style={{ fontSize: 20 }}>{t('dashboard.recentTimeline')}</h3>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={active.id}
+              className="dash-bento"
+              initial={{ opacity: 0, x: slideDir * 28 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: slideDir * -20 }}
+              transition={{ duration: 0.32, ease: EASE }}
+            >
+              <article className="dash-hero">
+                <VehiclePhoto vehicle={active} className="dash-hero__media" />
+                <span className="dash-hero__scrim" aria-hidden />
+                <span className="dash-hero__sheen" aria-hidden />
+                <button
+                  type="button"
+                  className="dash-hero__edit"
+                  onClick={() => setEditVehicle(active)}
+                  aria-label={t('dashboard.editVehicle')}
+                  title={t('dashboard.editVehicle')}
+                >
+                  <Pencil size={14} />
+                </button>
+                <div className="dash-hero__overlay">
+                  <h1 className="dash-hero__name">{displayName}</h1>
+                  <p className="dash-hero__model">{modelLine}</p>
+                  <div className="dash-hero__chips">
+                    <span className="dash-chip dash-chip--km mono">
+                      <Gauge size={13} aria-hidden />
+                      {formatKm(active.mileage)}
+                    </span>
+                    {plate && (
+                      <span className="dash-chip dash-chip--plate mono" title={plate}>
+                        {plate}
+                      </span>
+                    )}
+                  </div>
                 </div>
+              </article>
+
+              <aside className="dash-trust" aria-busy={eventsLoading}>
+                <div className="dash-trust__head">
+                  <h2 className="section-title">{t('dashboard.trustScore')}</h2>
+                  <span className="dash-trust__scope">{t('dashboard.thisVehicle')}</span>
+                </div>
+                <div className="dash-trust__gauge">
+                  <TrustRing score={trustPct} size={104} />
+                  <p className="dash-trust__caption">
+                    {t('dashboard.trustOf', { verified: verifiedCount, total: totalEvents })}
+                  </p>
+                </div>
+
+                <div className="dash-split" role="img" aria-label={t('dashboard.trustScore')}>
+                  <motion.span
+                    className="dash-split__seg dash-split__seg--verified"
+                    initial={{ flexGrow: 0 }}
+                    animate={{ flexGrow: verifiedCount || 0 }}
+                    transition={{ duration: 0.7, ease: EASE }}
+                  />
+                  <motion.span
+                    className="dash-split__seg dash-split__seg--declared"
+                    initial={{ flexGrow: 0 }}
+                    animate={{ flexGrow: selfCount || 0 }}
+                    transition={{ duration: 0.7, ease: EASE }}
+                  />
+                  {totalEvents === 0 && <span className="dash-split__seg dash-split__seg--empty" />}
+                </div>
+
+                <motion.ul className="dash-stat-list" variants={statList} initial="initial" animate="animate">
+                  <motion.li className="dash-stat-row" variants={statRow}>
+                    <span className="dash-stat-row__key">
+                      <span className="dash-dot dash-dot--verified" aria-hidden>
+                        <ShieldCheck size={11} />
+                      </span>
+                      {t('dashboard.shopVerified')}
+                    </span>
+                    <strong className="mono tone-verified">
+                      <AnimatedNumber value={verifiedCount} />
+                    </strong>
+                  </motion.li>
+                  <motion.li className="dash-stat-row" variants={statRow}>
+                    <span className="dash-stat-row__key">
+                      <span className="dash-dot dash-dot--declared" aria-hidden>
+                        <FileText size={11} />
+                      </span>
+                      {t('dashboard.selfReported')}
+                    </span>
+                    <strong className="mono tone-declared">
+                      <AnimatedNumber value={selfCount} />
+                    </strong>
+                  </motion.li>
+                  <motion.li className="dash-stat-row dash-stat-row--total" variants={statRow}>
+                    <span className="dash-stat-row__key">{t('dashboard.totalEvents')}</span>
+                    <strong className="mono">
+                      <AnimatedNumber value={totalEvents} />
+                    </strong>
+                  </motion.li>
+                </motion.ul>
+              </aside>
+            </motion.div>
+          </AnimatePresence>
+
+          <div className="grid-bottom">
+            <Card>
+              <div className="section-head">
+                <h2 className="section-title">{t('dashboard.recentTimeline')}</h2>
                 <Link to={`/vehicles/${active.id}`} className="btn btn-ghost btn-sm">
                   {t('dashboard.viewTimeline')}
                 </Link>
@@ -277,7 +280,13 @@ export default function DashboardPage() {
                   </div>
                 </div>
               ) : (
-                <motion.ol className="timeline-rail" variants={stagger} initial="initial" animate="animate" style={{ listStyle: 'none', padding: '0 0 0 28px', margin: 0 }}>
+                <motion.ol
+                  className="ledger"
+                  variants={stagger}
+                  initial="initial"
+                  animate="animate"
+                  style={{ marginTop: 4 }}
+                >
                   {recentEvents.map((ev) => (
                     <motion.li key={ev.id} variants={staggerItem} style={{ listStyle: 'none' }}>
                       <EventTimelineItem event={ev} vehicleId={active.id} />
@@ -285,24 +294,12 @@ export default function DashboardPage() {
                   ))}
                 </motion.ol>
               )}
-            </div>
+            </Card>
 
-            <div>
-              <RemindersPanel />
-              <div className="card">
-                <p className="section-eyebrow">{t('nav.shops')}</p>
-                <h3 className="display" style={{ fontSize: 20, marginBottom: 8 }}>
-                  {t('dashboard.partsShops')}
-                </h3>
-                <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>
-                  {t('dashboard.shopsPartsFor', { label: `${active.year} ${active.make} ${active.model}` })}
-                </p>
-                <Link to="/shops" className="btn btn-primary btn-sm">
-                  <ShieldCheck size={14} /> {t('dashboard.viewShops')}
-                </Link>
-              </div>
-            </div>
+            <RemindersPanel vehicleId={active.id} />
           </div>
+
+          {nextStep && <NextStepBanner step={nextStep} recommendedLabel={t('dashboard.recommended')} />}
         </>
       )}
 
@@ -311,7 +308,7 @@ export default function DashboardPage() {
         vehicle={editVehicle}
         onClose={() => setEditVehicle(null)}
         onSaved={(updated) => {
-          setVehicles((prev) => prev.map((v) => v.id === updated.id ? { ...v, ...updated } : v));
+          setVehicles((prev) => prev.map((v) => (v.id === updated.id ? { ...v, ...updated } : v)));
         }}
         onDeleted={(id) => {
           setVehicles((prev) => prev.filter((v) => v.id !== id));
@@ -319,6 +316,33 @@ export default function DashboardPage() {
         }}
       />
     </PageTransition>
+  );
+}
+
+function NextStepBanner({ step, recommendedLabel }: { step: NextStep; recommendedLabel: string }) {
+  return (
+    <div className="next-step-card" role="region" aria-label={recommendedLabel} style={{ marginTop: 16 }}>
+      <div className="next-step-icon">
+        <step.Icon size={22} />
+      </div>
+      <div className="next-step-body">
+        <p className="section-eyebrow">{recommendedLabel}</p>
+        <h3>{step.title}</h3>
+        <span>{step.desc}</span>
+      </div>
+      <div style={{ display: 'flex', gap: 8 }}>
+        {step.primary &&
+          (step.primary.to ? (
+            <Link to={step.primary.to} className="btn btn-primary">
+              {step.primary.label} <ArrowRight size={16} />
+            </Link>
+          ) : (
+            <button type="button" className="btn btn-primary" onClick={() => step.primary?.onClick?.()}>
+              {step.primary.label} <ArrowRight size={16} />
+            </button>
+          ))}
+      </div>
+    </div>
   );
 }
 

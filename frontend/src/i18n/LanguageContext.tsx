@@ -1,9 +1,20 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type Context,
+  type ReactNode,
+} from 'react';
 import { en } from './locales/en';
 import { fr } from './locales/fr';
 import { translate, translateList, type Locale } from './utils';
 
 const STORAGE_KEY = 'autohistory_locale';
+/** Survives Vite HMR re-evaluating this module (avoids duplicate createContext instances). */
+const CONTEXT_KEY = '__autohistory_language_context__';
 
 type LanguageContextValue = {
   locale: Locale;
@@ -12,7 +23,14 @@ type LanguageContextValue = {
   tList: (key: string) => string[];
 };
 
-const LanguageContext = createContext<LanguageContextValue | null>(null);
+type GlobalWithCtx = typeof globalThis & {
+  [CONTEXT_KEY]?: Context<LanguageContextValue | null>;
+};
+
+const LanguageContext =
+  (globalThis as GlobalWithCtx)[CONTEXT_KEY] ??
+  createContext<LanguageContextValue | null>(null);
+(globalThis as GlobalWithCtx)[CONTEXT_KEY] = LanguageContext;
 
 function readStoredLocale(): Locale {
   try {

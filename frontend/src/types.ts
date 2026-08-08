@@ -226,6 +226,8 @@ export interface PublicVehicle {
   shareLevel: ShareLevel;
   verifiedCount: number;
   totalEvents: number;
+  hasPhoto?: boolean;
+  photoUrl?: string | null;
 }
 
 export interface PublicShareMeta {

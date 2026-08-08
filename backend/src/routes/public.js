@@ -7,6 +7,12 @@ import {
   sanitizeEventPublic,
   publicShareMeta,
 } from '../lib/share.js';
+import {
+  BUCKETS,
+  inferImageContentType,
+  readUploadBuffer,
+  resolveVehiclePhotoUrl,
+} from '../lib/storage.js';
 
 const router = Router();
 
@@ -34,6 +40,14 @@ async function loadVehicleByToken(token) {
   });
 }
 
+async function publicVehiclePayload(vehicle) {
+  const photoUrl = await resolveVehiclePhotoUrl(vehicle.photoPath);
+  return {
+    ...sanitizeVehiclePublic({ ...vehicle, events: vehicle.events }),
+    photoUrl,
+  };
+}
+
 router.get('/history/:token', async (req, res) => {
   const vehicle = await loadVehicleByToken(req.params.token);
   if (!vehicle) return res.status(404).json({ error: 'History not found' });
@@ -57,7 +71,7 @@ router.get('/history/:token', async (req, res) => {
     .catch(() => {});
 
   res.json({
-    vehicle: sanitizeVehiclePublic({ ...vehicle, events: vehicle.events }),
+    vehicle: await publicVehiclePayload(vehicle),
     events,
     trustScore: computeTrustScore(vehicle.events),
     share: publicShareMeta(vehicle),
@@ -65,6 +79,30 @@ router.get('/history/:token', async (req, res) => {
       ? { isAnimated: vehicle.badge.isAnimated, trustScore: computeTrustScore(vehicle.events) }
       : null,
   });
+});
+
+router.get('/history/:token/photo', async (req, res) => {
+  const vehicle = await loadVehicleByToken(req.params.token);
+  if (!vehicle) return res.status(404).json({ error: 'Photo not found' });
+
+  const partnerKey = req.headers['x-partner-key'] || req.query.partnerKey;
+  const access = canAccessPublic(vehicle, { partnerKey: String(partnerKey || '') });
+  if (!access.allowed) {
+    return res.status(403).json({ error: 'Not available', reason: access.reason });
+  }
+
+  if (!vehicle.photoPath) return res.status(404).json({ error: 'Photo not found' });
+
+  try {
+    const buffer = await readUploadBuffer(BUCKETS.vehicles, vehicle.photoPath);
+    const contentType = inferImageContentType(vehicle.photoPath, null);
+    res.set('Cache-Control', 'public, max-age=86400');
+    res.type(contentType);
+    return res.send(buffer);
+  } catch (err) {
+    console.error('public vehicle photo read failed:', err.message);
+    return res.status(404).json({ error: 'Photo not found' });
+  }
 });
 
 router.get('/history/:token/badge', async (req, res) => {

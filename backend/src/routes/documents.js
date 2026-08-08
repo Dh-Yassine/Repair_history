@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
-import { runOcrOnBuffer } from '../lib/ocr.js';
 import { requireAuth } from '../middleware/auth.js';
 import { memoryUpload } from '../lib/upload.js';
 import { BUCKETS, deleteUpload, documentKey, resolveFileUrl, saveUpload } from '../lib/storage.js';
@@ -17,24 +16,6 @@ const upload = memoryUpload({
 
 const router = Router({ mergeParams: true });
 router.use(requireAuth);
-
-async function runOcrInBackground(document, buffer, mimeType, event) {
-  if (process.env.OCR_DISABLED === 'true' || process.env.NETLIFY || process.env.VERCEL) return;
-  try {
-    const ocrData = await runOcrOnBuffer(buffer, mimeType);
-    await prisma.oCRResult.create({
-      data: { documentId: document.id, ...ocrData },
-    });
-    if (ocrData.parsedAmount != null && event.cost == null) {
-      await prisma.maintenanceEvent.update({
-        where: { id: event.id },
-        data: { cost: ocrData.parsedAmount },
-      });
-    }
-  } catch (ocrErr) {
-    console.error('OCR failed:', ocrErr.message);
-  }
-}
 
 async function getOwnedEvent(vehicleId, eventId, ownerId) {
   const vehicle = await prisma.vehicle.findFirst({ where: { id: vehicleId, ownerId } });
@@ -74,9 +55,7 @@ router.post('/', (req, res, next) => {
       },
     });
 
-    runOcrInBackground(document, req.file.buffer, req.file.mimetype, event);
-
-    res.status(201).json({ document, ocrResult: null });
+    res.status(201).json({ document });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message || 'Upload failed' });

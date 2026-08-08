@@ -1,12 +1,10 @@
-import { FormEvent, useEffect, useState, useCallback } from 'react';
+import { FormEvent, useEffect, useState, useCallback, useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus,
   X,
   Upload,
-  Info,
-  ShieldCheck,
   FileText,
   Droplet,
   RotateCw,
@@ -20,7 +18,7 @@ import {
   Loader2,
   Pencil,
 } from 'lucide-react';
-import { formatKm } from '../lib/format';
+import { formatDate, formatKm } from '../lib/format';
 import { api } from '../api';
 import PageTransition, { stagger, staggerItem } from '../components/layout/PageTransition';
 import EventTimelineItem from '../components/events/EventTimelineItem';
@@ -65,11 +63,12 @@ export default function VehicleDetailPage() {
   const { t } = useLanguage();
   const labelEvent = useEventTypeLabel();
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
-  const [events, setEvents] = useState<MaintenanceEvent[]>([]);
+  const [allEvents, setAllEvents] = useState<MaintenanceEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [filterType, setFilterType] = useState('All');
   const [trustFilter, setTrustFilter] = useState<'all' | 'verified' | 'self'>('all');
+  const [filterYear, setFilterYear] = useState('all');
   const [suggestions, setSuggestions] = useState<MaintenanceSuggestion[]>([]);
 
   const [drawerMode, setDrawerMode] = useState<'create' | 'edit'>('create');
@@ -152,16 +151,9 @@ export default function VehicleDetailPage() {
   async function load() {
     if (!vehicleId) return;
     setLoading(true);
-    const params: Record<string, string> = {};
-    if (filterType !== 'All') params.eventType = filterType;
-    if (trustFilter === 'verified') params.verified = 'true';
-    if (trustFilter === 'self') {
-      params.verified = 'false';
-      params.source = 'OWNER';
-    }
     try {
-      const { events: list } = await api.events(vehicleId, params);
-      setEvents(list);
+      const { events: list } = await api.events(vehicleId);
+      setAllEvents(list);
     } catch (e) {
       setError(e instanceof Error ? e.message : t('shop.failedLoad'));
     } finally {
@@ -171,7 +163,32 @@ export default function VehicleDetailPage() {
 
   useEffect(() => {
     load();
-  }, [vehicleId, filterType, trustFilter]);
+  }, [vehicleId]);
+
+  const yearOptions = useMemo(() => {
+    const years = new Set<number>();
+    for (const e of allEvents) {
+      years.add(new Date(e.date).getFullYear());
+    }
+    return Array.from(years).sort((a, b) => b - a);
+  }, [allEvents]);
+
+  const filteredEvents = useMemo(() => {
+    return allEvents.filter((event) => {
+      if (filterType !== 'All' && event.eventType !== filterType) return false;
+      if (trustFilter === 'verified' && !(event.verified || event.source === 'SHOP')) return false;
+      if (trustFilter === 'self' && (event.verified || event.source === 'SHOP')) return false;
+      if (filterYear !== 'all' && String(new Date(event.date).getFullYear()) !== filterYear) return false;
+      return true;
+    });
+  }, [allEvents, filterType, trustFilter, filterYear]);
+
+  const verifiedCount = useMemo(
+    () => allEvents.filter((event) => event.verified || event.source === 'SHOP').length,
+    [allEvents]
+  );
+  const selfReportedCount = allEvents.length - verifiedCount;
+  const lastServiceDate = allEvents[0]?.date;
 
   useEffect(() => {
     if (!vehicleId) return;
@@ -283,16 +300,11 @@ export default function VehicleDetailPage() {
     }
   }
 
-  const headerMileage = events[0]?.mileage ?? 0;
-  const verifiedCount = events.filter((event) => event.verified).length;
-  const selfReportedCount = events.filter((event) => !event.verified).length;
+  const headerMileage = allEvents[0]?.mileage ?? 0;
 
   return (
     <PageTransition>
       <header className="masthead">
-        <Link to="/" className="masthead__back">
-          {t('vehicle.backDashboard')}
-        </Link>
         <div className="masthead__row">
           <div className="masthead__identity">
             <h1 className="masthead__title">
@@ -325,59 +337,30 @@ export default function VehicleDetailPage() {
         </div>
       </header>
 
-      <div className="record-summary">
+      <div className="record-summary record-summary--vehicle">
         <div className="record-summary__cell">
           <span className="record-summary__value mono tone-verified">{verifiedCount}</span>
           <span className="record-summary__label">{t('events.shopVerified')}</span>
         </div>
         <div className="record-summary__cell">
           <span className="record-summary__value mono tone-declared">{selfReportedCount}</span>
-          <span className="record-summary__label">{t('auth.ownerRecords')}</span>
+          <span className="record-summary__label">{t('dashboard.selfReported')}</span>
         </div>
         <div className="record-summary__cell">
-          <span className="record-summary__value mono">{events.length}</span>
+          <span className="record-summary__value mono">{allEvents.length}</span>
           <span className="record-summary__label">{t('public.totalRecords')}</span>
+        </div>
+        <div className="record-summary__cell">
+          <span className="record-summary__value mono record-summary__value--date">
+            {lastServiceDate ? formatDate(lastServiceDate) : '—'}
+          </span>
+          <span className="record-summary__label">{t('vehicle.lastService')}</span>
         </div>
       </div>
 
-      {trustFilter === 'verified' && (
-        <div className="trust-callout verified">
-          <ShieldCheck size={18} />
-          <div>
-            <strong>{t('vehicle.trustVerifiedTitle')}</strong>
-            <p style={{ margin: '4px 0 0', fontSize: 13 }}>
-              {t('vehicle.trustVerifiedDesc')}
-            </p>
-          </div>
-        </div>
-      )}
-      {trustFilter === 'self' && (
-        <div className="trust-callout self">
-          <FileText size={18} />
-          <div>
-            <strong>{t('auth.ownerRecords')}</strong>
-            <p style={{ margin: '4px 0 0', fontSize: 13 }}>
-              {t('vehicle.trustOwnerDesc')}
-            </p>
-          </div>
-        </div>
-      )}
-      {trustFilter === 'all' && events.length > 0 && (
-        <div className="trust-callout">
-          <Info size={18} />
-          <div>
-            <strong>{t('vehicle.twoLevelsTitle')}</strong>
-            <p style={{ margin: '4px 0 0', fontSize: 13 }}>
-              <span style={{ color: 'var(--color-verified)' }}>{t('vehicle.verifiedRecordsDesc')}</span>
-              <span style={{ color: 'var(--color-warning)' }}> {t('vehicle.ownerRecordsDesc')}</span>
-            </p>
-          </div>
-        </div>
-      )}
-
       <div className="control-bar">
         <div className="control-group">
-          <span className="mono muted" style={{ fontSize: 11 }}>{t('vehicle.trust')}</span>
+          <span className="mono muted" style={{ fontSize: 11 }}>{t('vehicle.source')}</span>
           <div className="segmented">
             {[
               { id: 'all', label: t('common.all') },
@@ -391,6 +374,28 @@ export default function VehicleDetailPage() {
                 onClick={() => setTrustFilter(item.id as typeof trustFilter)}
               >
                 {item.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="control-group">
+          <span className="mono muted" style={{ fontSize: 11 }}>{t('vehicle.filterYear')}</span>
+          <div className="segmented segmented--scroll">
+            <button
+              type="button"
+              className={filterYear === 'all' ? 'active' : ''}
+              onClick={() => setFilterYear('all')}
+            >
+              {t('common.all')}
+            </button>
+            {yearOptions.map((year) => (
+              <button
+                key={year}
+                type="button"
+                className={filterYear === String(year) ? 'active' : ''}
+                onClick={() => setFilterYear(String(year))}
+              >
+                {year}
               </button>
             ))}
           </div>
@@ -409,17 +414,21 @@ export default function VehicleDetailPage() {
 
       {loading ? (
         <div className="skeleton card" style={{ height: 120 }} />
-      ) : events.length === 0 ? (
+      ) : filteredEvents.length === 0 ? (
         <div className="card empty-state">
           <p style={{ fontSize: 48 }}>🚗</p>
-          {filterType !== 'All' || trustFilter !== 'all' ? (
+          {filterType !== 'All' || trustFilter !== 'all' || filterYear !== 'all' ? (
             <>
               <p>{t('vehicle.emptyFiltered')}</p>
               <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 16, flexWrap: 'wrap' }}>
                 <button
                   type="button"
                   className="btn btn-primary"
-                  onClick={() => { setFilterType('All'); setTrustFilter('all'); }}
+                  onClick={() => {
+                    setFilterType('All');
+                    setTrustFilter('all');
+                    setFilterYear('all');
+                  }}
                 >
                   {t('vehicle.clearFilters')}
                 </button>
@@ -450,7 +459,7 @@ export default function VehicleDetailPage() {
           <span>{t('vehicle.colAmount')}</span>
         </div>
         <motion.ol className="ledger" variants={stagger} initial="initial" animate="animate">
-          {events.map((ev) => (
+          {filteredEvents.map((ev) => (
             <motion.li key={ev.id} variants={staggerItem} style={{ listStyle: 'none' }}>
               <EventTimelineItem
                 event={ev}
@@ -539,7 +548,7 @@ export default function VehicleDetailPage() {
                       <span className="hint">{t('vehicle.pickClosest')}</span>
                     </div>
                     <div className="event-type-grid">
-                      {orderEventTypes(events).map((et) => (
+                      {orderEventTypes(allEvents).map((et) => (
                         <button
                           key={et.id}
                           type="button"
@@ -596,7 +605,7 @@ export default function VehicleDetailPage() {
                       <div className="field" style={{ marginBottom: 0 }}>
                         <label className="label" htmlFor="ev-cost">{t('vehicle.costOptional')}</label>
                         <div className="input-prefix">
-                          <span className="input-prefix-symbol">$</span>
+                          <span className="input-prefix-symbol">€</span>
                           <input
                             id="ev-cost"
                             className="input input-mono"

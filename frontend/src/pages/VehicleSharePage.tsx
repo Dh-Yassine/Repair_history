@@ -1,9 +1,11 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { CheckCircle2, Copy, ExternalLink, Eye, RotateCcw, ShieldCheck } from 'lucide-react';
+import { useParams } from 'react-router-dom';
+import { CheckCircle2, Copy, ExternalLink, Eye, RotateCcw } from 'lucide-react';
 import { api } from '../api';
 import PageTransition from '../components/layout/PageTransition';
 import EventTimelineItem from '../components/events/EventTimelineItem';
+import PublicEventSummaryCard from '../components/events/PublicEventSummaryCard';
+import PublicVehiclePhoto from '../components/PublicVehiclePhoto';
 import { useToast } from '../components/ui/Toast';
 import { useLanguage } from '../i18n/LanguageContext';
 import type { PublicHistory, ShareLevel, ShareSettings } from '../types';
@@ -31,6 +33,11 @@ export default function VehicleSharePage() {
 
   const sharingEnabled = shareLevel !== 'NONE' && Boolean(share?.shareUrl);
   const settingsDirty = share && share.shareLevel !== shareLevel;
+
+  function applyShareUpdate(partial: ShareSettings) {
+    setShare((prev) => (prev ? { ...prev, ...partial } : partial));
+    setShareLevel(partial.shareLevel);
+  }
 
   async function load() {
     if (!vehicleId) return;
@@ -61,22 +68,44 @@ export default function VehicleSharePage() {
     };
   }, [vehicleId, shareLevel]);
 
-  async function save(e: FormEvent) {
-    e.preventDefault();
+  async function persistSettings(level: ShareLevel) {
     if (!vehicleId) return;
     setSaving(true);
-    // Link sharing only — anyone with the link can view (no public listing mode).
     const visibility = 'PRIVATE' as const;
     try {
-      if (share?.shareToken) await api.updateSharing(vehicleId, { shareLevel, visibility });
-      else await api.enableSharing(vehicleId, { shareLevel, visibility });
+      const { share: updated } = await api.updateSharing(vehicleId, { shareLevel: level, visibility });
+      applyShareUpdate({
+        visibility: updated.visibility,
+        shareLevel: updated.shareLevel,
+        shareToken: updated.shareToken,
+        shareUrl: updated.shareUrl,
+        badge: updated.badge ?? share?.badge ?? null,
+        embedCode: share?.embedCode ?? null,
+        vehicle: share?.vehicle,
+        stats: share?.stats,
+      });
       await load();
-      toast.success(shareLevel === 'NONE' ? t('share.toastOff') : t('share.toastSaved'));
+      toast.success(level === 'NONE' ? t('share.toastOff') : t('share.toastSaved'));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('share.couldNotSave'));
     } finally {
       setSaving(false);
     }
+  }
+
+  async function save(e: FormEvent) {
+    e.preventDefault();
+    await persistSettings(shareLevel);
+  }
+
+  async function turnOffSharing() {
+    if (!vehicleId) return;
+    if (shareLevel === 'NONE') {
+      setShareLevel('SUMMARY');
+      return;
+    }
+    setShareLevel('NONE');
+    await persistSettings('NONE');
   }
 
   function copyLink() {
@@ -95,12 +124,7 @@ export default function VehicleSharePage() {
     <PageTransition>
       <div className="hero-panel page-hero compact">
         <div className="hero-copy">
-          <Link to={`/vehicles/${vehicleId}`} className="mono muted" style={{ fontSize: 12 }}>
-            {t('share.backTimeline')}
-          </Link>
-          <p className="section-eyebrow" style={{ marginTop: 14 }}>
-            {t('share.sharing')}
-          </p>
+          <p className="section-eyebrow">{t('share.sharing')}</p>
           <h1 className="display page-title">{t('share.title')}</h1>
           <p className="muted" style={{ marginTop: 10, maxWidth: 480 }}>
             {t('share.lead')}
@@ -135,7 +159,8 @@ export default function VehicleSharePage() {
           <button
             type="button"
             className={`share-off-toggle ${shareLevel === 'NONE' ? 'active' : ''}`}
-            onClick={() => setShareLevel(shareLevel === 'NONE' ? 'SUMMARY' : 'NONE')}
+            onClick={turnOffSharing}
+            disabled={saving}
           >
             {shareLevel === 'NONE' ? t('share.sharingOff') : t('share.turnOff')}
           </button>
@@ -153,15 +178,9 @@ export default function VehicleSharePage() {
             {previewLoading && <div className="skeleton" style={{ height: 120 }} />}
 
             {!previewLoading && preview && (
-              <div style={{ border: '1px solid var(--color-border)', borderRadius: 12, padding: 16 }}>
-                <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap', marginBottom: 14 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <ShieldCheck size={20} style={{ color: 'var(--color-verified)' }} />
-                    <strong style={{ fontSize: 22 }}>{preview.trustScore ?? 0}%</strong>
-                    <span className="mono muted" style={{ fontSize: 11 }}>
-                      {t('public.trustScore')}
-                    </span>
-                  </div>
+              <div className="share-preview-panel">
+                <PublicVehiclePhoto vehicle={preview.vehicle} token={share?.shareToken ?? ''} />
+                <div className="share-preview-meta">
                   <span className="mono muted" style={{ fontSize: 12 }}>
                     {preview.vehicle.year} {preview.vehicle.make} {preview.vehicle.model}
                   </span>
@@ -184,14 +203,18 @@ export default function VehicleSharePage() {
                   </p>
                 ) : (
                   <>
-                    {preview.events.slice(0, 3).map((ev) => (
-                      <EventTimelineItem
-                        key={ev.id}
-                        event={ev}
-                        publicView
-                        detailLevel={shareLevel === 'SUMMARY' ? 'SUMMARY' : 'FULL'}
-                      />
-                    ))}
+                    {preview.events.slice(0, 3).map((ev) =>
+                      shareLevel === 'SUMMARY' ? (
+                        <PublicEventSummaryCard key={ev.id} event={ev} />
+                      ) : (
+                        <EventTimelineItem
+                          key={ev.id}
+                          event={ev}
+                          publicView
+                          detailLevel="FULL"
+                        />
+                      )
+                    )}
                     {preview.events.length > 3 && (
                       <p className="mono muted" style={{ fontSize: 12, marginTop: 4 }}>
                         {t('share.moreEvents', { n: preview.events.length - 3 })}
@@ -205,10 +228,12 @@ export default function VehicleSharePage() {
         )}
 
         <div className="share-actions-row">
-          <button type="submit" className="btn btn-solid" disabled={saving}>
+          <button type="submit" className="btn btn-solid" disabled={saving || shareLevel === 'NONE'}>
             <CheckCircle2 size={16} /> {saving ? t('common.saving') : t('share.saveSettings')}
           </button>
-          {settingsDirty && <span className="tag tag-warning">{t('share.unsaved')}</span>}
+          {settingsDirty && shareLevel !== 'NONE' && (
+            <span className="tag tag-warning">{t('share.unsaved')}</span>
+          )}
           {share && !settingsDirty && share.shareLevel !== 'NONE' && (
             <span className="tag tag-verified">{t('share.saved')}</span>
           )}

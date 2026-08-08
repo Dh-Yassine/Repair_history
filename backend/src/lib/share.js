@@ -4,6 +4,11 @@ export function generateShareToken() {
   return crypto.randomBytes(24).toString('hex');
 }
 
+export function normalizeShareLevel(value, fallback = 'FULL') {
+  if (value === 'NONE' || value === 'SUMMARY' || value === 'FULL') return value;
+  return fallback;
+}
+
 /**
  * Weighted trust score.
  *
@@ -73,7 +78,7 @@ export function publicShareMeta(vehicle) {
         ? 'Public listing'
         : 'Private link';
 
-  const detailLabel = isSummary ? 'Trust summary' : isFull ? 'Full history' : 'Hidden';
+  const detailLabel = isSummary ? 'History summary' : isFull ? 'Full history' : 'Hidden';
 
   return {
     visibility,
@@ -112,6 +117,7 @@ export function sanitizeVehiclePublic(vehicle) {
     shareLevel: vehicle.shareLevel,
     verifiedCount: vehicle.events?.filter((e) => e.verified).length ?? 0,
     totalEvents: vehicle.events?.length ?? 0,
+    hasPhoto: Boolean(vehicle.photoPath),
   };
 }
 

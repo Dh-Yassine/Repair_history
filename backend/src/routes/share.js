@@ -4,11 +4,13 @@ import {
   generateShareToken,
   buildEmbedSnippet,
   computeTrustScore,
+  normalizeShareLevel,
   sanitizeVehiclePublic,
   sanitizeEventPublic,
   publicShareMeta,
 } from '../lib/share.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
+import { resolveVehiclePhotoUrl } from '../lib/storage.js';
 
 const router = Router({ mergeParams: true });
 router.use(requireAuth);
@@ -87,9 +89,10 @@ router.get('/preview', async (req, res) => {
 
   const level = req.query.level === 'SUMMARY' ? 'SUMMARY' : 'FULL';
   const previewVehicle = { ...vehicle, shareLevel: level, shareToken: vehicle.shareToken || 'preview' };
+  const photoUrl = await resolveVehiclePhotoUrl(vehicle.photoPath);
 
   res.json({
-    vehicle: sanitizeVehiclePublic(previewVehicle),
+    vehicle: { ...sanitizeVehiclePublic(previewVehicle), photoUrl },
     events: vehicle.events.map((e) => sanitizeEventPublic(e, level)),
     trustScore: computeTrustScore(vehicle.events),
     share: publicShareMeta(previewVehicle),
@@ -101,13 +104,18 @@ router.post('/enable', async (req, res) => {
   if (!vehicle) return res.status(404).json({ error: 'Vehicle not found' });
 
   const { shareLevel, visibility } = req.body;
+  const normalized = normalizeShareLevel(shareLevel, 'FULL');
+  if (normalized === 'NONE') {
+    return res.status(400).json({ error: 'Use PATCH to turn off sharing.' });
+  }
+
   const token = vehicle.shareToken || generateShareToken();
 
   const updated = await prisma.vehicle.update({
     where: { id: vehicle.id },
     data: {
       shareToken: token,
-      shareLevel: shareLevel && shareLevel !== 'NONE' ? shareLevel : 'FULL',
+      shareLevel: normalized,
       shareEverEnabled: true,
       ...(visibility && { visibility }),
     },
@@ -130,15 +138,23 @@ router.patch('/', async (req, res) => {
   if (!vehicle) return res.status(404).json({ error: 'Vehicle not found' });
 
   const { visibility, shareLevel } = req.body;
+  const data = {};
+  if (visibility) data.visibility = visibility;
+
+  if (shareLevel !== undefined) {
+    const normalized = normalizeShareLevel(shareLevel, vehicle.shareLevel === 'NONE' ? 'FULL' : vehicle.shareLevel);
+    data.shareLevel = normalized;
+    if (normalized === 'NONE') {
+      data.shareToken = null;
+    } else if (!vehicle.shareToken) {
+      data.shareToken = generateShareToken();
+      data.shareEverEnabled = true;
+    }
+  }
+
   const updated = await prisma.vehicle.update({
     where: { id: vehicle.id },
-    data: {
-      ...(visibility && { visibility }),
-      ...(shareLevel !== undefined && {
-        shareLevel,
-        ...(shareLevel === 'NONE' && { shareToken: null }),
-      }),
-    },
+    data,
     include: { badge: true },
   });
 

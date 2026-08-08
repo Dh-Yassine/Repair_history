@@ -6,6 +6,7 @@ import { POPULAR_CAR_MODELS, POPULAR_MAKES } from '../lib/carData';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useToast } from './ui/Toast';
 import { useOverlayPanel } from '../hooks/useOverlayPanel';
+import { vehiclePhotoSrc } from '../lib/vehiclePhoto';
 import type { Vehicle } from '../types';
 
 const VIN_MAX_LENGTH = 32;
@@ -31,6 +32,7 @@ export default function EditVehicleModal({ vehicle, onClose, onSaved, onDeleted 
   const [serialNumber, setSerialNumber] = useState('');
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [removePhoto, setRemovePhoto] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -47,6 +49,7 @@ export default function EditVehicleModal({ vehicle, onClose, onSaved, onDeleted 
     setSerialNumber(vehicle.serialNumber ?? '');
     setPhoto(null);
     setPhotoPreview(null);
+    setRemovePhoto(false);
     setError('');
     setConfirmDelete(false);
     setDeleting(false);
@@ -59,6 +62,7 @@ export default function EditVehicleModal({ vehicle, onClose, onSaved, onDeleted 
 
   function onPickPhoto(file: File | null) {
     setPhoto(file);
+    if (file) setRemovePhoto(false);
     if (photoPreview) URL.revokeObjectURL(photoPreview);
     if (file && file.type.startsWith('image/')) {
       setPhotoPreview(URL.createObjectURL(file));
@@ -99,6 +103,7 @@ export default function EditVehicleModal({ vehicle, onClose, onSaved, onDeleted 
       }
       if (serialNumber.trim()) form.append('serialNumber', serialNumber.trim().toUpperCase());
       if (photo) form.append('photo', photo);
+      else if (removePhoto) form.append('removePhoto', 'true');
       const { vehicle: updated } = await api.updateVehicle(vehicle.id, form);
       onSaved(updated);
       toast.success(t('editVehicle.updated'));
@@ -127,6 +132,10 @@ export default function EditVehicleModal({ vehicle, onClose, onSaved, onDeleted 
   }
 
   if (!open || !vehicle) return null;
+
+  const hasStoredPhoto = Boolean(vehicle.photoPath || vehicle.photoUrl);
+  const showStoredPhoto = hasStoredPhoto && !removePhoto && !photoPreview;
+  const currentPhotoSrc = vehiclePhotoSrc(vehicle);
 
   return (
     <div className="overlay" onClick={onClose}>
@@ -265,16 +274,18 @@ export default function EditVehicleModal({ vehicle, onClose, onSaved, onDeleted 
               <label className="upload-zone compact-upload" style={{ cursor: 'pointer' }}>
                 {photoPreview ? (
                   <img src={photoPreview} alt={t('common.preview')} style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 8 }} />
-                ) : vehicle.photoUrl ? (
+                ) : showStoredPhoto && currentPhotoSrc ? (
                   <img
-                    src={vehicle.photoUrl}
+                    src={currentPhotoSrc}
                     alt={t('editVehicle.currentPhotoAlt')}
                     style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 8, opacity: 0.6 }}
                   />
                 ) : (
                   <Camera size={20} />
                 )}
-                <span style={{ fontSize: 13 }}>{photo ? photo.name : t('editVehicle.changePhoto')}</span>
+                <span style={{ fontSize: 13 }}>
+                  {photo ? photo.name : removePhoto ? t('editVehicle.noPhoto') : t('editVehicle.changePhoto')}
+                </span>
                 <input
                   type="file"
                   accept="image/png,image/jpeg,image/jpg,image/webp"
@@ -286,6 +297,19 @@ export default function EditVehicleModal({ vehicle, onClose, onSaved, onDeleted 
                 <button type="button" className="btn btn-ghost btn-sm" style={{ marginTop: 6 }} onClick={() => onPickPhoto(null)}>
                   {t('editVehicle.removeNew')}
                 </button>
+              )}
+              {hasStoredPhoto && !photo && (
+                <div style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
+                  {!removePhoto ? (
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => setRemovePhoto(true)}>
+                      {t('editVehicle.deletePhoto')}
+                    </button>
+                  ) : (
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => setRemovePhoto(false)}>
+                      {t('editVehicle.keepPhoto')}
+                    </button>
+                  )}
+                </div>
               )}
             </div>
 

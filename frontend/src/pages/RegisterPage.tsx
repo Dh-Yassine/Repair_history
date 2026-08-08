@@ -4,8 +4,12 @@ import { motion } from 'framer-motion';
 import { CarFront, Wrench } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import AuthVisualPanel from '../components/auth/AuthVisualPanel';
+import PageBackButton from '../components/layout/PageBackButton';
+import PasswordField from '../components/auth/PasswordField';
 import LanguageToggle from '../components/LanguageToggle';
+import { resolveAuthBackTarget } from '../lib/pageBack';
 import { useLanguage } from '../i18n/LanguageContext';
+import { validatePassword } from '../lib/password';
 
 type AccountType = 'owner' | 'shop';
 
@@ -49,6 +53,12 @@ export default function RegisterPage() {
     setError('');
     setEmailSent(false);
     setLoading(true);
+    const passwordIssue = validatePassword(password);
+    if (passwordIssue) {
+      setError(t(`auth.password${passwordIssue === 'tooShort' ? 'TooShort' : passwordIssue === 'needsUpper' ? 'NeedsUpper' : 'NeedsNumber'}`));
+      setLoading(false);
+      return;
+    }
     try {
       if (accountType === 'owner') {
         await register({ fullName, email, password, phone: phone || undefined });
@@ -86,7 +96,8 @@ export default function RegisterPage() {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
         >
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+          <div className="auth-form-toolbar">
+            <PageBackButton target={resolveAuthBackTarget()} className="page-back-btn--ghost" />
             <LanguageToggle compact />
           </div>
           <div className="sidebar-logo" style={{ border: 'none', padding: 0, marginBottom: 16 }}>
@@ -145,20 +156,12 @@ export default function RegisterPage() {
                 </p>
               </>
             )}
-            <div className="field">
-              <label className="label">{t('auth.password')}</label>
-              <input
-                className="input"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                minLength={6}
-                required
-              />
-              <p className="mono subtle" style={{ fontSize: 11, marginTop: 6 }}>
-                {t('auth.passwordHint')}
-              </p>
-            </div>
+            <PasswordField
+              id="register-password"
+              value={password}
+              onChange={setPassword}
+              autoComplete="new-password"
+            />
             {emailSent && (
               <p className="success-msg" style={{ color: 'var(--color-green)', marginBottom: '1rem' }}>
                 {t('auth.checkEmail')}

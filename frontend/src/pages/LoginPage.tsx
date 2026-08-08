@@ -4,7 +4,9 @@ import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import AuthVisualPanel from '../components/auth/AuthVisualPanel';
+import PageBackButton from '../components/layout/PageBackButton';
 import LanguageToggle from '../components/LanguageToggle';
+import { resolveAuthBackTarget } from '../lib/pageBack';
 import { scrollFieldIntoView } from '../hooks/useOverlayPanel';
 import { useLanguage } from '../i18n/LanguageContext';
 
@@ -68,7 +70,8 @@ export default function LoginPage() {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5, ease: EASE, delay: 0.1 }}
         >
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+          <div className="auth-form-toolbar">
+            <PageBackButton target={resolveAuthBackTarget()} className="page-back-btn--ghost" />
             <LanguageToggle compact />
           </div>
           <div className="auth-form-mobile-logo sidebar-logo">

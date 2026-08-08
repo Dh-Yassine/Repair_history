@@ -95,7 +95,6 @@ export default function EventTimelineItem({
               <a href={api.documentUrl(vehicleId, event.id, doc.id)} target="_blank" rel="noreferrer">
                 {doc.fileName}
               </a>
-              {doc.ocrResult && <span className="mono"> OCR {doc.ocrResult.parsedAmount ?? '?'} €</span>}
             </p>
           ))}
 

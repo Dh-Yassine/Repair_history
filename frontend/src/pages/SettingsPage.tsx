@@ -7,6 +7,7 @@ import { isSupabaseAuthEnabled, supabase } from '../lib/supabase';
 import { useToast } from '../components/ui/Toast';
 import PageTransition from '../components/layout/PageTransition';
 import { useLanguage } from '../i18n/LanguageContext';
+import { validatePassword } from '../lib/password';
 import type { VehicleLimits } from '../types';
 
 export default function SettingsPage() {
@@ -75,8 +76,15 @@ export default function SettingsPage() {
   async function savePassword(e: FormEvent) {
     e.preventDefault();
     setPasswordError('');
-    if (newPassword.length < 6) {
-      setPasswordError(t('settings.passwordTooShort'));
+    const passwordIssue = validatePassword(newPassword);
+    if (passwordIssue) {
+      const key =
+        passwordIssue === 'tooShort'
+          ? 'passwordTooShort'
+          : passwordIssue === 'needsUpper'
+            ? 'passwordNeedsUpper'
+            : 'passwordNeedsNumber';
+      setPasswordError(t(`settings.${key}`));
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -248,7 +256,9 @@ export default function SettingsPage() {
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   required
+                  minLength={8}
                 />
+                <p className="password-field__hint">{t('auth.passwordHint')}</p>
               </div>
               <div className="field">
                 <label className="label" htmlFor="settings-confirm-pass">{t('settings.confirmPassword')}</label>

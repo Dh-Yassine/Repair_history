@@ -1,9 +1,10 @@
 import { Router } from 'express';
+import path from 'path';
 import { prisma } from '../lib/prisma.js';
 import { getVehicleLimits } from '../lib/limits.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { memoryUpload } from '../lib/upload.js';
-import { BUCKETS, deleteUpload, resolveFileUrl, saveUpload, vehiclePhotoKey } from '../lib/storage.js';
+import { BUCKETS, deleteUpload, inferImageContentType, readUploadBuffer, resolveFileUrl, saveUpload, vehiclePhotoKey } from '../lib/storage.js';
 import {
   assertVinNotCleared,
   assertVinUnique,
@@ -15,10 +16,16 @@ const router = Router();
 router.use(requireAuth);
 router.use(requireRole('OWNER'));
 
+const IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
+const IMAGE_EXTS = ['.jpg', '.jpeg', '.png', '.webp'];
+
 const upload = memoryUpload({
   maxSize: 5 * 1024 * 1024,
   fileFilter: (_req, file, cb) => {
-    if (['image/jpeg', 'image/png', 'image/jpg', 'image/webp'].includes(file.mimetype)) cb(null, true);
+    const mime = file.mimetype?.toLowerCase();
+    const ext = path.extname(file.originalname || '').toLowerCase();
+    if (IMAGE_MIMES.includes(mime)) cb(null, true);
+    else if (mime === 'application/octet-stream' && IMAGE_EXTS.includes(ext)) cb(null, true);
     else cb(new Error('Only JPG, PNG, and WEBP vehicle photos are allowed'));
   },
 });
@@ -39,8 +46,14 @@ async function withPhotoUrl(vehicle) {
     const photoUrl = await resolveFileUrl(BUCKETS.vehicles, vehicle.photoPath, { publicBucket: true });
     return { ...vehicle, photoUrl };
   } catch (err) {
-    console.error('resolveFileUrl failed:', err.message);
-    return { ...vehicle, photoUrl: null };
+    console.error('resolveFileUrl (public) failed:', err.message);
+    try {
+      const photoUrl = await resolveFileUrl(BUCKETS.vehicles, vehicle.photoPath, { publicBucket: false });
+      return { ...vehicle, photoUrl };
+    } catch (fallbackErr) {
+      console.error('resolveFileUrl (signed) failed:', fallbackErr.message);
+      return { ...vehicle, photoUrl: null };
+    }
   }
 }
 
@@ -140,6 +153,8 @@ router.patch('/:id', (req, res, next) => {
     if (!existing) return res.status(404).json({ error: 'Vehicle not found' });
 
     let photoPath = existing.photoPath;
+    const removePhoto = ['true', '1', 'yes'].includes(String(req.body.removePhoto ?? '').toLowerCase());
+
     if (req.file) {
       if (!req.file.buffer?.length) {
         return res.status(400).json({ error: 'Photo upload was empty — try again or skip the photo' });
@@ -147,6 +162,9 @@ router.patch('/:id', (req, res, next) => {
       if (existing.photoPath) await deleteUpload(BUCKETS.vehicles, existing.photoPath);
       const key = vehiclePhotoKey(req.file.originalname);
       photoPath = await saveUpload(BUCKETS.vehicles, key, req.file.buffer, req.file.mimetype);
+    } else if (removePhoto && existing.photoPath) {
+      await deleteUpload(BUCKETS.vehicles, existing.photoPath);
+      photoPath = null;
     }
 
     const { vin, serialNumber, nickname, make, model, year, mileage, visibility } = req.body;
@@ -195,7 +213,7 @@ router.patch('/:id', (req, res, next) => {
         ...(model !== undefined && { model: model.trim() }),
         ...(year !== undefined && { year: parseInt(year, 10) }),
         ...(mileage !== undefined && mileage !== '' && { mileage: parseFloat(mileage) }),
-        ...(req.file && { photoPath }),
+        ...(req.file || removePhoto ? { photoPath } : {}),
         ...(visibility !== undefined && { visibility }),
       },
     });
@@ -252,8 +270,16 @@ router.delete('/:id', async (req, res) => {
 router.get('/:id/photo', async (req, res) => {
   const vehicle = await getOwnedVehicle(req.params.id, req.user.id, { includeArchived: true });
   if (!vehicle?.photoPath) return res.status(404).json({ error: 'Photo not found' });
-  const url = await resolveFileUrl(BUCKETS.vehicles, vehicle.photoPath, { publicBucket: true });
-  res.redirect(url);
+  try {
+    const buffer = await readUploadBuffer(BUCKETS.vehicles, vehicle.photoPath);
+    const contentType = inferImageContentType(vehicle.photoPath, null);
+    res.set('Cache-Control', 'private, max-age=3600');
+    res.type(contentType);
+    return res.send(buffer);
+  } catch (err) {
+    console.error('vehicle photo read failed:', err.message);
+    return res.status(404).json({ error: 'Photo not found' });
+  }
 });
 
 export default router;

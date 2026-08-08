@@ -12,6 +12,8 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import NotificationsPanel from '../NotificationsPanel';
 import LanguageToggle from '../LanguageToggle';
+import PageBackButton from './PageBackButton';
+import { resolveBackTarget } from '../../lib/pageBack';
 import { useLanguage } from '../../i18n/LanguageContext';
 
 interface TopbarContext {
@@ -68,6 +70,7 @@ export default function AppShell({
   const { t } = useLanguage();
   const location = useLocation();
   const topbar = buildTopbarContext(location.pathname, t, user?.role);
+  const backTarget = resolveBackTarget(location.pathname, user?.role);
 
   const ownerNav = [
     { to: '/', icon: LayoutDashboard, label: t('nav.dashboard') },
@@ -141,9 +144,12 @@ export default function AppShell({
 
       <div className="main-area">
         <header className="topbar">
-          <div className="topbar-copy">
-            <h2 className="display topbar-title">{topbar.title}</h2>
-            {topbar.subtitle && <span className="muted topbar-subtitle">{topbar.subtitle}</span>}
+          <div className="topbar-leading">
+            {backTarget && <PageBackButton target={backTarget} />}
+            <div className="topbar-copy">
+              <h2 className="display topbar-title">{topbar.title}</h2>
+              {topbar.subtitle && <span className="muted topbar-subtitle">{topbar.subtitle}</span>}
+            </div>
           </div>
           <div className="topbar-actions">
             <LanguageToggle compact />

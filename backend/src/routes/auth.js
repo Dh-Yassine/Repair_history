@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { prisma } from '../lib/prisma.js';
 import { requireAuth, requireSupabaseUser } from '../middleware/auth.js';
 import { isSupabaseConfigured, supabaseAuthUserExists } from '../lib/supabase.js';
+import { validatePassword } from '../lib/passwordPolicy.js';
 
 const router = Router();
 
@@ -29,8 +30,9 @@ router.post('/register/shop', async (req, res) => {
     if (!fullName?.trim() || !email?.trim() || !password || !shopName?.trim()) {
       return res.status(400).json({ error: 'fullName, email, password, and shopName are required' });
     }
-    if (password.length < 6) {
-      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      return res.status(400).json({ error: passwordError });
     }
 
     const existing = await prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });
@@ -67,6 +69,10 @@ router.post('/register/buyer', async (req, res) => {
     if (!fullName?.trim() || !email?.trim() || !password) {
       return res.status(400).json({ error: 'fullName, email, and password are required' });
     }
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      return res.status(400).json({ error: passwordError });
+    }
     const existing = await prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });
     if (existing) return res.status(409).json({ error: 'Email already registered' });
 
@@ -96,8 +102,9 @@ router.post('/register', async (req, res) => {
     if (!fullName?.trim() || !email?.trim() || !password) {
       return res.status(400).json({ error: 'fullName, email, and password are required' });
     }
-    if (password.length < 6) {
-      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      return res.status(400).json({ error: passwordError });
     }
 
     const existing = await prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });
@@ -257,8 +264,9 @@ router.post('/change-password', requireAuth, async (req, res) => {
     if (!currentPassword || !newPassword) {
       return res.status(400).json({ error: 'Current and new password are required' });
     }
-    if (String(newPassword).length < 6) {
-      return res.status(400).json({ error: 'New password must be at least 6 characters' });
+    const passwordError = validatePassword(newPassword);
+    if (passwordError) {
+      return res.status(400).json({ error: passwordError });
     }
 
     const user = await prisma.user.findUnique({ where: { id: req.user.id } });

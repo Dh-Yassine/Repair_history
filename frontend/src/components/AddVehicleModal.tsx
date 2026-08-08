@@ -139,7 +139,7 @@ export default function AddVehicleModal({
     mode === 'vin'
       ? t('addVehicle.scanVinOrManual')
       : mode === 'serial'
-        ? t('addVehicle.frenchSerialDetails')
+        ? t('addVehicle.plateLead')
         : t('addVehicle.manual');
 
   if (!open) return null;
@@ -239,65 +239,80 @@ export default function AddVehicleModal({
                           {t('common.cancel')}
                         </button>
                       </div>
-                      <div
-                        style={{
-                          marginTop: 20,
-                          paddingTop: 14,
-                          borderTop: '1px solid var(--color-border)',
-                          display: 'flex',
-                          gap: 16,
-                          flexWrap: 'wrap',
-                        }}
-                      >
+
+                      <div className="add-vehicle-no-vin-panel">
+                        <p className="add-vehicle-no-vin-panel__title">{t('addVehicle.noVin')}</p>
+                        <div className="field field-plate-primary" style={{ marginBottom: 14 }}>
+                          <label className="label label-plate">{t('addVehicle.serial')}</label>
+                          <input
+                            className="input input-plate input-mono"
+                            value={serialNumber}
+                            onChange={(e) => setSerialNumber(e.target.value.toUpperCase())}
+                            placeholder="AB-123-CD"
+                            autoComplete="off"
+                            spellCheck={false}
+                          />
+                          <p className="mono subtle" style={{ fontSize: 11, marginTop: 6, textAlign: 'center' }}>
+                            {t('addVehicle.serialHint')}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          className="btn btn-outline"
+                          style={{ width: '100%' }}
+                          onClick={() => {
+                            setMode('serial');
+                            setError('');
+                            setDecodeFailed(false);
+                          }}
+                        >
+                          <Hash size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />
+                          {t('addVehicle.continueWithPlate')}
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {mode === 'manual' && (
                         <button
                           type="button"
                           className="btn btn-ghost btn-sm"
+                          style={{ marginBottom: 14 }}
                           onClick={() => {
                             setMode('serial');
                             setError('');
                           }}
                         >
                           <Hash size={13} style={{ verticalAlign: 'middle', marginRight: 5 }} />
-                          {t('addVehicle.noVin')}
+                          {t('addVehicle.backPlate')}
                         </button>
+                      )}
+                      {mode === 'serial' && (
                         <button
                           type="button"
                           className="btn btn-ghost btn-sm"
+                          style={{ marginBottom: 14 }}
                           onClick={() => {
-                            setMode('manual');
+                            setMode('vin');
                             setError('');
                           }}
                         >
-                          <Keyboard size={13} style={{ verticalAlign: 'middle', marginRight: 5 }} />
-                          {t('addVehicle.enterManually')}
+                          <ScanLine size={13} style={{ verticalAlign: 'middle', marginRight: 5 }} />
+                          {t('addVehicle.backVin')}
                         </button>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        type="button"
-                        className="btn btn-ghost btn-sm"
-                        style={{ marginBottom: 14 }}
-                        onClick={() => {
-                          setMode('vin');
-                          setError('');
-                        }}
-                      >
-                        <ScanLine size={13} style={{ verticalAlign: 'middle', marginRight: 5 }} />
-                        {t('addVehicle.backVin')}
-                      </button>
+                      )}
                       {mode === 'serial' && (
-                        <div className="field">
-                          <label className="label">{t('addVehicle.serial')}</label>
+                        <div className="field field-plate-primary">
+                          <label className="label label-plate">{t('addVehicle.serial')}</label>
                           <input
-                            className="input input-mono"
+                            className="input input-plate input-mono"
                             value={serialNumber}
                             onChange={(e) => setSerialNumber(e.target.value.toUpperCase())}
-                            placeholder="e.g. VF1…"
-                            style={{ textTransform: 'uppercase' }}
+                            placeholder="AB-123-CD"
+                            autoComplete="off"
+                            spellCheck={false}
                           />
-                          <p className="mono subtle" style={{ fontSize: 11, marginTop: 4 }}>
+                          <p className="mono subtle" style={{ fontSize: 11, marginTop: 6, textAlign: 'center' }}>
                             {t('addVehicle.serialHint')}
                           </p>
                         </div>
@@ -349,6 +364,21 @@ export default function AddVehicleModal({
                         <button type="button" className="btn btn-ghost" onClick={handleClose}>
                           {t('common.cancel')}
                         </button>
+                      </div>
+                      <div className="add-vehicle-alt-links">
+                        {mode === 'serial' && (
+                          <button
+                            type="button"
+                            className="btn btn-ghost btn-sm"
+                            onClick={() => {
+                              setMode('manual');
+                              setError('');
+                            }}
+                          >
+                            <Keyboard size={13} style={{ verticalAlign: 'middle', marginRight: 5 }} />
+                            {t('addVehicle.enterManually')}
+                          </button>
+                        )}
                       </div>
                     </>
                   )}

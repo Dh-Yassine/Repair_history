@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { CarFront } from 'lucide-react';
-import { api } from '../api';
+import { vehiclePhotoSrc } from '../lib/vehiclePhoto';
 import type { Vehicle } from '../types';
 
 export default function VehiclePhoto({
@@ -9,16 +10,18 @@ export default function VehiclePhoto({
   vehicle: Pick<Vehicle, 'id' | 'make' | 'model' | 'year' | 'photoPath' | 'photoUrl'>;
   className?: string;
 }) {
-  const src =
-    vehicle.photoUrl ||
-    (vehicle.photoPath
-      ? `/uploads/vehicles/${encodeURIComponent(vehicle.photoPath)}`
-      : api.vehiclePhotoUrl(vehicle.id));
+  const [broken, setBroken] = useState(false);
+  const src = vehiclePhotoSrc(vehicle);
+  const showImage = src && !broken;
 
   return (
     <div className={`vehicle-photo ${className}`}>
-      {vehicle.photoPath || vehicle.photoUrl ? (
-        <img src={src} alt={`${vehicle.year} ${vehicle.make} ${vehicle.model}`} />
+      {showImage ? (
+        <img
+          src={src}
+          alt={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
+          onError={() => setBroken(true)}
+        />
       ) : (
         <div className="vehicle-photo-default">
           <CarFront size={42} />

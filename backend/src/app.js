@@ -20,6 +20,12 @@ import insuranceRoutes from './routes/insurance.js';
 import adminRoutes from './routes/admin.js';
 import cronRoutes from './routes/cron.js';
 import { isSupabaseConfigured } from './lib/supabase.js';
+import {
+  BUCKETS,
+  encodeStorageKey,
+  inferImageContentType,
+  readUploadBuffer,
+} from './lib/storage.js';
 import { backendRoot } from './lib/paths.js';
 
 const rootDir = backendRoot(import.meta.url);
@@ -45,6 +51,22 @@ if (!isServerless) {
     app.use('/uploads', express.static(uploadDir));
   }
 }
+
+/** Local vehicle photos on serverless when Supabase storage is not configured */
+app.get('/uploads/vehicles/*splat', async (req, res, next) => {
+  if (isSupabaseConfigured()) return next();
+  const key = req.params.splat;
+  if (!key) return res.status(404).end();
+  try {
+    const buffer = await readUploadBuffer(BUCKETS.vehicles, key);
+    const contentType = inferImageContentType(key, null);
+    res.set('Cache-Control', 'public, max-age=3600');
+    res.type(contentType);
+    return res.send(buffer);
+  } catch {
+    return res.status(404).end();
+  }
+});
 
 app.get('/api/health', (_req, res) => {
   res.json({

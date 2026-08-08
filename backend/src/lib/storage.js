@@ -29,6 +29,13 @@ const BUCKET_CONFIG = {
   },
 };
 
+const EXT_TO_MIME = {
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.png': 'image/png',
+  '.webp': 'image/webp',
+};
+
 function localRoot() {
   return process.env.UPLOAD_DIR || path.join(rootDir, 'uploads');
 }
@@ -36,6 +43,11 @@ function localRoot() {
 function localPath(bucket, key) {
   const sub = bucket === BUCKETS.vehicles ? 'vehicles' : bucket === BUCKETS.proofs ? 'proofs' : '';
   return sub ? path.join(localRoot(), sub, key) : path.join(localRoot(), key);
+}
+
+/** Encode each path segment for URLs (keeps slashes between segments). */
+export function encodeStorageKey(key) {
+  return key.split('/').map((segment) => encodeURIComponent(segment)).join('/');
 }
 
 /** Normalize browser/OS mime quirks for Supabase bucket allow-lists */
@@ -47,35 +59,60 @@ export function normalizeContentType(contentType) {
   return ct;
 }
 
+/** Infer image MIME from extension when browsers send application/octet-stream */
+export function inferImageContentType(key, contentType) {
+  const normalized = normalizeContentType(contentType);
+  if (normalized.startsWith('image/')) return normalized;
+  const ext = path.extname(key).toLowerCase();
+  return EXT_TO_MIME[ext] || normalized;
+}
+
 async function ensureBucket(supabase, bucket) {
   const config = BUCKET_CONFIG[bucket];
   if (!config) return;
 
-  const { data: existing } = await supabase.storage.getBucket(bucket);
-  if (existing) return;
+  const { data: existing, error: getError } = await supabase.storage.getBucket(bucket);
 
-  const { error } = await supabase.storage.createBucket(bucket, {
-    public: config.public,
-    fileSizeLimit: config.fileSizeLimit,
-    allowedMimeTypes: config.allowedMimeTypes,
-  });
-  if (error && !/already exists/i.test(error.message)) {
-    throw new Error(`Storage bucket "${bucket}" missing: ${error.message}`);
+  if (getError && !/not found|does not exist/i.test(getError.message)) {
+    throw new Error(`Storage bucket "${bucket}" check failed: ${getError.message}`);
+  }
+
+  if (!existing) {
+    const { error } = await supabase.storage.createBucket(bucket, {
+      public: config.public,
+      fileSizeLimit: config.fileSizeLimit,
+      allowedMimeTypes: config.allowedMimeTypes,
+    });
+    if (error && !/already exists/i.test(error.message)) {
+      throw new Error(`Storage bucket "${bucket}" missing: ${error.message}`);
+    }
+    return;
+  }
+
+  if (config.public && !existing.public) {
+    const { error } = await supabase.storage.updateBucket(bucket, { public: true });
+    if (error) {
+      console.warn(`Could not make bucket "${bucket}" public: ${error.message}`);
+    }
   }
 }
 
 /** @returns {Promise<string>} storage key stored in DB */
 export async function saveUpload(bucket, key, buffer, contentType) {
-  if (!buffer?.length) throw new Error('Upload file is empty');
+  const bin = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
+  if (!bin.length) throw new Error('Upload file is empty');
 
-  const normalizedType = normalizeContentType(contentType);
+  const resolvedType =
+    bucket === BUCKETS.vehicles
+      ? inferImageContentType(key, contentType)
+      : normalizeContentType(contentType);
 
   if (isSupabaseConfigured()) {
     const supabase = getSupabaseAdmin();
     await ensureBucket(supabase, bucket);
 
-    const { error } = await supabase.storage.from(bucket).upload(key, buffer, {
-      contentType: normalizedType,
+    const { error } = await supabase.storage.from(bucket).upload(key, bin, {
+      contentType: resolvedType,
       upsert: true,
       cacheControl: '3600',
     });
@@ -85,7 +122,7 @@ export async function saveUpload(bucket, key, buffer, contentType) {
 
   const dest = localPath(bucket, key);
   fs.mkdirSync(path.dirname(dest), { recursive: true });
-  fs.writeFileSync(dest, buffer);
+  fs.writeFileSync(dest, bin);
   return key;
 }
 
@@ -118,7 +155,8 @@ export async function resolveFileUrl(bucket, key, { publicBucket = false } = {})
   if (!key) return null;
   if (isSupabaseConfigured()) {
     const supabase = getSupabaseAdmin();
-    if (publicBucket) {
+    const bucketPublic = publicBucket || BUCKET_CONFIG[bucket]?.public;
+    if (bucketPublic) {
       const { data } = supabase.storage.from(bucket).getPublicUrl(key);
       return data.publicUrl;
     }
@@ -129,11 +167,28 @@ export async function resolveFileUrl(bucket, key, { publicBucket = false } = {})
 
   const sub =
     bucket === BUCKETS.vehicles ? 'vehicles' : bucket === BUCKETS.proofs ? 'proofs' : '';
-  return sub ? `/uploads/${sub}/${encodeURIComponent(key)}` : `/uploads/${encodeURIComponent(key)}`;
+  const encoded = encodeStorageKey(key);
+  return sub ? `/uploads/${sub}/${encoded}` : `/uploads/${encoded}`;
+}
+
+/** Resolve a display URL for a vehicle photo (public bucket first, then signed/local). */
+export async function resolveVehiclePhotoUrl(photoPath) {
+  if (!photoPath) return null;
+  try {
+    return await resolveFileUrl(BUCKETS.vehicles, photoPath, { publicBucket: true });
+  } catch (err) {
+    console.error('resolveVehiclePhotoUrl (public) failed:', err.message);
+    try {
+      return await resolveFileUrl(BUCKETS.vehicles, photoPath, { publicBucket: false });
+    } catch (inner) {
+      console.error('resolveVehiclePhotoUrl (signed) failed:', inner.message);
+      return null;
+    }
+  }
 }
 
 export function vehiclePhotoKey(originalName) {
-  const ext = path.extname(originalName || '') || '.jpg';
+  const ext = path.extname(originalName || '').toLowerCase() || '.jpg';
   return `photos/${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
 }
 

@@ -14,6 +14,7 @@ export function translateShareMeta(
     'Private link': t('share.privateLink'),
   };
   const detailMap: Record<string, string> = {
+    'History summary': t('share.summary'),
     'Trust summary': t('share.summary'),
     'Full history': t('share.full'),
     Hidden: t('share.hidden'),

@@ -11,7 +11,6 @@ import VehicleSwitcher from '../components/VehicleSwitcher';
 import VehiclePhoto from '../components/VehiclePhoto';
 import AnimatedNumber from '../components/ui/AnimatedNumber';
 import Card from '../components/ui/Card';
-import TrustRing from '../components/ui/TrustRing';
 import PageTransition, { stagger, staggerItem } from '../components/layout/PageTransition';
 import EventTimelineItem from '../components/events/EventTimelineItem';
 import { useLanguage } from '../i18n/LanguageContext';
@@ -200,31 +199,26 @@ export default function DashboardPage() {
 
               <aside className="dash-trust" aria-busy={eventsLoading}>
                 <div className="dash-trust__head">
-                  <h2 className="section-title">{t('dashboard.trustScore')}</h2>
+                  <h2 className="section-title">{t('dashboard.recordsSummary')}</h2>
                   <span className="dash-trust__scope">{t('dashboard.thisVehicle')}</span>
                 </div>
-                <div className="dash-trust__gauge">
-                  <TrustRing score={trustPct} size={104} />
-                  <p className="dash-trust__caption">
-                    {t('dashboard.trustOf', { verified: verifiedCount, total: totalEvents })}
-                  </p>
-                </div>
 
-                <div className="dash-split" role="img" aria-label={t('dashboard.trustScore')}>
-                  <motion.span
-                    className="dash-split__seg dash-split__seg--verified"
-                    initial={{ flexGrow: 0 }}
-                    animate={{ flexGrow: verifiedCount || 0 }}
-                    transition={{ duration: 0.7, ease: EASE }}
-                  />
-                  <motion.span
-                    className="dash-split__seg dash-split__seg--declared"
-                    initial={{ flexGrow: 0 }}
-                    animate={{ flexGrow: selfCount || 0 }}
-                    transition={{ duration: 0.7, ease: EASE }}
-                  />
-                  {totalEvents === 0 && <span className="dash-split__seg dash-split__seg--empty" />}
-                </div>
+                {totalEvents > 0 && (
+                  <div className="dash-split" role="img" aria-label={t('dashboard.recordsSummary')}>
+                    <motion.span
+                      className="dash-split__seg dash-split__seg--verified"
+                      initial={{ flexGrow: 0 }}
+                      animate={{ flexGrow: verifiedCount || 0 }}
+                      transition={{ duration: 0.7, ease: EASE }}
+                    />
+                    <motion.span
+                      className="dash-split__seg dash-split__seg--declared"
+                      initial={{ flexGrow: 0 }}
+                      animate={{ flexGrow: selfCount || 0 }}
+                      transition={{ duration: 0.7, ease: EASE }}
+                    />
+                  </div>
+                )}
 
                 <motion.ul className="dash-stat-list" variants={statList} initial="initial" animate="animate">
                   <motion.li className="dash-stat-row" variants={statRow}>

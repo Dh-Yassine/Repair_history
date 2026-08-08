@@ -52,7 +52,7 @@ router.get('/', async (req, res) => {
     where: { vehicleId: vehicle.id, ...buildEventFilters(req.query) },
     orderBy: { date: 'desc' },
     include: {
-      documents: { include: { ocrResult: true } },
+      documents: true,
       verification: { include: { shop: { select: { id: true, shopName: true, fullName: true } } } },
       createdByShop: { select: { id: true, shopName: true, fullName: true } },
     },
@@ -112,7 +112,7 @@ router.post('/', (req, res, next) => {
         createdByShopId: null,
       },
       include: {
-        documents: { include: { ocrResult: true } },
+        documents: true,
         verification: { include: { shop: { select: { id: true, shopName: true, fullName: true } } } },
         createdByShop: { select: { id: true, shopName: true, fullName: true } },
       },
@@ -202,7 +202,7 @@ router.patch('/:eventId', (req, res, next) => {
         ...(notes !== undefined && { notes: notes?.trim() || null }),
       },
       include: {
-        documents: { include: { ocrResult: true } },
+        documents: true,
         verification: { include: { shop: { select: { id: true, shopName: true, fullName: true } } } },
         createdByShop: { select: { id: true, shopName: true, fullName: true } },
       },

@@ -367,7 +367,7 @@ router.post('/events', upload.single('proof'), async (req, res) => {
           },
         },
         include: {
-          documents: { include: { ocrResult: true } },
+          documents: true,
           verification: { include: { shop: { select: { id: true, shopName: true, fullName: true } } } },
           createdByShop: { select: { id: true, shopName: true, fullName: true } },
           vehicle: { select: { id: true, make: true, model: true, year: true, vin: true, mileage: true } },

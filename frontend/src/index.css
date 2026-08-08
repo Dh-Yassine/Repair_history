@@ -274,6 +274,70 @@ h3,
   border-bottom: 1px solid var(--hairline);
 }
 
+.topbar-leading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.page-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  padding: 6px 10px 6px 6px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text) 3%, transparent);
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    color 0.15s var(--ease-out),
+    border-color 0.15s var(--ease-out),
+    background 0.15s var(--ease-out);
+}
+
+.page-back-btn:hover {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--color-accent) 35%, var(--hairline));
+  background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+}
+
+.page-back-btn--ghost {
+  border-color: transparent;
+  background: transparent;
+}
+
+.page-back-btn--ghost:hover {
+  border-color: var(--hairline);
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+}
+
+.page-back-btn__label {
+  letter-spacing: 0.01em;
+}
+
+.auth-form-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.public-history-header__start {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
 .page-content {
   position: relative;
   z-index: 1;
@@ -447,6 +511,108 @@ a.btn-solid:hover {
   box-sizing: border-box;
   padding-inline: 14px;
   min-height: 48px;
+}
+
+.input-plate {
+  font-family: var(--font-mono);
+  font-size: clamp(1.35rem, 4vw, 1.65rem);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  min-height: 56px;
+  text-align: center;
+}
+
+.field-plate-primary {
+  margin-bottom: 22px;
+}
+
+.field-plate-primary .label-plate {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.add-vehicle-alt-links {
+  margin-top: 20px;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  gap: 12px 16px;
+  flex-wrap: wrap;
+}
+
+.add-vehicle-no-vin-panel {
+  margin-top: 24px;
+  padding: 18px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--panel-raised) 88%, transparent);
+}
+
+.add-vehicle-no-vin-panel__title {
+  margin: 0 0 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.35;
+}
+
+.password-field {
+  position: relative;
+}
+
+.password-field__input {
+  padding-right: 11rem;
+}
+
+.password-field__toggle {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--accent);
+  background: var(--panel-raised);
+  border: 1px solid var(--hairline);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.password-field__toggle:hover {
+  color: var(--text);
+  background: var(--panel);
+  border-color: var(--text-muted);
+}
+
+.password-field__toggle:focus-visible {
+  color: var(--text);
+  background: var(--panel);
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring);
+}
+
+.password-field__hint {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-top: 6px;
+  line-height: 1.4;
+}
+
+@media (max-width: 480px) {
+  .password-field__toggle span {
+    display: none;
+  }
+
+  .password-field__input {
+    padding-right: 44px;
+  }
 }
 
 /* Wider modal for vehicle forms (VIN needs horizontal room) */
@@ -661,6 +827,25 @@ a.btn-solid:hover {
   color: var(--text-muted);
 }
 
+.record-summary--vehicle {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.record-summary__value--date {
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
+}
+
+.segmented--scroll {
+  flex-wrap: wrap;
+  max-width: 100%;
+  gap: 2px;
+}
+
+.segmented--scroll button {
+  flex-shrink: 0;
+}
+
 /* Column headings for the ledger below. */
 .ledger-head {
   display: grid;
@@ -681,6 +866,10 @@ a.btn-solid:hover {
 @media (max-width: 640px) {
   .record-summary {
     grid-template-columns: 1fr;
+  }
+
+  .record-summary--vehicle {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .record-summary__cell + .record-summary__cell {
@@ -1409,8 +1598,349 @@ a.btn-solid:hover {
 }
 
 .share-preview-panel {
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 0;
+  background: rgba(26, 29, 36, 0.4);
+  overflow: hidden;
+}
+
+.share-preview-panel .public-vehicle-photo {
+  aspect-ratio: 16 / 6;
+  min-height: 120px;
+  max-height: 200px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.share-preview-panel .share-preview-meta {
+  padding: 14px 16px 0;
+}
+
+.share-preview-meta {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.public-history-hero {
+  padding: var(--space-4) 0;
+}
+
+/* ── Public shared history page ─────────────────────────────────────── */
+.public-history-page {
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(199, 217, 74, 0.06), transparent 55%),
+    var(--color-bg);
+}
+
+.public-history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--hairline);
+  background: color-mix(in srgb, var(--color-bg) 88%, transparent);
+  backdrop-filter: blur(10px);
   position: sticky;
-  top: 88px;
+  top: 0;
+  z-index: 10;
+}
+
+.public-history-header__end {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.public-history-header__label {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+
+.public-history-main {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 28px 20px 48px;
+}
+
+.public-history-main--centered {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 64px);
+}
+
+.public-history-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.public-meta-chip {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--panel) 70%, transparent);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.public-meta-chip svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--color-accent);
+}
+
+.public-meta-chip__label {
+  font-weight: 600;
+  color: var(--text);
+  margin-right: 6px;
+}
+
+.public-meta-chip__hint {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.public-vehicle-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.public-vehicle-photo {
+  position: relative;
+  aspect-ratio: 16 / 7;
+  min-height: 168px;
+  max-height: 280px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--hairline);
+  overflow: hidden;
+}
+
+.public-vehicle-photo__img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.public-vehicle-photo__placeholder {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background:
+    radial-gradient(ellipse 70% 80% at 80% 20%, rgba(199, 217, 74, 0.16), transparent 55%),
+    radial-gradient(ellipse 50% 60% at 10% 90%, rgba(76, 139, 108, 0.12), transparent 50%),
+    linear-gradient(160deg, #1a1d22 0%, #121418 45%, #0e1013 100%);
+}
+
+.public-vehicle-photo__grid {
+  position: absolute;
+  inset: 0;
+  opacity: 0.35;
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--text) 6%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--text) 6%, transparent) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: radial-gradient(ellipse 80% 70% at 50% 50%, black 20%, transparent 75%);
+}
+
+.public-vehicle-photo__glow {
+  position: absolute;
+  width: 55%;
+  height: 40%;
+  top: 18%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(199, 217, 74, 0.14), transparent 68%);
+  pointer-events: none;
+}
+
+.public-vehicle-photo__icon {
+  color: color-mix(in srgb, var(--color-accent) 75%, white);
+  filter: drop-shadow(0 8px 24px rgba(199, 217, 74, 0.2));
+  z-index: 1;
+}
+
+.public-vehicle-photo__make {
+  margin: 10px 0 0;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+  z-index: 1;
+}
+
+.public-vehicle-photo__model {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: color-mix(in srgb, var(--text) 88%, var(--color-accent));
+  z-index: 1;
+}
+
+.public-vehicle-card__head {
+  padding: 22px 22px 18px;
+}
+
+.public-vehicle-card__title {
+  font-size: clamp(1.5rem, 4vw, 1.85rem);
+  line-height: 1.15;
+  margin: 6px 0 0;
+}
+
+.public-vehicle-card__id {
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.public-record-summary {
+  margin: 0;
+  border-top: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.public-record-summary .record-summary__cell {
+  padding: var(--space-3) var(--space-4);
+}
+
+.public-record-summary .record-summary__value {
+  font-size: 28px;
+}
+
+.public-legend {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 20px;
+  padding: 14px 22px 18px;
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.public-legend p {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+}
+
+.public-legend p svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.public-history-section {
+  margin-top: 28px;
+}
+
+.public-section-title {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin: 0 0 12px;
+}
+
+.public-ledger-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.public-ledger {
+  border-top: none;
+}
+
+.public-ledger .ledger-row:first-child {
+  padding-top: 16px;
+}
+
+.public-ledger .ledger-row:last-child {
+  border-bottom: none;
+  padding-bottom: 16px;
+}
+
+.public-empty-card {
+  padding: 32px 20px;
+  text-align: center;
+}
+
+.public-error-card {
+  max-width: 480px;
+  padding: 32px 28px;
+  text-align: center;
+}
+
+.public-error-card__icon {
+  color: var(--color-warning);
+  margin-bottom: 12px;
+}
+
+.public-error-card__title {
+  font-size: 1.35rem;
+  margin: 0;
+}
+
+.public-error-card__body {
+  margin-top: 14px;
+  font-size: 14px;
+}
+
+.public-error-card__actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+  .public-history-header {
+    padding: 14px 16px;
+  }
+
+  .public-history-main {
+    padding: 20px 16px 40px;
+  }
+
+  .public-legend {
+    grid-template-columns: 1fr;
+  }
+
+  .public-record-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .public-record-summary .record-summary__cell + .record-summary__cell {
+    padding-left: var(--space-3);
+  }
+
+  .public-record-summary .record-summary__value {
+    font-size: 22px;
+  }
+
+  .public-meta-chip {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .public-meta-chip__label {
+    margin-right: 0;
+  }
 }
 
 .share-page-stack {
@@ -3570,6 +4100,18 @@ button,
 
   .topbar-subtitle {
     display: none;
+  }
+
+  .page-back-btn {
+    padding: 6px;
+  }
+
+  .page-back-btn__label {
+    display: none;
+  }
+
+  .topbar-leading {
+    gap: 6px;
   }
 
   .auth-form-panel {

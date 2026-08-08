@@ -177,7 +177,7 @@ export const api = {
   uploadDocument: (vehicleId: string, eventId: string, file: File) => {
     const form = new FormData();
     form.append('file', file);
-    return request<{ document: import('./types').Document; ocrResult: import('./types').OCRResult | null }>(
+    return request<{ document: import('./types').Document }>(
       `/api/vehicles/${vehicleId}/events/${eventId}/documents`,
       { method: 'POST', body: form }
     );

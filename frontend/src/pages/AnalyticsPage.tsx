@@ -19,7 +19,7 @@ import StampBadge from '../components/ui/StampBadge';
 import ChartEmpty from '../components/ui/ChartEmpty';
 import { useLanguage, useEventTypeLabel } from '../i18n/LanguageContext';
 import { tokens } from '../styles/tokens';
-import { formatDate } from '../lib/format';
+import { formatDate, formatCurrency } from '../lib/format';
 import type { OwnerAnalytics, ShopAnalytics } from '../types';
 
 const chartTooltipStyle = {
@@ -200,8 +200,15 @@ export default function AnalyticsPage() {
               <LineChart data={costData}>
                 <CartesianGrid stroke={tokens.hairline} strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="month" stroke={tokens.textMuted} tick={{ fill: tokens.textMuted, fontSize: 11 }} />
-                <YAxis stroke={tokens.textMuted} tick={{ fill: tokens.textMuted, fontSize: 11 }} />
-                <Tooltip contentStyle={chartTooltipStyle} />
+                <YAxis
+                  stroke={tokens.textMuted}
+                  tick={{ fill: tokens.textMuted, fontSize: 11 }}
+                  tickFormatter={(v) => formatCurrency(v).replace(/\u00a0/g, ' ')}
+                />
+                <Tooltip
+                  contentStyle={chartTooltipStyle}
+                  formatter={(value) => [formatCurrency(Number(value ?? 0)), t('analytics.monthlySpend')]}
+                />
                 <Line
                   type="monotone"
                   dataKey="cost"

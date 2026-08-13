@@ -12,8 +12,8 @@ export function computeOwnerAnalytics(vehicles) {
   );
 
   const costs = allEvents.filter((e) => e.cost != null).map((e) => e.cost);
-  const averageServiceCost =
-    costs.length > 0 ? costs.reduce((a, b) => a + b, 0) / costs.length : 0;
+  const totalCost = costs.reduce((a, b) => a + b, 0);
+  const averageServiceCost = costs.length > 0 ? totalCost / costs.length : 0;
 
   const byType = {};
   for (const e of allEvents) {
@@ -54,6 +54,7 @@ export function computeOwnerAnalytics(vehicles) {
 
   return {
     averageServiceCost: Math.round(averageServiceCost * 100) / 100,
+    totalCost: Math.round(totalCost * 100) / 100,
     serviceFrequency,
     conversionRate: Math.round(conversionRate * 100) / 100,
     /** Weighted (type × recency) trust score across all vehicles' events. */

@@ -129,6 +129,7 @@ export interface MaintenanceSuggestion {
 
 export interface OwnerAnalytics {
   averageServiceCost: number;
+  totalCost: number;
   serviceFrequency: number;
   conversionRate: number;
   /** Weighted (event type × recency) verified share, 0–100 */

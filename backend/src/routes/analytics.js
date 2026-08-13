@@ -7,8 +7,13 @@ const router = Router();
 router.use(requireAuth);
 
 router.get('/owner', requireRole('OWNER'), async (req, res) => {
+  const { vehicleId } = req.query;
+  if (vehicleId) {
+    const owned = await prisma.vehicle.findFirst({ where: { id: vehicleId, ownerId: req.user.id } });
+    if (!owned) return res.status(404).json({ error: 'Vehicle not found' });
+  }
   const vehicles = await prisma.vehicle.findMany({
-    where: { ownerId: req.user.id },
+    where: { ownerId: req.user.id, ...(vehicleId ? { id: vehicleId } : {}) },
     include: {
       events: {
         orderBy: { date: 'desc' },

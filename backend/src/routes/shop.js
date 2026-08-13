@@ -31,6 +31,35 @@ async function recordConnection(shopId, ownerId, source = 'LOOKUP') {
 
 const router = Router();
 router.use(requireAuth);
+
+/**
+ * Not SHOP-only: the vehicle owner needs to be able to open the proof of the
+ * verification on their own event too, not just the shop that uploaded it.
+ */
+router.get('/proofs/:key', async (req, res) => {
+  try {
+    const key = decodeURIComponent(req.params.key);
+    const verification = await prisma.verification.findFirst({
+      where: { proofPath: key },
+      include: { event: { include: { vehicle: true } } },
+    });
+    if (!verification) return res.status(404).json({ error: 'Proof not found' });
+
+    const isOwner = verification.event.vehicle.ownerId === req.user.id;
+    const isVerifyingShop = verification.shopId === req.user.id;
+    const isAdmin = req.user.role === 'ADMIN';
+    if (!isOwner && !isVerifyingShop && !isAdmin) {
+      return res.status(403).json({ error: 'Insufficient permissions' });
+    }
+
+    const url = await resolveFileUrl(BUCKETS.proofs, key);
+    res.redirect(url);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to resolve proof file' });
+  }
+});
+
 router.use(requireRole('SHOP'));
 
 /** Shops can sign in before approval, but cannot create/verify records until an admin approves. */
@@ -516,12 +545,6 @@ router.post('/reminders', async (req, res) => {
     console.error(err);
     res.status(500).json({ error: 'Failed to create reminder' });
   }
-});
-
-router.get('/proofs/:key', async (req, res) => {
-  const key = decodeURIComponent(req.params.key);
-  const url = await resolveFileUrl(BUCKETS.proofs, key);
-  res.redirect(url);
 });
 
 export default router;

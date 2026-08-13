@@ -294,7 +294,10 @@ export const api = {
       { method: 'POST', body: JSON.stringify({ isAnimated }) }
     ),
 
-  ownerAnalytics: () => request<{ analytics: import('./types').OwnerAnalytics }>('/api/analytics/owner'),
+  ownerAnalytics: (vehicleId?: string) =>
+    request<{ analytics: import('./types').OwnerAnalytics }>(
+      `/api/analytics/owner${vehicleId ? `?vehicleId=${encodeURIComponent(vehicleId)}` : ''}`
+    ),
 
   shopAnalytics: () => request<{ analytics: import('./types').ShopAnalytics }>('/api/analytics/shop'),
 
@@ -312,6 +315,15 @@ export const api = {
   completeReminder: (id: string) =>
     request<{ reminder: import('./types').ServiceReminder }>(`/api/reminders/${id}/complete`, {
       method: 'PATCH',
+    }),
+
+  createReminder: (
+    vehicleId: string,
+    body: { serviceType: string; dueDate?: string; dueMileage?: number; message?: string }
+  ) =>
+    request<{ reminder: import('./types').ServiceReminder }>(`/api/reminders/vehicle/${vehicleId}`, {
+      method: 'POST',
+      body: JSON.stringify(body),
     }),
 
   suggestions: (vehicleId: string) =>

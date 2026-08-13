@@ -223,7 +223,7 @@ export default function CreateVerifiedEventForm({ onCreated }: { onCreated: () =
             </div>
             <div className="field">
               <label className="label">{t('shop.cost')}</label>
-              <input className="input input-mono" type="number" step="0.01" value={cost} onChange={(e) => setCost(e.target.value)} />
+              <input className="input input-mono" type="number" step="1" min={0} value={cost} onChange={(e) => setCost(e.target.value)} />
             </div>
           </div>
           <div className="field">

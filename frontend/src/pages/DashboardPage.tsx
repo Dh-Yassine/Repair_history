@@ -1,11 +1,23 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Plus, Share2, Clock, ShieldCheck, FileText, Bell, ArrowRight, Pencil, Gauge } from 'lucide-react';
+import {
+  Plus,
+  Share2,
+  Clock,
+  ShieldCheck,
+  FileText,
+  Bell,
+  ArrowRight,
+  Pencil,
+  Gauge,
+  CalendarPlus,
+} from 'lucide-react';
 import { formatKm } from '../lib/format';
 import { api } from '../api';
 import AddVehicleModal from '../components/AddVehicleModal';
 import EditVehicleModal from '../components/EditVehicleModal';
+import EventFormDrawer from '../components/EventFormDrawer';
 import RemindersPanel from '../components/RemindersPanel';
 import VehicleSwitcher from '../components/VehicleSwitcher';
 import VehiclePhoto from '../components/VehiclePhoto';
@@ -39,6 +51,7 @@ export default function DashboardPage() {
   const [eventsLoading, setEventsLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editVehicle, setEditVehicle] = useState<Vehicle | null>(null);
+  const [eventDrawerOpen, setEventDrawerOpen] = useState(false);
 
   const selectVehicle = useCallback((id: string, direction: number) => {
     setSlideDir(direction);
@@ -47,15 +60,21 @@ export default function DashboardPage() {
 
   const active = useMemo(() => vehicles.find((v) => v.id === activeId) ?? vehicles[0], [vehicles, activeId]);
 
-  async function load() {
-    setLoading(true);
+  /**
+   * `silent` refreshes vehicles/limits without flipping the page back into its
+   * skeleton state — the full-page loading branch below doesn't render the
+   * Add/Edit vehicle modals, so toggling `loading` mid-flow used to unmount
+   * them and reset the add-vehicle wizard back to step 1 right after saving.
+   */
+  async function load(silent = false) {
+    if (!silent) setLoading(true);
     try {
       const vData = await api.vehicles();
       setVehicles(vData.vehicles);
       setLimits(vData.limits);
       if (!activeId && vData.vehicles[0]) setActiveId(vData.vehicles[0].id);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }
 
@@ -63,23 +82,25 @@ export default function DashboardPage() {
     load();
   }, []);
 
-  useEffect(() => {
-    if (!active) {
+  async function loadEvents(activeVehicleId?: string) {
+    const id = activeVehicleId ?? active?.id;
+    if (!id) {
       setVehicleEvents([]);
       return;
     }
-    let cancelled = false;
     setEventsLoading(true);
-    api
-      .events(active.id)
-      .then(({ events }) => {
-        if (!cancelled) setVehicleEvents(events);
-      })
-      .catch(() => !cancelled && setVehicleEvents([]))
-      .finally(() => !cancelled && setEventsLoading(false));
-    return () => {
-      cancelled = true;
-    };
+    try {
+      const { events } = await api.events(id);
+      setVehicleEvents(events);
+    } catch {
+      setVehicleEvents([]);
+    } finally {
+      setEventsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadEvents(active?.id);
   }, [active]);
 
   /** All counts below are scoped to the selected vehicle, not the whole garage. */
@@ -91,18 +112,6 @@ export default function DashboardPage() {
   const totalEvents = vehicleEvents.length;
   const selfCount = totalEvents - verifiedCount;
   const trustPct = totalEvents > 0 ? Math.round((verifiedCount / totalEvents) * 100) : 0;
-
-  if (loading) {
-    return (
-      <PageTransition>
-        <div className="skeleton" style={{ height: 64, borderRadius: 12, marginBottom: 16 }} />
-        <div className="dash-bento">
-          <div className="skeleton" style={{ height: 340, borderRadius: 12 }} />
-          <div className="skeleton" style={{ height: 340, borderRadius: 12 }} />
-        </div>
-      </PageTransition>
-    );
-  }
 
   const nextStep = computeNextStep(t, {
     vehiclesCount: vehicles.length,
@@ -120,7 +129,15 @@ export default function DashboardPage() {
 
   return (
     <PageTransition>
-      {!active ? (
+      {loading ? (
+        <>
+          <div className="skeleton" style={{ height: 64, borderRadius: 12, marginBottom: 16 }} />
+          <div className="dash-bento">
+            <div className="skeleton" style={{ height: 340, borderRadius: 12 }} />
+            <div className="skeleton" style={{ height: 340, borderRadius: 12 }} />
+          </div>
+        </>
+      ) : !active ? (
         <>
           <Card className="empty-state">
             <p>{t('dashboard.noVehicles')}</p>
@@ -147,6 +164,9 @@ export default function DashboardPage() {
               <Link to={`/vehicles/${active.id}/share`} className="btn btn-outline btn-sm">
                 <Share2 size={14} /> {t('dashboard.share')}
               </Link>
+              <button type="button" className="btn btn-outline btn-sm" onClick={() => setEventDrawerOpen(true)}>
+                <FileText size={14} /> {t('dashboard.addEvent')}
+              </button>
               <button
                 type="button"
                 className="btn btn-primary btn-sm"
@@ -290,14 +310,35 @@ export default function DashboardPage() {
               )}
             </Card>
 
-            <RemindersPanel vehicleId={active.id} />
+            <div>
+              <Card style={{ marginBottom: 16 }}>
+                <div className="section-head">
+                  <h2 className="section-title">{t('dashboard.planMaintenance')}</h2>
+                </div>
+                <p className="muted" style={{ fontSize: 13, margin: 0 }}>
+                  {t('dashboard.shopsPartsFor', { label: displayName })}
+                </p>
+                <Link to="/shops" className="btn btn-primary btn-sm" style={{ marginTop: 12 }}>
+                  <CalendarPlus size={14} /> {t('dashboard.bookAppointment')}
+                </Link>
+              </Card>
+              <RemindersPanel vehicleId={active.id} />
+            </div>
           </div>
 
           {nextStep && <NextStepBanner step={nextStep} recommendedLabel={t('dashboard.recommended')} />}
         </>
       )}
 
-      <AddVehicleModal open={modalOpen} onClose={() => setModalOpen(false)} onSuccess={load} canAdd={limits?.canAdd ?? true} />
+      <AddVehicleModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onSuccess={(vehicleId) => {
+          if (vehicleId) setActiveId(vehicleId);
+          load(true);
+        }}
+        canAdd={limits?.canAdd ?? true}
+      />
       <EditVehicleModal
         vehicle={editVehicle}
         onClose={() => setEditVehicle(null)}
@@ -305,10 +346,25 @@ export default function DashboardPage() {
           setVehicles((prev) => prev.map((v) => (v.id === updated.id ? { ...v, ...updated } : v)));
         }}
         onDeleted={(id) => {
-          setVehicles((prev) => prev.filter((v) => v.id !== id));
           if (activeId === id) setActiveId('');
+          load(true);
         }}
       />
+      {active && (
+        <EventFormDrawer
+          vehicleId={active.id}
+          vehicle={active}
+          allEvents={vehicleEvents}
+          open={eventDrawerOpen}
+          mode="create"
+          editTarget={null}
+          onClose={() => setEventDrawerOpen(false)}
+          onSaved={() => {
+            loadEvents();
+            load(true);
+          }}
+        />
+      )}
     </PageTransition>
   );
 }

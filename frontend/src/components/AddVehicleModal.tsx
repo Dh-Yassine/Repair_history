@@ -1,13 +1,13 @@
 import { FormEvent, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Camera, ScanLine, Check, X, Keyboard, Hash, Loader2 } from 'lucide-react';
+import { Camera, ScanLine, Check, X, Keyboard, Hash, Loader2, IdCard } from 'lucide-react';
 import { api } from '../api';
 import { POPULAR_CAR_MODELS, POPULAR_MAKES } from '../lib/carData';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useToast } from './ui/Toast';
 import { useOverlayPanel } from '../hooks/useOverlayPanel';
 
-type Mode = 'vin' | 'serial' | 'manual';
+type Mode = 'choice' | 'vin' | 'serial' | 'manual';
 
 /** Allow longer than ISO 17 so pastes / atypical IDs are not cut off mid-typing */
 const VIN_MAX_LENGTH = 32;
@@ -20,13 +20,13 @@ export default function AddVehicleModal({
 }: {
   open: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (vehicleId?: string) => void;
   canAdd: boolean;
 }) {
   const toast = useToast();
   const { t } = useLanguage();
   const [step, setStep] = useState(1);
-  const [mode, setMode] = useState<Mode>('vin');
+  const [mode, setMode] = useState<Mode>('choice');
   const [vin, setVin] = useState('');
   const [serialNumber, setSerialNumber] = useState('');
   const [make, setMake] = useState('');
@@ -42,7 +42,7 @@ export default function AddVehicleModal({
 
   function reset() {
     setStep(1);
-    setMode('vin');
+    setMode('choice');
     setVin('');
     setSerialNumber('');
     setMake('');
@@ -122,9 +122,9 @@ export default function AddVehicleModal({
       form.append('year', year);
       form.append('mileage', mileage);
       if (photo) form.append('photo', photo);
-      await api.createVehicle(form);
+      const { vehicle: created } = await api.createVehicle(form);
       setStep(3);
-      onSuccess();
+      onSuccess(created.id);
       toast.success(t('addVehicle.added'));
     } catch (err) {
       const msg = err instanceof Error ? err.message : t('addVehicle.failed');
@@ -140,7 +140,9 @@ export default function AddVehicleModal({
       ? t('addVehicle.scanVinOrManual')
       : mode === 'serial'
         ? t('addVehicle.plateLead')
-        : t('addVehicle.manual');
+        : mode === 'manual'
+          ? t('addVehicle.manual')
+          : t('addVehicle.chooseMethod');
 
   if (!open) return null;
 
@@ -190,8 +192,51 @@ export default function AddVehicleModal({
             <AnimatePresence mode="wait">
               {step === 1 && (
                 <motion.div key="s1" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                  {mode === 'vin' ? (
+                  {mode === 'choice' ? (
+                    <div className="add-vehicle-choice">
+                      <button
+                        type="button"
+                        className="add-vehicle-choice-card"
+                        onClick={() => {
+                          setMode('vin');
+                          setError('');
+                        }}
+                      >
+                        <ScanLine size={22} />
+                        <span className="add-vehicle-choice-card__title">{t('addVehicle.vinChoiceTitle')}</span>
+                        <span className="add-vehicle-choice-card__desc">{t('addVehicle.vinChoiceDesc')}</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="add-vehicle-choice-card"
+                        onClick={() => {
+                          setMode('serial');
+                          setError('');
+                        }}
+                      >
+                        <IdCard size={22} />
+                        <span className="add-vehicle-choice-card__title">{t('addVehicle.plateChoiceTitle')}</span>
+                        <span className="add-vehicle-choice-card__desc">{t('addVehicle.plateChoiceDesc')}</span>
+                      </button>
+                      <div style={{ display: 'flex', marginTop: 8 }}>
+                        <button type="button" className="btn btn-ghost" onClick={handleClose}>
+                          {t('common.cancel')}
+                        </button>
+                      </div>
+                    </div>
+                  ) : mode === 'vin' ? (
                     <>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        style={{ marginBottom: 14 }}
+                        onClick={() => {
+                          setMode('choice');
+                          setError('');
+                        }}
+                      >
+                        {t('addVehicle.backToChoice')}
+                      </button>
                       <div className="field">
                         <label className="label">{t('addVehicle.vin')}</label>
                         <div style={{ position: 'relative' }}>
@@ -293,12 +338,11 @@ export default function AddVehicleModal({
                           className="btn btn-ghost btn-sm"
                           style={{ marginBottom: 14 }}
                           onClick={() => {
-                            setMode('vin');
+                            setMode('choice');
                             setError('');
                           }}
                         >
-                          <ScanLine size={13} style={{ verticalAlign: 'middle', marginRight: 5 }} />
-                          {t('addVehicle.backVin')}
+                          {t('addVehicle.backToChoice')}
                         </button>
                       )}
                       {mode === 'serial' && (

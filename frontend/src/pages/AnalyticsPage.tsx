@@ -20,7 +20,7 @@ import ChartEmpty from '../components/ui/ChartEmpty';
 import { useLanguage, useEventTypeLabel } from '../i18n/LanguageContext';
 import { tokens } from '../styles/tokens';
 import { formatDate, formatCurrency } from '../lib/format';
-import type { OwnerAnalytics, ShopAnalytics } from '../types';
+import type { OwnerAnalytics, ShopAnalytics, Vehicle } from '../types';
 
 const chartTooltipStyle = {
   background: tokens.panel,
@@ -38,10 +38,22 @@ export default function AnalyticsPage() {
   const [owner, setOwner] = useState<OwnerAnalytics | null>(null);
   const [shop, setShop] = useState<ShopAnalytics | null>(null);
   const [monthly, setMonthly] = useState<Array<{ month: string; count: number }>>([]);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [vehicleFilter, setVehicleFilter] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (user?.role !== 'SHOP') {
+      api
+        .vehicles()
+        .then(({ vehicles: v }) => setVehicles(v))
+        .catch(() => setVehicles([]));
+    }
+  }, [user?.role]);
+
+  useEffect(() => {
     async function load() {
+      setLoading(true);
       try {
         if (user?.role === 'SHOP') {
           const [{ analytics }, monthlyData] = await Promise.all([
@@ -51,7 +63,7 @@ export default function AnalyticsPage() {
           setShop(analytics);
           setMonthly(monthlyData.monthly);
         } else {
-          const { analytics } = await api.ownerAnalytics();
+          const { analytics } = await api.ownerAnalytics(vehicleFilter || undefined);
           setOwner(analytics);
         }
       } finally {
@@ -59,7 +71,7 @@ export default function AnalyticsPage() {
       }
     }
     load();
-  }, [user?.role]);
+  }, [user?.role, vehicleFilter]);
 
   if (loading) {
     return (
@@ -150,12 +162,29 @@ export default function AnalyticsPage() {
 
   return (
     <PageTransition>
+      {vehicles.length > 0 && (
+        <div className="segmented segmented--scroll" style={{ marginBottom: 16 }}>
+          <button type="button" className={vehicleFilter === '' ? 'active' : ''} onClick={() => setVehicleFilter('')}>
+            {t('analytics.allVehicles')}
+          </button>
+          {vehicles.map((v) => (
+            <button
+              key={v.id}
+              type="button"
+              className={vehicleFilter === v.id ? 'active' : ''}
+              onClick={() => setVehicleFilter(v.id)}
+            >
+              {v.nickname || `${v.year} ${v.make} ${v.model}`}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="grid-stats">
         <div className="card-stat tone-neutral">
           <div className="stat-value mono">
-            <AnimatedNumber value={owner.averageServiceCost} decimals={2} /> €
+            <AnimatedNumber value={owner.totalCost} decimals={2} /> €
           </div>
-          <p className="stat-label">{t('analytics.avgCost')}</p>
+          <p className="stat-label">{t('analytics.totalCost')}</p>
         </div>
         <div className="card-stat tone-neutral">
           <div className="stat-value mono">
@@ -228,10 +257,18 @@ export default function AnalyticsPage() {
           {typeData.length < 2 ? (
             <ChartEmpty />
           ) : (
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={typeData}>
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={typeData} margin={{ bottom: 24 }}>
                 <CartesianGrid stroke={tokens.hairline} strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" stroke={tokens.textMuted} tick={{ fill: tokens.textMuted, fontSize: 10 }} />
+                <XAxis
+                  dataKey="name"
+                  stroke={tokens.textMuted}
+                  tick={{ fill: tokens.textMuted, fontSize: 10 }}
+                  interval={0}
+                  angle={-25}
+                  textAnchor="end"
+                  height={50}
+                />
                 <YAxis stroke={tokens.textMuted} tick={{ fill: tokens.textMuted, fontSize: 11 }} allowDecimals={false} />
                 <Tooltip contentStyle={chartTooltipStyle} />
                 <Bar dataKey="count" fill={tokens.verified} radius={[4, 4, 0, 0]} />

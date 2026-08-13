@@ -50,7 +50,7 @@ router.get('/', async (req, res) => {
 
   const events = await prisma.maintenanceEvent.findMany({
     where: { vehicleId: vehicle.id, ...buildEventFilters(req.query) },
-    orderBy: { date: 'desc' },
+    orderBy: [{ mileage: 'desc' }, { date: 'desc' }],
     include: {
       documents: true,
       verification: { include: { shop: { select: { id: true, shopName: true, fullName: true } } } },

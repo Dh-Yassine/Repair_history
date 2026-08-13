@@ -558,6 +558,43 @@ a.btn-solid:hover {
   line-height: 1.35;
 }
 
+.add-vehicle-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.add-vehicle-choice-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 18px;
+  text-align: left;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-md);
+  background: rgba(26, 29, 36, 0.6);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, transform 0.15s;
+}
+
+.add-vehicle-choice-card:hover {
+  border-color: var(--color-accent-dim);
+  background: rgba(26, 29, 36, 0.9);
+  transform: translateY(-1px);
+}
+
+.add-vehicle-choice-card__title {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.add-vehicle-choice-card__desc {
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
 .password-field {
   position: relative;
 }
@@ -5780,8 +5817,19 @@ button,
     width: 100%;
   }
 
+  .dash-bar__actions {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    width: 100%;
+  }
+
   .dash-bar__actions .btn {
-    flex: 1 1 auto;
+    flex: none;
+    width: 100%;
+    padding-left: 8px;
+    padding-right: 8px;
+    white-space: normal;
+    text-align: center;
   }
 
   .dash-hero {

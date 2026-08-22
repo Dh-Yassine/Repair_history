@@ -22,12 +22,19 @@ export default function ShopDashboardPage() {
 
   const approved = Boolean(user?.shopVerified);
 
-  async function load() {
+  /**
+   * `silent` refreshes the counts without flipping the page back into its
+   * loading skeleton — the skeleton branch below doesn't render the active
+   * tab, so reloading after every create/verify/reminder action used to
+   * unmount the wizard mid-flow and silently reset it to step 1, right as
+   * the shop was about to see the "record created" confirmation.
+   */
+  async function load(silent = false) {
     if (!approved) {
       setLoading(false);
       return;
     }
-    setLoading(true);
+    if (!silent) setLoading(true);
     try {
       const [{ events: list }, { verifications: history }] = await Promise.all([
         api.shopEvents(),
@@ -39,7 +46,7 @@ export default function ShopDashboardPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : t('shop.failedLoad'));
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }
 
@@ -144,8 +151,8 @@ export default function ShopDashboardPage() {
         <div className="skeleton card" style={{ height: 240 }} />
       ) : (
         <>
-          {tab === 'create' && <CreateVerifiedEventForm onCreated={load} />}
-          {tab === 'pending' && <PendingVerificationList events={events} onChanged={load} />}
+          {tab === 'create' && <CreateVerifiedEventForm onCreated={() => load(true)} />}
+          {tab === 'pending' && <PendingVerificationList events={events} onChanged={() => load(true)} />}
           {tab === 'history' && <VerificationHistoryList verifications={verifications} />}
         </>
       )}

@@ -6,6 +6,7 @@ import { POPULAR_CAR_MODELS, POPULAR_MAKES } from '../lib/carData';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useToast } from './ui/Toast';
 import { useOverlayPanel } from '../hooks/useOverlayPanel';
+import Portal from './ui/Portal';
 import { vehiclePhotoSrc } from '../lib/vehiclePhoto';
 import type { Vehicle } from '../types';
 
@@ -138,6 +139,7 @@ export default function EditVehicleModal({ vehicle, onClose, onSaved, onDeleted 
   const currentPhotoSrc = vehiclePhotoSrc(vehicle);
 
   return (
+    <Portal>
     <div className="overlay" onClick={onClose}>
       <motion.div
         className="modal modal-vehicle"
@@ -359,5 +361,6 @@ export default function EditVehicleModal({ vehicle, onClose, onSaved, onDeleted 
         </form>
       </motion.div>
     </div>
+    </Portal>
   );
 }

@@ -1,7 +1,7 @@
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { LanguageProvider } from './i18n/LanguageContext';
+import { LanguageProvider, useLanguage } from './i18n/LanguageContext';
 import { ToastProvider } from './components/ui/Toast';
 import AppShell from './components/layout/AppShell';
 import DashboardPage from './pages/DashboardPage';
@@ -56,13 +56,14 @@ function ShellLayout({
 
 function AppRoutes() {
   const { user, loading } = useAuth();
+  const { t } = useLanguage();
   const location = useLocation();
   const home = homeForRole(user?.role);
 
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <p className="mono muted">Loading…</p>
+        <p className="mono muted">{t('common.loading')}</p>
       </div>
     );
   }

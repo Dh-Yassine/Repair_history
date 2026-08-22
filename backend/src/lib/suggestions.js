@@ -16,7 +16,8 @@ export function getMaintenanceSuggestions(vehicle, events) {
     if (!last) {
       suggestions.push({
         serviceType,
-        reason: `No ${serviceType.toLowerCase()} recorded yet — consider scheduling one.`,
+        reasonKey: 'neverLogged',
+        reasonParams: {},
         priority: 'medium',
       });
       continue;
@@ -29,14 +30,16 @@ export function getMaintenanceSuggestions(vehicle, events) {
     if (monthsSince >= rule.months * 0.9) {
       suggestions.push({
         serviceType,
-        reason: `Last ${serviceType.toLowerCase()} was ${Math.round(monthsSince)} months ago (recommended every ${rule.months} mo).`,
+        reasonKey: 'overdueTime',
+        reasonParams: { months: Math.round(monthsSince), interval: rule.months },
         priority: monthsSince >= rule.months ? 'high' : 'medium',
         suggestedDueDate: addMonths(new Date(last.date), rule.months).toISOString().slice(0, 10),
       });
     } else if (kmSince >= rule.km * 0.9) {
       suggestions.push({
         serviceType,
-        reason: `${Math.round(kmSince).toLocaleString()} km since last ${serviceType.toLowerCase()} (recommended every ${rule.km.toLocaleString()} km).`,
+        reasonKey: 'overdueMileage',
+        reasonParams: { km: Math.round(kmSince), interval: rule.km },
         priority: kmSince >= rule.km ? 'high' : 'medium',
         suggestedDueMileage: last.mileage + rule.km,
       });
@@ -47,7 +50,8 @@ export function getMaintenanceSuggestions(vehicle, events) {
   if (events.length >= 2 && verifiedRatio < 0.5) {
     suggestions.push({
       serviceType: 'Verification',
-      reason: 'Less than half of your events are shop-verified — ask your garage to verify on AutoHistory.',
+      reasonKey: 'lowVerification',
+      reasonParams: {},
       priority: 'low',
     });
   }

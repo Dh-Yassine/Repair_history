@@ -6,6 +6,7 @@ import { POPULAR_CAR_MODELS, POPULAR_MAKES } from '../lib/carData';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useToast } from './ui/Toast';
 import { useOverlayPanel } from '../hooks/useOverlayPanel';
+import Portal from './ui/Portal';
 
 type Mode = 'choice' | 'vin' | 'serial' | 'manual';
 
@@ -147,6 +148,7 @@ export default function AddVehicleModal({
   if (!open) return null;
 
   return (
+    <Portal>
     <div className="overlay" onClick={handleClose}>
       <motion.div
         className="modal modal-vehicle"
@@ -181,7 +183,7 @@ export default function AddVehicleModal({
         </div>
 
         <div style={{ padding: 24 }}>
-          {!canAdd ? (
+          {!canAdd && step === 1 ? (
             <div>
               <p className="error-msg">{t('addVehicle.freeLimitShort')}</p>
               <p className="muted" style={{ fontSize: 13, marginTop: 8 }}>
@@ -527,5 +529,6 @@ export default function AddVehicleModal({
         </div>
       </motion.div>
     </div>
+    </Portal>
   );
 }

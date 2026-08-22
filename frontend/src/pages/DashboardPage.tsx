@@ -138,15 +138,18 @@ export default function DashboardPage() {
           </div>
         </>
       ) : !active ? (
-        <>
-          <Card className="empty-state">
-            <p>{t('dashboard.noVehicles')}</p>
-            <button type="button" className="btn btn-primary" style={{ marginTop: 12 }} onClick={() => setModalOpen(true)}>
-              <Plus size={16} /> {t('dashboard.addVehicle')}
-            </button>
-          </Card>
-          {nextStep && <NextStepBanner step={nextStep} recommendedLabel={t('dashboard.recommended')} />}
-        </>
+        <Card className="empty-state empty-state--hero">
+          <div className="empty-state__icon" aria-hidden>
+            <Gauge size={22} />
+          </div>
+          <h2 className="empty-state__title">{t('dashboard.nextEmptyTitle')}</h2>
+          <p className="muted" style={{ maxWidth: 360, margin: '0 auto' }}>
+            {t('dashboard.nextEmptyDesc')}
+          </p>
+          <button type="button" className="btn btn-primary" style={{ marginTop: 16 }} onClick={() => setModalOpen(true)}>
+            <Plus size={16} /> {t('dashboard.addVehicle')}
+          </button>
+        </Card>
       ) : (
         <>
           <div className="dash-bar">
@@ -158,22 +161,14 @@ export default function DashboardPage() {
               onAdd={() => setModalOpen(true)}
             />
             <div className="dash-bar__actions">
-              <Link to={`/vehicles/${active.id}`} className="btn btn-outline btn-sm">
-                <Clock size={14} /> {t('dashboard.timeline')}
+              <Link to={`/vehicles/${active.id}`} className="dash-bar__link">
+                <Clock size={14} aria-hidden /> {t('dashboard.timeline')}
               </Link>
-              <Link to={`/vehicles/${active.id}/share`} className="btn btn-outline btn-sm">
-                <Share2 size={14} /> {t('dashboard.share')}
+              <Link to={`/vehicles/${active.id}/share`} className="dash-bar__link">
+                <Share2 size={14} aria-hidden /> {t('dashboard.share')}
               </Link>
-              <button type="button" className="btn btn-outline btn-sm" onClick={() => setEventDrawerOpen(true)}>
-                <FileText size={14} /> {t('dashboard.addEvent')}
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary btn-sm"
-                onClick={() => setModalOpen(true)}
-                disabled={!limits?.canAdd}
-              >
-                <Plus size={14} /> {t('dashboard.addVehicle')}
+              <button type="button" className="btn btn-primary btn-sm" onClick={() => setEventDrawerOpen(true)}>
+                <Plus size={14} aria-hidden /> {t('dashboard.addEvent')}
               </button>
             </div>
           </div>
@@ -190,7 +185,6 @@ export default function DashboardPage() {
               <article className="dash-hero">
                 <VehiclePhoto vehicle={active} className="dash-hero__media" />
                 <span className="dash-hero__scrim" aria-hidden />
-                <span className="dash-hero__sheen" aria-hidden />
                 <button
                   type="button"
                   className="dash-hero__edit"
@@ -201,8 +195,9 @@ export default function DashboardPage() {
                   <Pencil size={14} />
                 </button>
                 <div className="dash-hero__overlay">
+                  <p className="dash-hero__eyebrow mono">{t('dashboard.activeVehicle')}</p>
                   <h1 className="dash-hero__name">{displayName}</h1>
-                  <p className="dash-hero__model">{modelLine}</p>
+                  {active.nickname && <p className="dash-hero__model">{modelLine}</p>}
                   <div className="dash-hero__chips">
                     <span className="dash-chip dash-chip--km mono">
                       <Gauge size={13} aria-hidden />
@@ -246,7 +241,7 @@ export default function DashboardPage() {
                       <span className="dash-dot dash-dot--verified" aria-hidden>
                         <ShieldCheck size={11} />
                       </span>
-                      {t('dashboard.shopVerified')}
+                      {t('events.shopVerified')}
                     </span>
                     <strong className="mono tone-verified">
                       <AnimatedNumber value={verifiedCount} />
@@ -274,11 +269,15 @@ export default function DashboardPage() {
             </motion.div>
           </AnimatePresence>
 
+          {nextStep && (
+            <NextStepBanner step={nextStep} recommendedLabel={t('dashboard.recommended')} />
+          )}
+
           <div className="grid-bottom">
-            <Card>
+            <Card className="dash-panel">
               <div className="section-head">
                 <h2 className="section-title">{t('dashboard.recentTimeline')}</h2>
-                <Link to={`/vehicles/${active.id}`} className="btn btn-ghost btn-sm">
+                <Link to={`/vehicles/${active.id}`} className="dash-bar__link">
                   {t('dashboard.viewTimeline')}
                 </Link>
               </div>
@@ -288,9 +287,9 @@ export default function DashboardPage() {
                 <div className="timeline-empty">
                   {t('dashboard.noRecords')}
                   <div style={{ marginTop: 10 }}>
-                    <Link to="/shops" className="btn btn-primary btn-sm">
-                      {t('dashboard.findShop')}
-                    </Link>
+                    <button type="button" className="btn btn-primary btn-sm" onClick={() => setEventDrawerOpen(true)}>
+                      <Plus size={14} aria-hidden /> {t('dashboard.addEvent')}
+                    </button>
                   </div>
                 </div>
               ) : (
@@ -310,23 +309,23 @@ export default function DashboardPage() {
               )}
             </Card>
 
-            <div>
-              <Card style={{ marginBottom: 16 }}>
-                <div className="section-head">
-                  <h2 className="section-title">{t('dashboard.planMaintenance')}</h2>
-                </div>
-                <p className="muted" style={{ fontSize: 13, margin: 0 }}>
-                  {t('dashboard.shopsPartsFor', { label: displayName })}
-                </p>
-                <Link to="/shops" className="btn btn-primary btn-sm" style={{ marginTop: 12 }}>
-                  <CalendarPlus size={14} /> {t('dashboard.bookAppointment')}
-                </Link>
-              </Card>
+            <div className="dash-side-stack">
               <RemindersPanel vehicleId={active.id} />
+              <div className="dash-plan-strip">
+                <div>
+                  <p className="section-eyebrow" style={{ marginBottom: 4 }}>
+                    {t('dashboard.planMaintenance')}
+                  </p>
+                  <p className="muted" style={{ fontSize: 13, margin: 0 }}>
+                    {t('dashboard.shopsPartsFor', { label: displayName })}
+                  </p>
+                </div>
+                <Link to="/shops" className="btn btn-outline btn-sm">
+                  <CalendarPlus size={14} aria-hidden /> {t('dashboard.bookAppointment')}
+                </Link>
+              </div>
             </div>
           </div>
-
-          {nextStep && <NextStepBanner step={nextStep} recommendedLabel={t('dashboard.recommended')} />}
         </>
       )}
 
@@ -371,24 +370,24 @@ export default function DashboardPage() {
 
 function NextStepBanner({ step, recommendedLabel }: { step: NextStep; recommendedLabel: string }) {
   return (
-    <div className="next-step-card" role="region" aria-label={recommendedLabel} style={{ marginTop: 16 }}>
+    <div className="next-step-card" role="region" aria-label={recommendedLabel}>
       <div className="next-step-icon">
-        <step.Icon size={22} />
+        <step.Icon size={20} />
       </div>
       <div className="next-step-body">
         <p className="section-eyebrow">{recommendedLabel}</p>
         <h3>{step.title}</h3>
         <span>{step.desc}</span>
       </div>
-      <div style={{ display: 'flex', gap: 8 }}>
+      <div className="next-step-cta">
         {step.primary &&
           (step.primary.to ? (
-            <Link to={step.primary.to} className="btn btn-primary">
-              {step.primary.label} <ArrowRight size={16} />
+            <Link to={step.primary.to} className="btn btn-primary btn-sm">
+              {step.primary.label} <ArrowRight size={14} />
             </Link>
           ) : (
-            <button type="button" className="btn btn-primary" onClick={() => step.primary?.onClick?.()}>
-              {step.primary.label} <ArrowRight size={16} />
+            <button type="button" className="btn btn-primary btn-sm" onClick={() => step.primary?.onClick?.()}>
+              {step.primary.label} <ArrowRight size={14} />
             </button>
           ))}
       </div>

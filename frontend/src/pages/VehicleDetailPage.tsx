@@ -217,7 +217,9 @@ export default function VehicleDetailPage() {
         <div className="skeleton card" style={{ height: 120 }} />
       ) : filteredEvents.length === 0 ? (
         <div className="card empty-state">
-          <p style={{ fontSize: 48 }}>🚗</p>
+          <div className="empty-state__icon" aria-hidden>
+            <Wrench size={20} />
+          </div>
           {filterType !== 'All' || trustFilter !== 'all' || filterYear !== 'all' ? (
             <>
               <p>{t('vehicle.emptyFiltered')}</p>

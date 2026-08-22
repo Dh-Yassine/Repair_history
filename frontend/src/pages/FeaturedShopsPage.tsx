@@ -12,6 +12,7 @@ import {
 import { formatDate } from '../lib/format';
 import { api } from '../api';
 import PageTransition from '../components/layout/PageTransition';
+import Portal from '../components/ui/Portal';
 import { useToast } from '../components/ui/Toast';
 import { useLanguage } from '../i18n/LanguageContext';
 import {
@@ -308,6 +309,7 @@ export default function FeaturedShopsPage() {
       )}
 
       {contactAd && (
+        <Portal>
         <div className="overlay" onClick={() => setContactAd(null)}>
           <div
             className="modal"
@@ -365,6 +367,7 @@ export default function FeaturedShopsPage() {
             </form>
           </div>
         </div>
+        </Portal>
       )}
     </PageTransition>
   );

@@ -96,8 +96,8 @@ router.patch('/shops/:id/verify', async (req, res) => {
     const { notifyUser, emailUser } = await import('../lib/notify.js');
     await notifyUser(
       shop.id,
-      'Shop approved',
-      'Your repair shop account is approved. You can create verified service records now.'
+      'Your repair shop account is approved. You can create verified service records now.',
+      'shop_approved'
     );
     await emailUser(
       shop.id,

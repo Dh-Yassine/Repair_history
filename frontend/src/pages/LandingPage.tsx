@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import heroCar from '../assets/hero-car-optionA.png';
 import LanguageToggle from '../components/LanguageToggle';
+import HudCorners from '../components/ui/HudCorners';
 import { useLanguage } from '../i18n/LanguageContext';
 
 const EASE = [0.16, 1, 0.3, 1] as [number, number, number, number];
@@ -28,17 +29,6 @@ const stagger = { show: { transition: { staggerChildren: 0.1 } } };
 
 function DotGrid() {
   return <div className="landing-dotgrid" aria-hidden />;
-}
-
-function HudCorners() {
-  return (
-    <div className="hud-corners" aria-hidden>
-      <span className="hud-corner hud-tl" />
-      <span className="hud-corner hud-tr" />
-      <span className="hud-corner hud-bl" />
-      <span className="hud-corner hud-br" />
-    </div>
-  );
 }
 
 export default function LandingPage() {

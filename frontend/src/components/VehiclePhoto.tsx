@@ -24,8 +24,10 @@ export default function VehiclePhoto({
         />
       ) : (
         <div className="vehicle-photo-default">
-          <CarFront size={42} />
-          <span className="mono">{vehicle.make || 'AUTO'}</span>
+          <span className="vehicle-photo-default__badge">
+            <CarFront size={26} />
+          </span>
+          <span className="mono vehicle-photo-default__label">{vehicle.make || 'AUTO'}</span>
         </div>
       )}
     </div>

@@ -71,6 +71,7 @@ export const fr = {
     serviceSub: 'Entrées atelier et propriétaire',
     analyticsTitle: 'Analyses',
     analyticsSub: 'Dépenses et types d’entretien',
+    analyticsSubShop: 'Vérifications et travaux en attente',
     marketplaceTitle: 'Marché',
     marketplaceSub: 'Pièces adaptées à votre véhicule',
     shopsTitle: 'Ateliers',
@@ -231,7 +232,6 @@ export const fr = {
     addVehicle: 'Ajouter un véhicule',
     addAnother: 'En ajouter un',
     recommended: 'Pour la suite',
-    shopVerified: 'Atelier vérifié',
     selfReported: 'Déclaré',
     totalEvents: 'Total des événements',
     noVehicles: 'Aucun véhicule. Ajoutez le premier pour démarrer l’historique.',
@@ -339,6 +339,15 @@ export const fr = {
     recordUpdated: 'Entretien mis à jour.',
     mileageJumpWarn:
       'Le kilométrage saisi ({mileage} km) est nettement supérieur au kilométrage actuel du véhicule ({vehicle} km). Vérifiez qu’il n’y a pas d’erreur de saisie. Continuer ?',
+    garagePlaceholder: 'ex. Garage Dupont',
+    notesPlaceholder: 'Pièces changées, observations, prochaines étapes…',
+    suggestions: {
+      neverLogged: '{type} : aucun enregistrement pour le moment — pensez à en programmer un.',
+      overdueTime: '{type} : dernier entretien il y a {months} mois (recommandé tous les {interval} mois).',
+      overdueMileage: '{type} : {km} km depuis le dernier entretien (recommandé tous les {interval} km).',
+      lowVerification:
+        'Moins de la moitié de vos entretiens sont vérifiés par un atelier — demandez à votre garage de les vérifier sur AutoHistory.',
+    },
   },
   share: {
     backTimeline: '← Historique',
@@ -408,9 +417,8 @@ export const fr = {
     ownerLead: 'Voyez comment les dépenses et les types d’entretien se décomposent.',
     totalCost: 'Coût total',
     totalEvents: 'Total événements',
-    verifiedRate: 'Taux vérifié',
     vehicles: 'Véhicules',
-    shopCreated: 'Créés par atelier',
+    shopCreated: 'Ajouté par un pro',
     selfReported: 'Déclarés propriétaire',
     monthlySpend: 'Dépenses mensuelles',
     byType: 'Par type d’entretien',
@@ -442,6 +450,7 @@ export const fr = {
     details: 'Détails',
     findCustomer: 'Trouver le véhicule du client',
     lookupPlaceholder: 'E-mail client, VIN ou immatriculation',
+    lookupInputPlaceholder: 'client@email.com ou VF1RFB00…',
     lookUp: 'Rechercher',
     serviceDetails: 'Détails de l’entretien',
     verifiedOnSave: 'Vérifié dès l’enregistrement',
@@ -578,6 +587,10 @@ export const fr = {
   public: {
     sharingOff: 'Le propriétaire a coupé le partage',
     unavailable: 'Historique indisponible',
+    reasonDisabledBody: 'Le propriétaire de ce véhicule a désactivé le partage de son historique.',
+    reasonPartnerKeyBody:
+      'Cet historique nécessite une clé partenaire. Ouvrez le lien fourni par votre assureur ou concessionnaire.',
+    reasonNotFoundBody: 'Ce lien d’historique est introuvable ou a expiré.',
     whatIs: 'Qu’est-ce qu’AutoHistory ?',
     whatIsBody:
       'AutoHistory, c’est l’historique d’entretien vérifié — vidanges, réparations, contrôles, avec un score de confiance. Demandez un lien actif au vendeur, ou en savoir plus sur l’accueil.',
@@ -626,6 +639,8 @@ export const fr = {
     freeIncludes: 'L’offre gratuite inclut jusqu’à 3 véhicules.',
     allFeaturesIncluded: 'Toutes les fonctionnalités actuelles sont incluses.',
     contactLarger: 'Nous contacter pour une offre plus large',
+    upgradeSubject: 'Demande de changement d’offre',
+    upgradeBody: 'Compte : {email}',
     deleteAccount: 'Supprimer le compte',
     deleteInfo:
       'Si un de vos véhicules a un historique partagé ou confirmé par un atelier, vos données personnelles sont anonymisées et les historiques partagés restent accessibles aux acheteurs qui ont déjà le lien. Sinon, le compte et ses données sont entièrement supprimés. Cette action est irréversible.',
@@ -832,6 +847,8 @@ export const fr = {
     title: 'Notifications',
     close: 'Fermer les notifications',
     empty: 'Rien pour l’instant. Vous serez notifié quand un atelier vérifie un travail ou qu’un rappel arrive.',
+    emptyShop: 'Rien pour l’instant. Vous serez notifié des demandes de devis et des mises à jour de votre compte.',
+    typeShopApproved: 'Votre compte atelier est approuvé. Vous pouvez créer des dossiers vérifiés dès maintenant.',
   },
   stepper: {
     workflow: 'Étapes',

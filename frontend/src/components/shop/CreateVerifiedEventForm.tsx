@@ -143,7 +143,7 @@ export default function CreateVerifiedEventForm({ onCreated }: { onCreated: () =
               name="q"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="customer@email.com or VF1RFB00…"
+              placeholder={t('shop.lookupInputPlaceholder')}
               autoComplete="email"
               required
             />

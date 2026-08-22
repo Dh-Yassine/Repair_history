@@ -330,8 +330,8 @@ export default function AdminPage() {
                         key={d.date}
                         title={`${d.date}: ${d.count}`}
                         style={{
-                          flex: '1 0 28px',
-                          minWidth: 28,
+                          flex: '0 0 40px',
+                          minWidth: 40,
                           display: 'flex',
                           flexDirection: 'column',
                           alignItems: 'center',

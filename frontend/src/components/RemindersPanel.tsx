@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { CalendarPlus, BellPlus } from 'lucide-react';
+import { BellPlus } from 'lucide-react';
 import { formatDate, formatKm, formatNumber } from '../lib/format';
 import { api } from '../api';
 import Card from './ui/Card';
@@ -138,9 +137,6 @@ export default function RemindersPanel({ vehicleId }: { vehicleId?: string } = {
         <p className="muted" style={{ fontSize: 13, margin: 0 }}>
           {t('reminders.empty')}
         </p>
-        <Link to="/shops" className="btn btn-outline btn-sm" style={{ marginTop: 12 }}>
-          <CalendarPlus size={14} /> {t('reminders.bookAppointment')}
-        </Link>
       </Card>
     );
   }
@@ -181,9 +177,6 @@ export default function RemindersPanel({ vehicleId }: { vehicleId?: string } = {
               </button>
             </div>
           ))}
-          <Link to="/shops" className="btn btn-primary btn-sm" style={{ marginTop: 8 }}>
-            <CalendarPlus size={14} /> {t('reminders.bookAppointment')}
-          </Link>
         </Card>
       )}
 

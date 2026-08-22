@@ -71,6 +71,7 @@ export const en = {
     serviceSub: 'Shop-verified and owner records',
     analyticsTitle: 'Analytics',
     analyticsSub: 'Spend and service types',
+    analyticsSubShop: 'Verifications and pending work',
     marketplaceTitle: 'Marketplace',
     marketplaceSub: 'Parts matched to your vehicle',
     shopsTitle: 'Shops',
@@ -221,7 +222,6 @@ export const en = {
     addVehicle: 'Add vehicle',
     addAnother: 'Add another',
     recommended: 'Recommended next step',
-    shopVerified: 'Shop verified',
     selfReported: 'Self-reported',
     totalEvents: 'Total events',
     noVehicles: 'No vehicles yet. Add your first vehicle to start the timeline.',
@@ -328,6 +328,15 @@ export const en = {
     recordUpdated: 'Service record updated.',
     mileageJumpWarn:
       'The mileage you entered ({mileage} km) is a lot higher than the vehicle’s current mileage ({vehicle} km). Double-check for a typo. Continue?',
+    garagePlaceholder: 'e.g. Joe’s Auto',
+    notesPlaceholder: 'Parts replaced, observations, next steps…',
+    suggestions: {
+      neverLogged: '{type}: nothing logged yet — consider scheduling one.',
+      overdueTime: '{type}: last one was {months} months ago (recommended every {interval} months).',
+      overdueMileage: '{type}: {km} km since the last one (recommended every {interval} km).',
+      lowVerification:
+        'Less than half of your events are shop-verified — ask your garage to verify them on AutoHistory.',
+    },
   },
   share: {
     backTimeline: '← Timeline',
@@ -399,9 +408,8 @@ export const en = {
     ownerLead: 'See how spend and service types break down.',
     totalCost: 'Total cost',
     totalEvents: 'Total events',
-    verifiedRate: 'Verified rate',
     vehicles: 'Vehicles',
-    shopCreated: 'Shop-created verified',
+    shopCreated: 'Shop verified',
     selfReported: 'Self-reported records',
     monthlySpend: 'Monthly spend',
     byType: 'By service type',
@@ -433,6 +441,7 @@ export const en = {
     details: 'Details',
     findCustomer: 'Find the customer vehicle',
     lookupPlaceholder: 'Customer email, VIN, or plate number',
+    lookupInputPlaceholder: 'customer@email.com or VF1RFB00…',
     lookUp: 'Look up vehicle',
     serviceDetails: 'Service details',
     verifiedOnSave: 'Verified immediately on save',
@@ -565,6 +574,10 @@ export const en = {
   public: {
     sharingOff: 'The owner turned sharing off',
     unavailable: 'History unavailable',
+    reasonDisabledBody: 'This vehicle’s owner has turned off history sharing.',
+    reasonPartnerKeyBody:
+      'This history requires a partner key. Open the link from your insurer or dealer integration.',
+    reasonNotFoundBody: 'This history link is invalid or has expired.',
     whatIs: 'What is AutoHistory?',
     whatIsBody:
       'AutoHistory is verified vehicle maintenance history — oil changes, repairs, and inspections with a trust score. Ask the seller for an active link, or learn more on the home page.',
@@ -613,6 +626,8 @@ export const en = {
     freeIncludes: 'The free plan includes up to 3 vehicles.',
     allFeaturesIncluded: 'All current features are included.',
     contactLarger: 'Contact us about a larger plan',
+    upgradeSubject: 'Plan upgrade request',
+    upgradeBody: 'Account: {email}',
     deleteAccount: 'Delete account',
     deleteInfo:
       'If any of your vehicles has shared or shop-verified history, your personal details are anonymized and the shared timelines stay available to buyers who already have the link. Otherwise the account and its data are removed entirely. This cannot be undone.',
@@ -819,6 +834,8 @@ export const en = {
     title: 'Notifications',
     close: 'Close notifications',
     empty: "Nothing yet. You'll be notified when shops verify work or reminders are due.",
+    emptyShop: "Nothing yet. You'll be notified about quote requests and account updates.",
+    typeShopApproved: 'Your repair shop account is approved. You can create verified service records now.',
   },
   stepper: {
     workflow: 'Workflow steps',

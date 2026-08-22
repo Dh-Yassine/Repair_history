@@ -63,7 +63,13 @@ export default function PublicHistoryPage() {
             <h2 className="display public-error-card__title">
               {errorReason === 'disabled' ? t('public.sharingOff') : t('public.unavailable')}
             </h2>
-            <p className="error-msg">{error}</p>
+            <p className="error-msg">
+              {errorReason === 'disabled'
+                ? t('public.reasonDisabledBody')
+                : errorReason === 'partner_key_required'
+                  ? t('public.reasonPartnerKeyBody')
+                  : t('public.reasonNotFoundBody')}
+            </p>
             <p className="muted public-error-card__body">{t('public.whatIsBody')}</p>
             <div className="public-error-card__actions">
               <Link to="/" className="btn btn-solid btn-sm">{t('public.whatIs')}</Link>

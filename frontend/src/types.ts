@@ -121,7 +121,8 @@ export interface ServiceReminder {
 
 export interface MaintenanceSuggestion {
   serviceType: string;
-  reason: string;
+  reasonKey: 'neverLogged' | 'overdueTime' | 'overdueMileage' | 'lowVerification';
+  reasonParams: Record<string, string | number>;
   priority: 'high' | 'medium' | 'low';
   suggestedDueDate?: string;
   suggestedDueMileage?: number;

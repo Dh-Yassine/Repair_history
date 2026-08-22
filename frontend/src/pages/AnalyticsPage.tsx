@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   BarChart,
   Bar,
   XAxis,
@@ -30,6 +30,14 @@ const chartTooltipStyle = {
   fontSize: 12,
   color: tokens.text,
 };
+
+/** Plate/VIN keeps two same-model vehicles from showing identical tab labels. */
+function vehicleLabel(v: Vehicle) {
+  const base = `${v.year} ${v.make} ${v.model}`;
+  if (v.nickname) return v.nickname;
+  const id = v.serialNumber || v.vin;
+  return id ? `${base} · ${id}` : base;
+}
 
 export default function AnalyticsPage() {
   const { user } = useAuth();
@@ -85,7 +93,7 @@ export default function AnalyticsPage() {
     const monthlyPoints = monthly.filter((m) => m.count > 0).length >= 2 ? monthly : [];
     return (
       <PageTransition>
-        <div className="grid-stats" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+        <div className="grid-stats grid-stats--3">
           <div className="card-stat tone-verified">
             <div className="stat-value mono tone-verified">
               <AnimatedNumber value={shop.totalVerifications} />
@@ -174,12 +182,12 @@ export default function AnalyticsPage() {
               className={vehicleFilter === v.id ? 'active' : ''}
               onClick={() => setVehicleFilter(v.id)}
             >
-              {v.nickname || `${v.year} ${v.make} ${v.model}`}
+              {vehicleLabel(v)}
             </button>
           ))}
         </div>
       )}
-      <div className="grid-stats">
+      <div className="grid-stats grid-stats--3">
         <div className="card-stat tone-neutral">
           <div className="stat-value mono">
             <AnimatedNumber value={owner.totalCost} decimals={2} /> €
@@ -191,12 +199,6 @@ export default function AnalyticsPage() {
             <AnimatedNumber value={owner.serviceFrequency} />
           </div>
           <p className="stat-label">{t('analytics.totalEvents')}</p>
-        </div>
-        <div className="card-stat tone-verified">
-          <div className="stat-value mono tone-verified">
-            <AnimatedNumber value={Math.round(owner.conversionRate * 100)} />%
-          </div>
-          <p className="stat-label">{t('analytics.verifiedRate')}</p>
         </div>
         <div className="card-stat tone-neutral">
           <div className="stat-value mono">
@@ -226,7 +228,13 @@ export default function AnalyticsPage() {
             <ChartEmpty />
           ) : (
             <ResponsiveContainer width="100%" height={220}>
-              <LineChart data={costData}>
+              <AreaChart data={costData}>
+                <defs>
+                  <linearGradient id="spendFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={tokens.declared} stopOpacity={0.32} />
+                    <stop offset="100%" stopColor={tokens.declared} stopOpacity={0} />
+                  </linearGradient>
+                </defs>
                 <CartesianGrid stroke={tokens.hairline} strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="month" stroke={tokens.textMuted} tick={{ fill: tokens.textMuted, fontSize: 11 }} />
                 <YAxis
@@ -236,17 +244,19 @@ export default function AnalyticsPage() {
                 />
                 <Tooltip
                   contentStyle={chartTooltipStyle}
+                  cursor={{ stroke: tokens.hairline, strokeWidth: 1 }}
                   formatter={(value) => [formatCurrency(Number(value ?? 0)), t('analytics.monthlySpend')]}
                 />
-                <Line
+                <Area
                   type="monotone"
                   dataKey="cost"
                   stroke={tokens.declared}
                   strokeWidth={2}
-                  dot={{ r: 3, fill: tokens.declared }}
+                  fill="url(#spendFill)"
+                  dot={{ r: 3, fill: tokens.declared, strokeWidth: 0 }}
                   activeDot={{ r: 5 }}
                 />
-              </LineChart>
+              </AreaChart>
             </ResponsiveContainer>
           )}
         </Card>
@@ -259,6 +269,12 @@ export default function AnalyticsPage() {
           ) : (
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={typeData} margin={{ bottom: 24 }}>
+                <defs>
+                  <linearGradient id="typeFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={tokens.verified} stopOpacity={0.9} />
+                    <stop offset="100%" stopColor={tokens.verified} stopOpacity={0.55} />
+                  </linearGradient>
+                </defs>
                 <CartesianGrid stroke={tokens.hairline} strokeDasharray="3 3" vertical={false} />
                 <XAxis
                   dataKey="name"
@@ -270,8 +286,8 @@ export default function AnalyticsPage() {
                   height={50}
                 />
                 <YAxis stroke={tokens.textMuted} tick={{ fill: tokens.textMuted, fontSize: 11 }} allowDecimals={false} />
-                <Tooltip contentStyle={chartTooltipStyle} />
-                <Bar dataKey="count" fill={tokens.verified} radius={[4, 4, 0, 0]} />
+                <Tooltip contentStyle={chartTooltipStyle} cursor={{ fill: tokens.hairline, opacity: 0.3 }} />
+                <Bar dataKey="count" fill="url(#typeFill)" radius={[4, 4, 0, 0]} maxBarSize={44} />
               </BarChart>
             </ResponsiveContainer>
           )}

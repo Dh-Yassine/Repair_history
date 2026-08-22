@@ -334,7 +334,9 @@ export default function SettingsPage() {
             <a
               className="btn btn-outline btn-sm"
               style={{ marginTop: 12, display: 'inline-flex' }}
-              href={`mailto:upgrade@autohistory.app?subject=Plan upgrade request&body=Account: ${user?.email}`}
+              href={`mailto:upgrade@autohistory.app?subject=${encodeURIComponent(
+                t('settings.upgradeSubject')
+              )}&body=${encodeURIComponent(t('settings.upgradeBody', { email: user?.email ?? '' }))}`}
             >
               {t('settings.contactLarger')}
             </a>

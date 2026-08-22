@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Bell, X } from 'lucide-react';
 import { formatDateTime } from '../lib/format';
 import { api } from '../api';
+import { useAuth } from '../context/AuthContext';
 import { useOverlayPanel } from '../hooks/useOverlayPanel';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { useLanguage } from '../i18n/LanguageContext';
@@ -9,6 +10,7 @@ import type { Notification } from '../types';
 
 export default function NotificationsPanel() {
   const { t } = useLanguage();
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -16,6 +18,12 @@ export default function NotificationsPanel() {
   const isMobile = useMediaQuery('(max-width: 900px)');
 
   useOverlayPanel(open, () => setOpen(false));
+
+  /** A handful of notification types are known enough to fully translate; anything else falls back to the stored (English) message. */
+  function localize(n: Notification) {
+    if (n.type === 'shop_approved') return t('notifications.typeShopApproved');
+    return n.message;
+  }
 
   async function load() {
     try {
@@ -93,7 +101,7 @@ export default function NotificationsPanel() {
               {notifications.length === 0 ? (
                 <div style={{ padding: '8px 0' }}>
                   <p className="muted" style={{ fontSize: 13, margin: 0 }}>
-                    {t('notifications.empty')}
+                    {user?.role === 'SHOP' ? t('notifications.emptyShop') : t('notifications.empty')}
                   </p>
                 </div>
               ) : (
@@ -105,7 +113,7 @@ export default function NotificationsPanel() {
                     onClick={() => !n.read && markRead(n.id)}
                     disabled={n.read}
                   >
-                    <p>{n.message}</p>
+                    <p>{localize(n)}</p>
                     <span className="mono subtle">{formatDateTime(n.createdAt)}</span>
                   </button>
                 ))

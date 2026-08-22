@@ -20,6 +20,7 @@ import {
 import { formatNumber } from '../lib/format';
 import { api } from '../api';
 import { useToast } from './ui/Toast';
+import Portal from './ui/Portal';
 import { useOverlayPanel, scrollFieldIntoView } from '../hooks/useOverlayPanel';
 import { useIsMobileSheet } from '../hooks/useMediaQuery';
 import { useLanguage, useEventTypeLabel } from '../i18n/LanguageContext';
@@ -222,6 +223,7 @@ export default function EventFormDrawer({
   }
 
   return (
+    <Portal>
     <AnimatePresence>
       {open && (
         <>
@@ -273,7 +275,12 @@ export default function EventFormDrawer({
                     <Sparkles size={16} />
                     <div>
                       <strong style={{ display: 'block', fontSize: 13 }}>{t('vehicle.recommendation')}</strong>
-                      <span style={{ color: 'var(--color-text-muted)' }}>{suggestions[0].reason}</span>
+                      <span style={{ color: 'var(--color-text-muted)' }}>
+                        {t(`vehicle.suggestions.${suggestions[0].reasonKey}`, {
+                          ...suggestions[0].reasonParams,
+                          type: labelEvent(suggestions[0].serviceType),
+                        })}
+                      </span>
                     </div>
                   </div>
                 )}
@@ -369,7 +376,7 @@ export default function EventFormDrawer({
                         value={garageName}
                         onChange={(e) => setGarageName(e.target.value)}
                         onFocus={(e) => scrollFieldIntoView(e.target)}
-                        placeholder="e.g. Joe's Auto"
+                        placeholder={t('vehicle.garagePlaceholder')}
                       />
                     </div>
                   </div>
@@ -384,7 +391,7 @@ export default function EventFormDrawer({
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
                       onFocus={(e) => scrollFieldIntoView(e.target)}
-                      placeholder="Parts replaced, observations, next steps…"
+                      placeholder={t('vehicle.notesPlaceholder')}
                     />
                   </div>
                 </section>
@@ -483,5 +490,6 @@ export default function EventFormDrawer({
         </>
       )}
     </AnimatePresence>
+    </Portal>
   );
 }

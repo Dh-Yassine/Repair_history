@@ -70,11 +70,10 @@ body {
   font-size: 15px;
   line-height: 1.5;
   color: var(--color-text);
-  /* Ambient wash keeps the dark UI from reading as flat black. */
+  /* Single soft wash — less competing color blobs than a multi-gradient stage. */
   background:
-    radial-gradient(1100px 620px at 8% -10%, color-mix(in srgb, var(--verified) 12%, transparent), transparent 68%),
-    radial-gradient(900px 520px at 102% -4%, color-mix(in srgb, var(--declared) 8%, transparent), transparent 70%),
-    radial-gradient(700px 700px at 50% 118%, color-mix(in srgb, var(--accent) 5%, transparent), transparent 72%),
+    radial-gradient(900px 520px at 12% -8%, color-mix(in srgb, var(--verified) 9%, transparent), transparent 70%),
+    radial-gradient(720px 480px at 96% 0%, color-mix(in srgb, var(--accent) 4%, transparent), transparent 68%),
     var(--ink);
   background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
@@ -341,8 +340,8 @@ h3,
 .page-content {
   position: relative;
   z-index: 1;
-  padding: 32px;
-  max-width: 1320px;
+  padding: 28px 32px 40px;
+  max-width: 1180px;
   margin: 0 auto;
 }
 
@@ -791,9 +790,9 @@ a.btn-solid:hover {
 .masthead__title {
   margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(1.9rem, 3.4vw, 2.75rem);
+  font-size: clamp(1.7rem, 3vw, 2.4rem);
   font-weight: 600;
-  line-height: 1;
+  line-height: 1.05;
   letter-spacing: -0.02em;
   text-transform: none;
   color: var(--text);
@@ -1179,6 +1178,7 @@ a.btn-solid:hover {
   flex-wrap: wrap;
   padding: 0 0 var(--space-3);
   margin-bottom: var(--space-3);
+  border-bottom: 1px solid var(--hairline);
 }
 
 .control-group {
@@ -1277,11 +1277,11 @@ a.btn-solid:hover {
 
 .section-title {
   font-family: var(--font-body);
-  font-size: 0.9375rem;
+  font-size: 0.8125rem;
   font-weight: 600;
-  text-transform: none;
-  letter-spacing: 0;
-  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
   margin: 0;
 }
 
@@ -1474,6 +1474,16 @@ a.btn-solid:hover {
   place-items: center;
   gap: 8px;
   color: var(--color-accent);
+}
+
+.vehicle-photo-default__badge {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--color-border-soft);
+  background: color-mix(in srgb, var(--panel-raised) 70%, transparent);
 }
 
 .vehicle-photo-default span {
@@ -1950,6 +1960,10 @@ a.btn-solid:hover {
     padding: 14px 16px;
   }
 
+  .public-history-header__label {
+    display: none;
+  }
+
   .public-history-main {
     padding: 20px 16px 40px;
   }
@@ -2241,6 +2255,10 @@ a.btn-solid:hover {
   gap: 12px;
 }
 
+.grid-stats--3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
 .grid-2-1 {
   display: grid;
   grid-template-columns: 2fr 1fr;
@@ -2249,10 +2267,10 @@ a.btn-solid:hover {
 
 .grid-bottom {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1.35fr 1fr;
   align-items: start;
-  gap: 16px;
-  margin-top: 16px;
+  gap: 20px;
+  margin-top: 20px;
 }
 
 /* Skeleton */
@@ -2740,7 +2758,8 @@ a.btn-solid:hover {
   .mobile-tabs {
     display: flex;
   }
-  .grid-stats {
+  .grid-stats,
+  .grid-stats--3 {
     grid-template-columns: repeat(2, 1fr);
   }
   .grid-2-1,
@@ -2821,6 +2840,22 @@ a.btn-solid:hover {
   text-align: center;
   padding: 48px 24px;
   color: var(--color-text-muted);
+}
+
+.empty-state--hero {
+  padding: 56px 24px;
+}
+
+.empty-state__icon {
+  width: 44px;
+  height: 44px;
+  margin: 0 auto 16px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--verified);
+  border: 1px solid color-mix(in srgb, var(--verified) 45%, var(--hairline));
+  background: color-mix(in srgb, var(--verified) 10%, transparent);
 }
 
 .trust-ring {
@@ -3390,14 +3425,12 @@ a.btn-solid:hover {
 .next-step-card {
   display: flex;
   align-items: center;
-  gap: 18px;
-  padding: 20px 22px;
-  border: 1px solid rgba(199, 217, 74, 0.32);
-  border-radius: var(--radius-md);
-  background:
-    radial-gradient(circle at 100% 0%, rgba(199, 217, 74, 0.14), transparent 50%),
-    rgba(17, 19, 24, 0.94);
-  box-shadow: var(--shadow-card);
+  gap: 16px;
+  margin-top: 18px;
+  padding: 16px 18px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card);
+  background: var(--panel);
 }
 
 /* A plain marker, not a glowing gradient tile. */
@@ -3825,11 +3858,11 @@ button[disabled] {
 
 /* The topbar is the only page header now, so it carries the page title. */
 .topbar-title {
-  font-size: 21px;
+  font-size: 18px;
   font-weight: 600;
-  line-height: 1.15;
+  line-height: 1.2;
   text-transform: none;
-  letter-spacing: -0.005em;
+  letter-spacing: -0.01em;
 }
 
 .topbar-subtitle {
@@ -4603,6 +4636,16 @@ button,
 .hud-br::before { width: 2px; height: 100%; bottom: 0; right: 0; }
 .hud-br::after  { width: 100%; height: 2px; bottom: 0; right: 0; }
 
+/* Smaller, tighter variant for cards instead of full-bleed hero sections. */
+.hud-corners--hero {
+  inset: 14px;
+}
+
+.hud-corners--hero .hud-corner {
+  width: 16px;
+  height: 16px;
+}
+
 /* ── Hero text ── */
 .landing-hero-content {
   position: relative;
@@ -5300,15 +5343,34 @@ button,
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-2);
+  gap: var(--space-3);
   flex-wrap: wrap;
-  margin-bottom: var(--space-3);
+  margin-bottom: var(--space-4);
 }
 
 .dash-bar__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  align-items: center;
+  gap: 4px 14px;
+}
+
+.dash-bar__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 2px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.dash-bar__link:hover {
+  color: var(--text);
+  border-bottom-color: color-mix(in srgb, var(--accent) 55%, transparent);
 }
 
 .vsw {
@@ -5354,8 +5416,19 @@ button,
   min-height: 32px;
 }
 
-.vsw__thumb .vehicle-photo-default svg,
-.vsw__thumb .vehicle-photo-default span {
+.vsw__thumb .vehicle-photo-default__badge {
+  width: auto;
+  height: auto;
+  border: none;
+  background: none;
+}
+
+.vsw__thumb .vehicle-photo-default__badge svg {
+  width: 16px;
+  height: 16px;
+}
+
+.vsw__thumb .vehicle-photo-default__label {
   display: none;
 }
 
@@ -5558,7 +5631,18 @@ button,
 .dash-hero__media .vehicle-photo-default {
   height: 100%;
   min-height: 100%;
-  gap: 8px;
+  gap: 10px;
+}
+
+.dash-hero__media .vehicle-photo-default__badge {
+  width: 64px;
+  height: 64px;
+}
+
+/* The make name would sit right in the bottom scrim and duplicate the
+   hero title below it, so the icon badge stands alone here. */
+.dash-hero__media .vehicle-photo-default__label {
+  display: none;
 }
 
 .dash-hero__scrim {
@@ -5604,18 +5688,33 @@ button,
   inset: auto 0 0 0;
   z-index: 1;
   padding: var(--space-4);
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    color-mix(in srgb, var(--ink) 55%, transparent) 42%,
+    color-mix(in srgb, var(--ink) 88%, transparent) 100%
+  );
+}
+
+.dash-hero__eyebrow {
+  margin: 0 0 8px;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--text) 62%, transparent);
 }
 
 /* The vehicle is the page's subject, so its name carries the largest type. */
 .dash-hero__name {
   font-family: var(--font-display);
-  font-size: clamp(2rem, 4vw, 3.25rem);
+  font-size: clamp(1.85rem, 3.6vw, 2.75rem);
   font-weight: 600;
-  line-height: 1;
+  line-height: 1.05;
   letter-spacing: -0.02em;
   text-transform: none;
   color: var(--text);
   margin: 0;
+  text-shadow: 0 1px 18px rgba(0, 0, 0, 0.35);
 }
 
 .dash-hero__model {
@@ -5635,11 +5734,11 @@ button,
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 10px;
+  padding: 4px 9px;
   font-size: 12px;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--text) 14%, transparent);
-  background: rgba(21, 23, 27, 0.62);
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--text) 12%, transparent);
+  background: rgba(21, 23, 27, 0.55);
   backdrop-filter: blur(8px);
   color: var(--text-muted);
 }
@@ -5818,18 +5917,16 @@ button,
   }
 
   .dash-bar__actions {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    display: flex;
+    flex-wrap: wrap;
     width: 100%;
+    gap: 8px 12px;
   }
 
   .dash-bar__actions .btn {
+    margin-left: auto;
     flex: none;
-    width: 100%;
-    padding-left: 8px;
-    padding-right: 8px;
-    white-space: normal;
-    text-align: center;
+    white-space: nowrap;
   }
 
   .dash-hero {
@@ -5914,9 +6011,54 @@ button,
   background: var(--panel);
 }
 
+.next-step-cta {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
 .next-step-card .next-step-body .eyebrow,
 .next-step-card .next-step-body h3 {
   text-transform: none;
+}
+
+.next-step-card .next-step-body h3 {
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 4px;
+  letter-spacing: -0.01em;
+}
+
+.dash-side-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.dash-plan-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 14px 16px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card);
+  background: color-mix(in srgb, var(--panel) 80%, transparent);
+}
+
+.dash-panel {
+  padding-top: 18px;
+}
+
+.empty-state__title {
+  margin: 0 0 6px;
+  font-family: var(--font-display);
+  font-size: clamp(1.35rem, 2.5vw, 1.75rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text);
 }
 
 @media (max-width: 900px) {
@@ -6001,41 +6143,7 @@ input[type='radio'] {
   position: relative;
 }
 
-/* Hero: one-time light sweep + very slow push-in each time a vehicle loads. */
-.dash-hero__sheen {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-  background: linear-gradient(
-    105deg,
-    transparent 34%,
-    color-mix(in srgb, var(--text) 12%, transparent) 48%,
-    transparent 62%
-  );
-  transform: translateX(-105%);
-  animation: heroSheen 1.15s var(--ease-out) 0.2s both;
-}
-
-@keyframes heroSheen {
-  to {
-    transform: translateX(105%);
-  }
-}
-
-.dash-hero__media img {
-  animation: heroPushIn 16s ease-out both;
-}
-
-@keyframes heroPushIn {
-  from {
-    transform: scale(1.005);
-  }
-  to {
-    transform: scale(1.06);
-  }
-}
-
+/* Hero stays still — no sheen sweep / Ken Burns (reads as AI polish). */
 .dash-hero:hover .dash-hero__edit {
   opacity: 1;
 }
@@ -6054,12 +6162,4 @@ input[type='radio'] {
 .dash-trust[aria-busy='true'] {
   opacity: 0.55;
   transition: opacity 0.2s;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .dash-hero__sheen,
-  .dash-hero__media img {
-    animation: none;
-  }
-
 }

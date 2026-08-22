@@ -2,7 +2,6 @@ import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   Clock,
-  ShoppingBag,
   Wrench,
   BarChart3,
   Settings,
@@ -33,7 +32,10 @@ function buildTopbarContext(
     return { title: t('topbar.serviceTitle'), subtitle: t('topbar.serviceSub') };
   }
   if (pathname.startsWith('/analytics')) {
-    return { title: t('topbar.analyticsTitle'), subtitle: t('topbar.analyticsSub') };
+    return {
+      title: t('topbar.analyticsTitle'),
+      subtitle: role === 'SHOP' ? t('topbar.analyticsSubShop') : t('topbar.analyticsSub'),
+    };
   }
   if (pathname.startsWith('/marketplace')) {
     return { title: t('topbar.marketplaceTitle'), subtitle: t('topbar.marketplaceSub') };
@@ -75,7 +77,6 @@ export default function AppShell({
   const ownerNav = [
     { to: '/', icon: LayoutDashboard, label: t('nav.dashboard') },
     { to: '/analytics', icon: BarChart3, label: t('nav.analytics') },
-    { to: '/marketplace', icon: ShoppingBag, label: t('nav.marketplace') },
     { to: '/shops', icon: Wrench, label: t('nav.shops') },
     { to: '/settings', icon: Settings, label: t('nav.settings') },
   ];
@@ -132,9 +133,11 @@ export default function AppShell({
             <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {user?.shopName || user?.fullName}
             </div>
-            <span className="tag" style={{ marginTop: 4, fontSize: 10 }}>
-              {planLabel}
-            </span>
+            {user?.role !== 'ADMIN' && (
+              <span className="tag" style={{ marginTop: 4, fontSize: 10 }}>
+                {planLabel}
+              </span>
+            )}
           </div>
           <button type="button" className="btn btn-ghost btn-sm" onClick={logout} aria-label={t('common.signOut')}>
             <LogOut size={16} />
@@ -153,7 +156,7 @@ export default function AppShell({
           </div>
           <div className="topbar-actions">
             <LanguageToggle compact />
-            {user?.role === 'OWNER' && <NotificationsPanel />}
+            {(user?.role === 'OWNER' || user?.role === 'SHOP') && <NotificationsPanel />}
             <div className="topbar-avatar mobile-only" aria-hidden>
               {initials}
             </div>
